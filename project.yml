@@ -1,0 +1,75 @@
+name: SwiftParser
+options:
+  bundleIdPrefix: com.swiftparser
+  deploymentTarget:
+    iOS: "17.0"
+    macOS: "14.0"
+  developmentLanguage: en
+  xcodeVersion: "16.0"
+
+settings:
+  SWIFT_VERSION: "6.0"
+  IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+  MACOSX_DEPLOYMENT_TARGET: "14.0"
+
+targets:
+  SwiftParser:
+    type: framework
+    supportedDestinations: [iOS, macOS]
+    sources:
+      - path: Sources/SwiftParser
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.swiftparser.SwiftParser
+        MARKETING_VERSION: "1.0.0"
+        CURRENT_PROJECT_VERSION: "1"
+        SWIFT_VERSION: "6.0"
+        GENERATE_INFOPLIST_FILE: true
+        INFOPLIST_KEY_CFBundleDisplayName: SwiftParser
+        DEFINES_MODULE: true
+      configs:
+        Debug:
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEBUG
+        Release:
+          SWIFT_COMPILATION_MODE: wholemodule
+
+  SwiftParserShowCase:
+    type: application
+    platform: auto
+    supportedDestinations: [iOS, macOS]
+    sources:
+      - path: Sources/SwiftParserShowCase
+    dependencies:
+      - target: SwiftParser
+        destinationFilter: [iOS, macOS]
+    schemes:
+      run:
+        config: Debug
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.swiftparser.SwiftParserShowCase
+        MARKETING_VERSION: "1.0.0"
+        CURRENT_PROJECT_VERSION: "1"
+        SWIFT_VERSION: "6.0"
+        GENERATE_INFOPLIST_FILE: true
+        INFOPLIST_KEY_CFBundleDisplayName: SwiftParser ShowCase
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.developer-tools
+      configs:
+        Debug:
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEBUG
+        Release:
+          SWIFT_COMPILATION_MODE: wholemodule
+
+  SwiftParserTests:
+    type: bundle.unit-test
+    supportedDestinations: [iOS, macOS]
+    sources:
+      - path: Tests/SwiftParserTests
+    dependencies:
+      - target: SwiftParser
+        destinationFilter: [iOS, macOS]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.swiftparser.SwiftParserTests
+        SWIFT_VERSION: "6.0"
+        GENERATE_INFOPLIST_FILE: true
