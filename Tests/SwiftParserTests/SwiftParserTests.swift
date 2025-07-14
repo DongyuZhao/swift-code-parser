@@ -24,6 +24,50 @@ final class SwiftParserTests: XCTestCase {
         XCTAssertEqual(result.root.children.count, 2)
     }
 
+    func testMarkdownListItem() {
+        let parser = SwiftParser()
+        let source = "- item1\n- item2"
+        let result = parser.parse(source, language: MarkdownLanguage())
+        XCTAssertEqual(result.errors.count, 0)
+        XCTAssertEqual(result.root.children.count, 2)
+        XCTAssertEqual(result.root.children.first?.type as? MarkdownLanguage.Element, .listItem)
+    }
+
+    func testMarkdownOrderedList() {
+        let parser = SwiftParser()
+        let source = "1. first\n2. second"
+        let result = parser.parse(source, language: MarkdownLanguage())
+        XCTAssertEqual(result.errors.count, 0)
+        XCTAssertEqual(result.root.children.first?.type as? MarkdownLanguage.Element, .orderedListItem)
+    }
+
+    func testMarkdownEmphasisAndStrong() {
+        let parser = SwiftParser()
+        let source = "*em* **strong**"
+        let result = parser.parse(source, language: MarkdownLanguage())
+        XCTAssertEqual(result.errors.count, 0)
+        XCTAssertEqual(result.root.children.count, 3)
+        XCTAssertEqual(result.root.children[0].type as? MarkdownLanguage.Element, .emphasis)
+        XCTAssertEqual(result.root.children[2].type as? MarkdownLanguage.Element, .strong)
+    }
+
+    func testMarkdownCodeBlockAndInline() {
+        let parser = SwiftParser()
+        let source = "```\ncode\n```\ninline `code`"
+        let result = parser.parse(source, language: MarkdownLanguage())
+        XCTAssertEqual(result.errors.count, 0)
+        XCTAssertEqual(result.root.children.first?.type as? MarkdownLanguage.Element, .codeBlock)
+        XCTAssertEqual(result.root.children.last?.type as? MarkdownLanguage.Element, .inlineCode)
+    }
+
+    func testMarkdownLink() {
+        let parser = SwiftParser()
+        let source = "[title](url)"
+        let result = parser.parse(source, language: MarkdownLanguage())
+        XCTAssertEqual(result.errors.count, 0)
+        XCTAssertEqual(result.root.children.first?.type as? MarkdownLanguage.Element, .link)
+    }
+
     func testPrattExpression() {
         let parser = SwiftParser()
         let source = "x = 1 + 2 * 3"
