@@ -913,6 +913,77 @@ public struct MarkdownLanguage: CodeLanguage {
         }
     }
 
+    // Helper to parse inline content supporting nested emphasis/strong
+    static func parseInline(context: inout CodeContext, closing: Token, count: Int) -> ([CodeNode], Bool) {
+        var nodes: [CodeNode] = []
+        var text = ""
+        var closed = false
+        func flush() {
+            if !text.isEmpty {
+                nodes.append(CodeNode(type: Element.text, value: text))
+                text = ""
+            }
+        }
+        while context.index < context.tokens.count {
+            guard let tok = context.tokens[context.index] as? Token else { context.index += 1; continue }
+            // Check for closing delimiter first
+            if tok.kindDescription == closing.kindDescription {
+                var idx = context.index
+                var cnt = 0
+                while idx < context.tokens.count, let t = context.tokens[idx] as? Token,
+                      t.kindDescription == closing.kindDescription {
+                    cnt += 1; idx += 1
+                }
+                if cnt == count {
+                    context.index = idx
+                    flush()
+                    closed = true
+                    break
+                }
+            }
+
+            // Strong delimiter
+            if (tok.kindDescription == "*" || tok.kindDescription == "_") &&
+               context.index + 1 < context.tokens.count,
+               let next = context.tokens[context.index + 1] as? Token,
+               next.kindDescription == tok.kindDescription {
+                flush()
+                context.index += 2
+                let (inner, ok) = parseInline(context: &context, closing: tok, count: 2)
+                if ok {
+                    let node = CodeNode(type: Element.strong, value: "")
+                    inner.forEach { node.addChild($0) }
+                    nodes.append(node)
+                    continue
+                } else {
+                    text += tok.text + next.text
+                    continue
+                }
+            }
+
+            // Emphasis delimiter
+            if tok.kindDescription == "*" || tok.kindDescription == "_" {
+                flush()
+                context.index += 1
+                let (inner, ok) = parseInline(context: &context, closing: tok, count: 1)
+                if ok {
+                    let node = CodeNode(type: Element.emphasis, value: "")
+                    inner.forEach { node.addChild($0) }
+                    nodes.append(node)
+                    continue
+                } else {
+                    text += tok.text
+                    continue
+                }
+            }
+
+            text += tok.text
+            context.index += 1
+        }
+        flush()
+        return (nodes, closed)
+    }
+
     public class StrongBuilder: CodeElementBuilder {
         public init() {}
         public func accept(context: CodeContext, token: any CodeToken) -> Bool {
@@ -927,24 +998,19 @@ public struct MarkdownLanguage: CodeLanguage {
             }
         }
         public func build(context: inout CodeContext) {
+            let snap = context.snapshot()
             guard let open = context.tokens[context.index] as? Token else { return }
             context.index += 2
-            var text = ""
-            while context.index + 1 < context.tokens.count {
-                if let t1 = context.tokens[context.index] as? Token,
-                   let t2 = context.tokens[context.index + 1] as? Token,
-                   (t1.kindDescription == open.kindDescription && t2.kindDescription == open.kindDescription) {
-                    context.index += 2
-                    let node = CodeNode(type: Element.strong, value: text)
-                    context.currentNode.addChild(node)
-                    return
-                } else if let tok = context.tokens[context.index] as? Token {
-                    text += tok.text
-                    context.index += 1
-                } else { context.index += 1 }
+            let (children, ok) = MarkdownLanguage.parseInline(context: &context, closing: open, count: 2)
+            if ok {
+                let node = CodeNode(type: Element.strong, value: "")
+                children.forEach { node.addChild($0) }
+                context.currentNode.addChild(node)
+            } else {
+                context.restore(snap)
+                context.currentNode.addChild(CodeNode(type: Element.text, value: open.text + open.text))
+                context.index += 2
             }
-            let node = CodeNode(type: Element.strong, value: text)
-            context.currentNode.addChild(node)
         }
     }
 
@@ -957,23 +1023,19 @@ public struct MarkdownLanguage: CodeLanguage {
             return false
         }
         public func build(context: inout CodeContext) {
+            let snap = context.snapshot()
             guard let open = context.tokens[context.index] as? Token else { return }
             context.index += 1
-            var text = ""
-            while context.index < context.tokens.count {
-                if let tok = context.tokens[context.index] as? Token,
-                   tok.kindDescription == open.kindDescription {
-                    context.index += 1
-                    let node = CodeNode(type: Element.emphasis, value: text)
-                    context.currentNode.addChild(node)
-                    return
-                } else if let tok = context.tokens[context.index] as? Token {
-                    text += tok.text
-                    context.index += 1
-                } else { context.index += 1 }
+            let (children, ok) = MarkdownLanguage.parseInline(context: &context, closing: open, count: 1)
+            if ok {
+                let node = CodeNode(type: Element.emphasis, value: "")
+                children.forEach { node.addChild($0) }
+                context.currentNode.addChild(node)
+            } else {
+                context.restore(snap)
+                context.currentNode.addChild(CodeNode(type: Element.text, value: open.text))
+                context.index += 1
             }
-            let node = CodeNode(type: Element.emphasis, value: text)
-            context.currentNode.addChild(node)
         }
     }
 
