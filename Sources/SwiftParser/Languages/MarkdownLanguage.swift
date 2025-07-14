@@ -8,6 +8,8 @@ public struct MarkdownLanguage: CodeLanguage {
         case text
         case listItem
         case orderedListItem
+        case unorderedList
+        case orderedList
         case emphasis
         case strong
         case codeBlock
@@ -366,10 +368,21 @@ public struct MarkdownLanguage: CodeLanguage {
                    let next = context.tokens[context.index + 1] as? Token,
                    case .text(let s, _) = next,
                    s.first?.isWhitespace == true {
-                    if context.index == 0 { return true }
-                    if let prev = context.tokens[context.index - 1] as? Token, case .newline = prev {
-                        return true
+                    var idx = context.index - 1
+                    while idx >= 0 {
+                        if let prev = context.tokens[idx] as? Token {
+                            switch prev {
+                            case .newline:
+                                return true
+                            case .text(let sp, _) where sp.trimmingCharacters(in: .whitespaces).isEmpty:
+                                idx -= 1
+                                continue
+                            default:
+                                return false
+                            }
+                        } else { idx -= 1 }
                     }
+                    return true
                 }
             default:
                 break
@@ -386,6 +399,27 @@ public struct MarkdownLanguage: CodeLanguage {
                         context.index += 1
                         let node = CodeNode(type: Element.listItem, value: text.trimmingCharacters(in: .whitespaces))
                         context.currentNode.addChild(node)
+                        // check for nested list
+                        var spaces = 0
+                        var idx = context.index
+                        while idx < context.tokens.count, let t = context.tokens[idx] as? Token, case .text(let s, _) = t, s.trimmingCharacters(in: .whitespaces).isEmpty {
+                            spaces += s.count
+                            idx += 1
+                        }
+                        if spaces >= 2, idx < context.tokens.count {
+                            if let tok = context.tokens[idx] as? Token {
+                                switch tok {
+                                case .dash, .star, .plus, .number:
+                                    context.index = idx
+                                    let old = context.currentNode
+                                    context.currentNode = node
+                                    let lb = ListBuilder()
+                                    lb.build(context: &context)
+                                    context.currentNode = old
+                                default: break
+                                }
+                            }
+                        }
                         return
                     case .eof:
                         let node = CodeNode(type: Element.listItem, value: text.trimmingCharacters(in: .whitespaces))
@@ -409,10 +443,21 @@ public struct MarkdownLanguage: CodeLanguage {
                 if context.index + 1 < context.tokens.count,
                    let dot = context.tokens[context.index + 1] as? Token,
                    case .dot = dot {
-                    if context.index == 0 { return true }
-                    if let prev = context.tokens[context.index - 1] as? Token, case .newline = prev {
-                        return true
+                    var idx = context.index - 1
+                    while idx >= 0 {
+                        if let prev = context.tokens[idx] as? Token {
+                            switch prev {
+                            case .newline:
+                                return true
+                            case .text(let sp, _) where sp.trimmingCharacters(in: .whitespaces).isEmpty:
+                                idx -= 1
+                                continue
+                            default:
+                                return false
+                            }
+                        } else { idx -= 1 }
                     }
+                    return true
                 }
             }
             return false
@@ -427,6 +472,26 @@ public struct MarkdownLanguage: CodeLanguage {
                         context.index += 1
                         let node = CodeNode(type: Element.orderedListItem, value: text.trimmingCharacters(in: .whitespaces))
                         context.currentNode.addChild(node)
+                        var spaces = 0
+                        var idx = context.index
+                        while idx < context.tokens.count, let t = context.tokens[idx] as? Token, case .text(let s, _) = t, s.trimmingCharacters(in: .whitespaces).isEmpty {
+                            spaces += s.count
+                            idx += 1
+                        }
+                        if spaces >= 2, idx < context.tokens.count {
+                            if let tok = context.tokens[idx] as? Token {
+                                switch tok {
+                                case .dash, .star, .plus, .number:
+                                    context.index = idx
+                                    let old = context.currentNode
+                                    context.currentNode = node
+                                    let lb = ListBuilder()
+                                    lb.build(context: &context)
+                                    context.currentNode = old
+                                default: break
+                                }
+                            }
+                        }
                         return
                     case .eof:
                         let node = CodeNode(type: Element.orderedListItem, value: text.trimmingCharacters(in: .whitespaces))
@@ -439,6 +504,43 @@ public struct MarkdownLanguage: CodeLanguage {
                     }
                 } else { context.index += 1 }
             }
+        }
+    }
+
+    public class ListBuilder: CodeElementBuilder {
+        public class ItemBuilder: ListItemBuilder {}
+        public class OrderedItemBuilder: OrderedListItemBuilder {}
+
+        public init() {}
+
+        public func accept(context: CodeContext, token: any CodeToken) -> Bool {
+            return ItemBuilder().accept(context: context, token: token) || OrderedItemBuilder().accept(context: context, token: token)
+        }
+
+        public func build(context: inout CodeContext) {
+            let ordered = OrderedItemBuilder().accept(context: context, token: context.tokens[context.index])
+            let listNode = CodeNode(type: ordered ? Element.orderedList : Element.unorderedList, value: "")
+            context.currentNode.addChild(listNode)
+            let parent = context.currentNode
+            context.currentNode = listNode
+            var loose = false
+            while context.index < context.tokens.count {
+                if ordered {
+                    guard OrderedItemBuilder().accept(context: context, token: context.tokens[context.index]) else { break }
+                    OrderedItemBuilder().build(context: &context)
+                } else {
+                    guard ItemBuilder().accept(context: context, token: context.tokens[context.index]) else { break }
+                    ItemBuilder().build(context: &context)
+                }
+                var nlCount = 0
+                while context.index < context.tokens.count, let t = context.tokens[context.index] as? Token, case .newline = t {
+                    nlCount += 1
+                    context.index += 1
+                }
+                if nlCount > 0 { loose = true }
+            }
+            context.currentNode = parent
+            listNode.value = loose ? "loose" : "tight"
         }
     }
 
@@ -1016,7 +1118,7 @@ public struct MarkdownLanguage: CodeLanguage {
 
     public var tokenizer: CodeTokenizer { Tokenizer() }
     public var builders: [CodeElementBuilder] {
-        [HeadingBuilder(), SetextHeadingBuilder(), CodeBlockBuilder(), IndentedCodeBlockBuilder(), BlockQuoteBuilder(), ThematicBreakBuilder(), OrderedListItemBuilder(), ListItemBuilder(), ImageBuilder(), HTMLBuilder(), EntityBuilder(), StrikethroughBuilder(), AutoLinkBuilder(), TableBuilder(), FootnoteBuilder(), LinkReferenceDefinitionBuilder(), LinkBuilder(), StrongBuilder(), EmphasisBuilder(), InlineCodeBuilder(), ParagraphBuilder()]
+        [HeadingBuilder(), SetextHeadingBuilder(), CodeBlockBuilder(), IndentedCodeBlockBuilder(), BlockQuoteBuilder(), ThematicBreakBuilder(), ListBuilder(), ImageBuilder(), HTMLBuilder(), EntityBuilder(), StrikethroughBuilder(), AutoLinkBuilder(), TableBuilder(), FootnoteBuilder(), LinkReferenceDefinitionBuilder(), LinkBuilder(), StrongBuilder(), EmphasisBuilder(), InlineCodeBuilder(), ParagraphBuilder()]
     }
     public var expressionBuilders: [CodeExpressionBuilder] { [] }
     public var rootElement: any CodeElement { Element.root }
