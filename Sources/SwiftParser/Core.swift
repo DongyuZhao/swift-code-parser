@@ -61,13 +61,15 @@ public struct CodeContext {
     public var currentNode: CodeNode
     public var errors: [CodeError]
     public let input: String
+    public var linkReferences: [String: String]
 
-    public init(tokens: [any CodeToken], index: Int, currentNode: CodeNode, errors: [CodeError], input: String) {
+    public init(tokens: [any CodeToken], index: Int, currentNode: CodeNode, errors: [CodeError], input: String, linkReferences: [String: String] = [:]) {
         self.tokens = tokens
         self.index = index
         self.currentNode = currentNode
         self.errors = errors
         self.input = input
+        self.linkReferences = linkReferences
     }
 
     /// Snapshot represents a parser state that can be restored later.
@@ -76,11 +78,12 @@ public struct CodeContext {
         fileprivate let node: CodeNode
         fileprivate let childCount: Int
         fileprivate let errorCount: Int
+        fileprivate let linkReferences: [String: String]
     }
 
     /// Capture the current parser state so it can be restored on demand.
     public func snapshot() -> Snapshot {
-        Snapshot(index: index, node: currentNode, childCount: currentNode.children.count, errorCount: errors.count)
+        Snapshot(index: index, node: currentNode, childCount: currentNode.children.count, errorCount: errors.count, linkReferences: linkReferences)
     }
 
     /// Restore the parser to a previously captured state, discarding any new nodes or errors.
@@ -93,6 +96,7 @@ public struct CodeContext {
         if errors.count > snapshot.errorCount {
             errors.removeLast(errors.count - snapshot.errorCount)
         }
+        linkReferences = snapshot.linkReferences
     }
 }
 

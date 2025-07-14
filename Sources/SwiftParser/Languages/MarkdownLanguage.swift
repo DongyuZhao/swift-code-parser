@@ -21,6 +21,7 @@ public struct MarkdownLanguage: CodeLanguage {
         case strikethrough
         case table
         case autoLink
+        case linkReferenceDefinition
     }
 
     public enum Token: CodeToken {
@@ -779,6 +780,50 @@ public struct MarkdownLanguage: CodeLanguage {
         }
     }
 
+    public class LinkReferenceDefinitionBuilder: CodeElementBuilder {
+        public init() {}
+        public func accept(context: CodeContext, token: any CodeToken) -> Bool {
+            guard context.index + 3 < context.tokens.count else { return false }
+            guard let lb = token as? Token,
+                  let txt = context.tokens[context.index + 1] as? Token,
+                  let rb = context.tokens[context.index + 2] as? Token,
+                  let colon = context.tokens[context.index + 3] as? Token else { return false }
+            if case .lbracket = lb,
+               case .text = txt,
+               case .rbracket = rb,
+               case .text(let s, _) = colon,
+               s.trimmingCharacters(in: .whitespaces).hasPrefix(":") {
+                return true
+            }
+            return false
+        }
+        public func build(context: inout CodeContext) {
+            context.index += 1
+            var id = ""
+            if context.index < context.tokens.count, let idTok = context.tokens[context.index] as? Token, case .text(let s, _) = idTok {
+                id = s
+                context.index += 1
+            }
+            if context.index < context.tokens.count { context.index += 1 } // skip ]
+            var text = ""
+            if context.index < context.tokens.count, let colon = context.tokens[context.index] as? Token, case .text(let s, _) = colon {
+                text = s
+                context.index += 1
+            }
+            while context.index < context.tokens.count {
+                if let tok = context.tokens[context.index] as? Token {
+                    if case .newline = tok { context.index += 1; break }
+                    else { text += tok.text; context.index += 1 }
+                } else { context.index += 1 }
+            }
+            var url = text.trimmingCharacters(in: .whitespaces)
+            if url.hasPrefix(":") { url.removeFirst() }
+            url = url.trimmingCharacters(in: .whitespaces)
+            context.linkReferences[id.trimmingCharacters(in: .whitespaces).lowercased()] = url
+            context.currentNode.addChild(CodeNode(type: Element.linkReferenceDefinition, value: id + "|" + url))
+        }
+    }
+
     public class StrongBuilder: CodeElementBuilder {
         public init() {}
         public func accept(context: CodeContext, token: any CodeToken) -> Bool {
@@ -904,6 +949,16 @@ public struct MarkdownLanguage: CodeLanguage {
                         }
                     } else { context.index += 1 }
                 }
+            } else if context.index + 2 < context.tokens.count,
+                      let lb = context.tokens[context.index] as? Token, case .lbracket = lb,
+                      let idTok = context.tokens[context.index + 1] as? Token,
+                      let rb = context.tokens[context.index + 2] as? Token, case .rbracket = rb,
+                      case .text(let id, _) = idTok {
+                context.index += 3
+                let key = id.trimmingCharacters(in: .whitespaces).lowercased()
+                if let ref = context.linkReferences[key] {
+                    url = ref
+                }
             }
             let node = CodeNode(type: Element.link, value: text + "|" + url)
             context.currentNode.addChild(node)
@@ -961,7 +1016,7 @@ public struct MarkdownLanguage: CodeLanguage {
 
     public var tokenizer: CodeTokenizer { Tokenizer() }
     public var builders: [CodeElementBuilder] {
-        [HeadingBuilder(), SetextHeadingBuilder(), CodeBlockBuilder(), IndentedCodeBlockBuilder(), BlockQuoteBuilder(), ThematicBreakBuilder(), OrderedListItemBuilder(), ListItemBuilder(), ImageBuilder(), HTMLBuilder(), EntityBuilder(), StrikethroughBuilder(), AutoLinkBuilder(), TableBuilder(), FootnoteBuilder(), LinkBuilder(), StrongBuilder(), EmphasisBuilder(), InlineCodeBuilder(), ParagraphBuilder()]
+        [HeadingBuilder(), SetextHeadingBuilder(), CodeBlockBuilder(), IndentedCodeBlockBuilder(), BlockQuoteBuilder(), ThematicBreakBuilder(), OrderedListItemBuilder(), ListItemBuilder(), ImageBuilder(), HTMLBuilder(), EntityBuilder(), StrikethroughBuilder(), AutoLinkBuilder(), TableBuilder(), FootnoteBuilder(), LinkReferenceDefinitionBuilder(), LinkBuilder(), StrongBuilder(), EmphasisBuilder(), InlineCodeBuilder(), ParagraphBuilder()]
     }
     public var expressionBuilders: [CodeExpressionBuilder] { [] }
     public var rootElement: any CodeElement { Element.root }

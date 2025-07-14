@@ -76,6 +76,14 @@ final class SwiftParserTests: XCTestCase {
         XCTAssertEqual(result.root.children.first?.type as? MarkdownLanguage.Element, .link)
     }
 
+    func testMarkdownReferenceLink() {
+        let parser = SwiftParser()
+        let source = "[title][ref]\n[ref]: http://example.com"
+        let result = parser.parse(source, language: MarkdownLanguage())
+        XCTAssertEqual(result.errors.count, 0)
+        XCTAssertEqual(result.root.children.first?.type as? MarkdownLanguage.Element, .link)
+    }
+
     func testMarkdownBlockQuote() {
         let parser = SwiftParser()
         let source = "> quote"
