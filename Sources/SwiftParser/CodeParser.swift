@@ -50,7 +50,7 @@ public final class CodeParser {
 
     public func parse(_ input: String, rootNode: CodeNode) -> (node: CodeNode, context: CodeContext) {
         let tokens = tokenizer.tokenize(input)
-        var context = CodeContext(tokens: tokens, index: 0, currentNode: rootNode, errors: [], input: input)
+        var context = CodeContext(tokens: tokens, index: 0, currentNode: rootNode, errors: [], input: input, linkReferences: [:])
 
         snapshots = [:]
         lastTokens = tokens
