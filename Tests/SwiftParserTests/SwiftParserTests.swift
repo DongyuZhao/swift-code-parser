@@ -68,6 +68,22 @@ final class SwiftParserTests: XCTestCase {
         XCTAssertEqual(result.root.children.first?.type as? MarkdownLanguage.Element, .link)
     }
 
+    func testMarkdownBlockQuote() {
+        let parser = SwiftParser()
+        let source = "> quote"
+        let result = parser.parse(source, language: MarkdownLanguage())
+        XCTAssertEqual(result.errors.count, 0)
+        XCTAssertEqual(result.root.children.first?.type as? MarkdownLanguage.Element, .blockQuote)
+    }
+
+    func testMarkdownImage() {
+        let parser = SwiftParser()
+        let source = "![alt](url)"
+        let result = parser.parse(source, language: MarkdownLanguage())
+        XCTAssertEqual(result.errors.count, 0)
+        XCTAssertEqual(result.root.children.first?.type as? MarkdownLanguage.Element, .image)
+    }
+
     func testPrattExpression() {
         let parser = SwiftParser()
         let source = "x = 1 + 2 * 3"

@@ -13,6 +13,14 @@ public struct MarkdownLanguage: CodeLanguage {
         case codeBlock
         case inlineCode
         case link
+        case blockQuote
+        case thematicBreak
+        case image
+        case html
+        case entity
+        case strikethrough
+        case table
+        case autoLink
     }
 
     public enum Token: CodeToken {
@@ -23,6 +31,14 @@ public struct MarkdownLanguage: CodeLanguage {
         case underscore(Range<String.Index>)
         case plus(Range<String.Index>)
         case backtick(Range<String.Index>)
+        case greaterThan(Range<String.Index>)
+        case exclamation(Range<String.Index>)
+        case tilde(Range<String.Index>)
+        case equal(Range<String.Index>)
+        case lessThan(Range<String.Index>)
+        case ampersand(Range<String.Index>)
+        case semicolon(Range<String.Index>)
+        case pipe(Range<String.Index>)
         case lbracket(Range<String.Index>)
         case rbracket(Range<String.Index>)
         case lparen(Range<String.Index>)
@@ -41,6 +57,14 @@ public struct MarkdownLanguage: CodeLanguage {
             case .underscore: return "_"
             case .plus: return "+"
             case .backtick: return "`"
+            case .greaterThan: return ">"
+            case .exclamation: return "!"
+            case .tilde: return "~"
+            case .equal: return "="
+            case .lessThan: return "<"
+            case .ampersand: return "&"
+            case .semicolon: return ";"
+            case .pipe: return "|"
             case .lbracket: return "["
             case .rbracket: return "]"
             case .lparen: return "("
@@ -61,6 +85,14 @@ public struct MarkdownLanguage: CodeLanguage {
             case .underscore: return "_"
             case .plus: return "+"
             case .backtick: return "`"
+            case .greaterThan: return ">"
+            case .exclamation: return "!"
+            case .tilde: return "~"
+            case .equal: return "="
+            case .lessThan: return "<"
+            case .ampersand: return "&"
+            case .semicolon: return ";"
+            case .pipe: return "|"
             case .lbracket: return "["
             case .rbracket: return "]"
             case .lparen: return "("
@@ -75,8 +107,10 @@ public struct MarkdownLanguage: CodeLanguage {
         public var range: Range<String.Index> {
             switch self {
             case .text(_, let r), .hash(let r), .dash(let r), .star(let r), .underscore(let r),
-                 .plus(let r), .backtick(let r), .lbracket(let r), .rbracket(let r),
-                 .lparen(let r), .rparen(let r), .dot(let r), .number(_, let r), .newline(let r), .eof(let r):
+                 .plus(let r), .backtick(let r), .greaterThan(let r), .exclamation(let r), .tilde(let r),
+                 .equal(let r), .lessThan(let r), .ampersand(let r), .semicolon(let r), .pipe(let r),
+                 .lbracket(let r), .rbracket(let r), .lparen(let r), .rparen(let r), .dot(let r),
+                 .number(_, let r), .newline(let r), .eof(let r):
                 return r
             }
         }
@@ -116,6 +150,38 @@ public struct MarkdownLanguage: CodeLanguage {
                     let start = index
                     advance()
                     add(.backtick(start..<index))
+                } else if ch == ">" {
+                    let start = index
+                    advance()
+                    add(.greaterThan(start..<index))
+                } else if ch == "!" {
+                    let start = index
+                    advance()
+                    add(.exclamation(start..<index))
+                } else if ch == "~" {
+                    let start = index
+                    advance()
+                    add(.tilde(start..<index))
+                } else if ch == "=" {
+                    let start = index
+                    advance()
+                    add(.equal(start..<index))
+                } else if ch == "<" {
+                    let start = index
+                    advance()
+                    add(.lessThan(start..<index))
+                } else if ch == "&" {
+                    let start = index
+                    advance()
+                    add(.ampersand(start..<index))
+                } else if ch == ";" {
+                    let start = index
+                    advance()
+                    add(.semicolon(start..<index))
+                } else if ch == "|" {
+                    let start = index
+                    advance()
+                    add(.pipe(start..<index))
                 } else if ch == "[" {
                     let start = index
                     advance()
@@ -149,7 +215,7 @@ public struct MarkdownLanguage: CodeLanguage {
                     let start = index
                     while index < input.endIndex &&
                           input[index] != "\n" &&
-                          !"#-*+_`[].()".contains(input[index]) &&
+                          !"#-*+_`[].()<>!~|;&=".contains(input[index]) &&
                           !input[index].isNumber {
                         advance()
                     }
@@ -309,6 +375,304 @@ public struct MarkdownLanguage: CodeLanguage {
         }
     }
 
+    public class BlockQuoteBuilder: CodeElementBuilder {
+        public init() {}
+        public func accept(context: CodeContext, token: any CodeToken) -> Bool {
+            guard let tok = token as? Token else { return false }
+            if case .greaterThan = tok {
+                if context.index == 0 { return true }
+                if let prev = context.tokens[context.index - 1] as? Token, case .newline = prev { return true }
+            }
+            return false
+        }
+        public func build(context: inout CodeContext) {
+            context.index += 1 // skip '>'
+            var text = ""
+            while context.index < context.tokens.count {
+                if let tok = context.tokens[context.index] as? Token {
+                    switch tok {
+                    case .newline:
+                        context.index += 1
+                        let node = CodeNode(type: Element.blockQuote, value: text.trimmingCharacters(in: .whitespaces))
+                        context.currentNode.addChild(node)
+                        return
+                    case .eof:
+                        let node = CodeNode(type: Element.blockQuote, value: text.trimmingCharacters(in: .whitespaces))
+                        context.currentNode.addChild(node)
+                        context.index += 1
+                        return
+                    default:
+                        text += tok.text
+                        context.index += 1
+                    }
+                } else { context.index += 1 }
+            }
+        }
+    }
+
+    public class IndentedCodeBlockBuilder: CodeElementBuilder {
+        public init() {}
+        public func accept(context: CodeContext, token: any CodeToken) -> Bool {
+            guard let tok = token as? Token else { return false }
+            if case .text(let s, _) = tok {
+                if (context.index == 0 || (context.tokens[context.index - 1] as? Token)?.kindDescription == "newline") && s.hasPrefix("    ") {
+                    return true
+                }
+            }
+            return false
+        }
+        public func build(context: inout CodeContext) {
+            var text = ""
+            while context.index < context.tokens.count {
+                if let tok = context.tokens[context.index] as? Token {
+                    switch tok {
+                    case .newline:
+                        context.index += 1
+                        if context.index < context.tokens.count, let next = context.tokens[context.index] as? Token, case .text(let s, _) = next, s.hasPrefix("    ") {
+                            text += "\n" + String(s.dropFirst(4))
+                            context.index += 1
+                        } else {
+                            context.currentNode.addChild(CodeNode(type: Element.codeBlock, value: text))
+                            return
+                        }
+                    case .text(let s, _):
+                        text += String(s.dropFirst(4))
+                        context.index += 1
+                    default:
+                        text += tok.text
+                        context.index += 1
+                    }
+                } else { context.index += 1 }
+            }
+            context.currentNode.addChild(CodeNode(type: Element.codeBlock, value: text))
+        }
+    }
+
+    public class ThematicBreakBuilder: CodeElementBuilder {
+        public init() {}
+        public func accept(context: CodeContext, token: any CodeToken) -> Bool {
+            guard let tok = token as? Token else { return false }
+            switch tok {
+            case .dash, .star, .underscore:
+                if context.index == 0 || (context.index > 0 && (context.tokens[context.index - 1] as? Token) is Token && (context.tokens[context.index - 1] as? Token)?.kindDescription == "newline") {
+                    var count = 0
+                    var idx = context.index
+                    while idx < context.tokens.count, let t = context.tokens[idx] as? Token, t.kindDescription == tok.kindDescription {
+                        count += 1; idx += 1
+                    }
+                    if count >= 3 {
+                        return true
+                    }
+                }
+            default:
+                break
+            }
+            return false
+        }
+        public func build(context: inout CodeContext) {
+            if let tok = context.tokens[context.index] as? Token {
+                let kind = tok.kindDescription
+                while context.index < context.tokens.count {
+                    if let t = context.tokens[context.index] as? Token, t.kindDescription == kind {
+                        context.index += 1
+                    } else {
+                        break
+                    }
+                }
+            }
+            if let nl = context.tokens[context.index] as? Token, case .newline = nl { context.index += 1 }
+            context.currentNode.addChild(CodeNode(type: Element.thematicBreak, value: ""))
+        }
+    }
+
+    public class ImageBuilder: CodeElementBuilder {
+        public init() {}
+        public func accept(context: CodeContext, token: any CodeToken) -> Bool {
+            guard let tok = token as? Token else { return false }
+            if case .exclamation = tok,
+               context.index + 1 < context.tokens.count,
+               let next = context.tokens[context.index + 1] as? Token,
+               case .lbracket = next { return true }
+            return false
+        }
+        public func build(context: inout CodeContext) {
+            context.index += 2 // skip ![
+            var alt = ""
+            while context.index < context.tokens.count {
+                if let tok = context.tokens[context.index] as? Token {
+                    if case .rbracket = tok { context.index += 1; break }
+                    else { alt += tok.text; context.index += 1 }
+                } else { context.index += 1 }
+            }
+            var url = ""
+            if context.index < context.tokens.count, let lp = context.tokens[context.index] as? Token, case .lparen = lp {
+                context.index += 1
+                while context.index < context.tokens.count {
+                    if let tok = context.tokens[context.index] as? Token {
+                        if case .rparen = tok { context.index += 1; break }
+                        else { url += tok.text; context.index += 1 }
+                    } else { context.index += 1 }
+                }
+            }
+            context.currentNode.addChild(CodeNode(type: Element.image, value: alt + "|" + url))
+        }
+    }
+
+    public class HTMLBuilder: CodeElementBuilder {
+        public init() {}
+        public func accept(context: CodeContext, token: any CodeToken) -> Bool {
+            guard let tok = token as? Token else { return false }
+            return tok.kindDescription == "<"
+        }
+        public func build(context: inout CodeContext) {
+            context.index += 1 // skip <
+            var text = ""
+            while context.index < context.tokens.count {
+                if let tok = context.tokens[context.index] as? Token {
+                    if case .greaterThan = tok { context.index += 1; break }
+                    else { text += tok.text; context.index += 1 }
+                } else { context.index += 1 }
+            }
+            context.currentNode.addChild(CodeNode(type: Element.html, value: text))
+        }
+    }
+
+    public class EntityBuilder: CodeElementBuilder {
+        public init() {}
+        public func accept(context: CodeContext, token: any CodeToken) -> Bool {
+            guard let tok = token as? Token else { return false }
+            if case .ampersand = tok { return true }
+            return false
+        }
+        public func build(context: inout CodeContext) {
+            context.index += 1
+            var text = ""
+            while context.index < context.tokens.count {
+                if let tok = context.tokens[context.index] as? Token {
+                    if case .semicolon = tok { context.index += 1; break }
+                    else { text += tok.text; context.index += 1 }
+                } else { context.index += 1 }
+            }
+            context.currentNode.addChild(CodeNode(type: Element.entity, value: text))
+        }
+    }
+
+    public class StrikethroughBuilder: CodeElementBuilder {
+        public init() {}
+        public func accept(context: CodeContext, token: any CodeToken) -> Bool {
+            guard context.index + 1 < context.tokens.count else { return false }
+            guard let t1 = token as? Token, let t2 = context.tokens[context.index + 1] as? Token else { return false }
+            return t1.kindDescription == "~" && t2.kindDescription == "~"
+        }
+        public func build(context: inout CodeContext) {
+            context.index += 2
+            var text = ""
+            while context.index + 1 < context.tokens.count {
+                if let t1 = context.tokens[context.index] as? Token,
+                   let t2 = context.tokens[context.index + 1] as? Token,
+                   t1.kindDescription == "~" && t2.kindDescription == "~" {
+                    context.index += 2
+                    context.currentNode.addChild(CodeNode(type: Element.strikethrough, value: text))
+                    return
+                } else if let tok = context.tokens[context.index] as? Token {
+                    text += tok.text
+                    context.index += 1
+                } else { context.index += 1 }
+            }
+            context.currentNode.addChild(CodeNode(type: Element.strikethrough, value: text))
+        }
+    }
+
+    public class AutoLinkBuilder: CodeElementBuilder {
+        public init() {}
+        public func accept(context: CodeContext, token: any CodeToken) -> Bool {
+            guard let tok = token as? Token else { return false }
+            if case .lessThan = tok { return true }
+            return false
+        }
+        public func build(context: inout CodeContext) {
+            context.index += 1
+            var text = ""
+            while context.index < context.tokens.count {
+                if let tok = context.tokens[context.index] as? Token {
+                    if case .greaterThan = tok { context.index += 1; break }
+                    else { text += tok.text; context.index += 1 }
+                } else { context.index += 1 }
+            }
+            context.currentNode.addChild(CodeNode(type: Element.autoLink, value: text))
+        }
+    }
+
+    public class TableBuilder: CodeElementBuilder {
+        public init() {}
+        public func accept(context: CodeContext, token: any CodeToken) -> Bool {
+            guard let tok = token as? Token else { return false }
+            if case .pipe = tok {
+                if context.index == 0 { return true }
+                if let prev = context.tokens[context.index - 1] as? Token, case .newline = prev { return true }
+            }
+            return false
+        }
+        public func build(context: inout CodeContext) {
+            var cells: [String] = []
+            var cell = ""
+            context.index += 1 // skip first pipe
+            while context.index < context.tokens.count {
+                if let tok = context.tokens[context.index] as? Token {
+                    switch tok {
+                    case .pipe:
+                        cells.append(cell.trimmingCharacters(in: .whitespaces))
+                        cell = ""
+                        context.index += 1
+                    case .newline:
+                        cells.append(cell.trimmingCharacters(in: .whitespaces))
+                        context.index += 1
+                        context.currentNode.addChild(CodeNode(type: Element.table, value: cells.joined(separator: "|")))
+                        return
+                    case .eof:
+                        cells.append(cell.trimmingCharacters(in: .whitespaces))
+                        context.index += 1
+                        context.currentNode.addChild(CodeNode(type: Element.table, value: cells.joined(separator: "|")))
+                        return
+                    default:
+                        cell += tok.text
+                        context.index += 1
+                    }
+                } else { context.index += 1 }
+            }
+        }
+    }
+
+    public class FootnoteBuilder: CodeElementBuilder {
+        public init() {}
+        public func accept(context: CodeContext, token: any CodeToken) -> Bool {
+            guard context.index + 3 < context.tokens.count else { return false }
+            guard let lb = token as? Token,
+                  let txt = context.tokens[context.index + 1] as? Token,
+                  let rb = context.tokens[context.index + 2] as? Token else { return false }
+            if case .lbracket = lb,
+               case .text(let s, _) = txt, s.starts(with: "^") ,
+               case .rbracket = rb {
+                return true
+            }
+            return false
+        }
+        public func build(context: inout CodeContext) {
+            context.index += 3 // skip [^x]
+            if context.index < context.tokens.count, let colon = context.tokens[context.index] as? Token, case .text(let s, _) = colon, s.trimmingCharacters(in: .whitespaces).hasPrefix(":") {
+                var text = s
+                context.index += 1
+                while context.index < context.tokens.count {
+                    if let tok = context.tokens[context.index] as? Token {
+                        if case .newline = tok { context.index += 1; break }
+                        else { text += tok.text; context.index += 1 }
+                    } else { context.index += 1 }
+                }
+                context.currentNode.addChild(CodeNode(type: Element.text, value: text.trimmingCharacters(in: .whitespaces)))
+            }
+        }
+    }
+
     public class StrongBuilder: CodeElementBuilder {
         public init() {}
         public func accept(context: CodeContext, token: any CodeToken) -> Bool {
@@ -458,7 +822,8 @@ public struct MarkdownLanguage: CodeLanguage {
                         let node = CodeNode(type: Element.paragraph, value: text)
                         context.currentNode.addChild(node)
                         return
-                    case .dash, .hash, .star, .underscore, .plus, .backtick, .lbracket:
+                    case .dash, .hash, .star, .underscore, .plus, .backtick, .lbracket,
+                         .greaterThan, .exclamation, .tilde, .equal, .lessThan, .ampersand, .semicolon, .pipe:
                         let node = CodeNode(type: Element.paragraph, value: text)
                         context.currentNode.addChild(node)
                         return
@@ -490,7 +855,7 @@ public struct MarkdownLanguage: CodeLanguage {
 
     public var tokenizer: CodeTokenizer { Tokenizer() }
     public var builders: [CodeElementBuilder] {
-        [HeadingBuilder(), CodeBlockBuilder(), OrderedListItemBuilder(), ListItemBuilder(), LinkBuilder(), StrongBuilder(), EmphasisBuilder(), InlineCodeBuilder(), ParagraphBuilder()]
+        [HeadingBuilder(), CodeBlockBuilder(), IndentedCodeBlockBuilder(), BlockQuoteBuilder(), ThematicBreakBuilder(), OrderedListItemBuilder(), ListItemBuilder(), ImageBuilder(), HTMLBuilder(), EntityBuilder(), StrikethroughBuilder(), AutoLinkBuilder(), TableBuilder(), FootnoteBuilder(), LinkBuilder(), StrongBuilder(), EmphasisBuilder(), InlineCodeBuilder(), ParagraphBuilder()]
     }
     public var expressionBuilders: [CodeExpressionBuilder] { [] }
     public var rootElement: any CodeElement { Element.root }
