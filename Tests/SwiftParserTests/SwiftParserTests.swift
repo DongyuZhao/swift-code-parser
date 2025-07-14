@@ -24,6 +24,14 @@ final class SwiftParserTests: XCTestCase {
         XCTAssertEqual(result.root.children.count, 2)
     }
 
+    func testMarkdownSetextHeading() {
+        let parser = SwiftParser()
+        let source = "Title\n----\n"
+        let result = parser.parse(source, language: MarkdownLanguage())
+        XCTAssertEqual(result.errors.count, 0)
+        XCTAssertEqual(result.root.children.first?.type as? MarkdownLanguage.Element, .heading)
+    }
+
     func testMarkdownListItem() {
         let parser = SwiftParser()
         let source = "- item1\n- item2"
