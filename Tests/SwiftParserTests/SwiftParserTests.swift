@@ -59,6 +59,18 @@ final class SwiftParserTests: XCTestCase {
         XCTAssertEqual(result.root.children[2].type as? MarkdownLanguage.Element, .strong)
     }
 
+    func testMarkdownNestedEmphasis() {
+        let parser = SwiftParser()
+        let source = "*a **b** c*"
+        let result = parser.parse(source, language: MarkdownLanguage())
+        XCTAssertEqual(result.errors.count, 0)
+        XCTAssertEqual(result.root.children.count, 1)
+        let em = result.root.children.first
+        XCTAssertEqual(em?.type as? MarkdownLanguage.Element, .emphasis)
+        XCTAssertEqual(em?.children.count, 3)
+        XCTAssertEqual(em?.children[1].type as? MarkdownLanguage.Element, .strong)
+    }
+
     func testMarkdownCodeBlockAndInline() {
         let parser = SwiftParser()
         let source = "```\ncode\n```\ninline `code`"
