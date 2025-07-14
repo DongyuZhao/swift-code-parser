@@ -111,9 +111,14 @@ public struct MarkdownLanguage: CodeLanguage {
                         let node = CodeNode(type: Element.paragraph, value: text)
                         context.currentNode.addChild(node)
                         return
-                    case .hash, .eof:
+                    case .hash:
                         let node = CodeNode(type: Element.paragraph, value: text)
                         context.currentNode.addChild(node)
+                        return
+                    case .eof:
+                        let node = CodeNode(type: Element.paragraph, value: text)
+                        context.currentNode.addChild(node)
+                        context.index += 1
                         return
                     }
                 } else { context.index += 1 }

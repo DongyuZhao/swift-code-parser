@@ -22,6 +22,9 @@ public final class CodeParser {
         var context = CodeContext(tokens: tokens, index: 0, currentNode: rootNode, errors: [], input: input)
         while context.index < context.tokens.count {
             let token = context.tokens[context.index]
+            if token.kindDescription == "eof" {
+                break
+            }
             var matched = false
             for builder in builders {
                 if builder.accept(context: context, token: token) {

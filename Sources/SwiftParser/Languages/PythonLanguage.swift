@@ -238,6 +238,18 @@ public struct PythonLanguage: CodeLanguage {
         }
     }
 
+    public class NewlineBuilder: CodeElementBuilder {
+        public init() {}
+        public func accept(context: CodeContext, token: any CodeToken) -> Bool {
+            guard let tok = token as? Token else { return false }
+            if case .newline = tok { return true }
+            return false
+        }
+        public func build(context: inout CodeContext) {
+            context.index += 1
+        }
+    }
+
     public class FunctionBuilder: CodeElementBuilder {
         public init() {}
         public func accept(context: CodeContext, token: any CodeToken) -> Bool {
@@ -292,7 +304,7 @@ public struct PythonLanguage: CodeLanguage {
 
     public var tokenizer: CodeTokenizer { Tokenizer() }
 
-    public var builders: [CodeElementBuilder] { [FunctionBuilder(), AssignmentBuilder()] }
+    public var builders: [CodeElementBuilder] { [NewlineBuilder(), FunctionBuilder(), AssignmentBuilder()] }
 
     public var rootElement: any CodeElement { Element.root }
 
