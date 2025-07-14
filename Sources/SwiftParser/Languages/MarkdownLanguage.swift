@@ -660,7 +660,31 @@ public struct MarkdownLanguage: CodeLanguage {
                     else { text += tok.text; context.index += 1 }
                 } else { context.index += 1 }
             }
-            context.currentNode.addChild(CodeNode(type: Element.entity, value: text))
+            let decoded = decode(text)
+            context.currentNode.addChild(CodeNode(type: Element.entity, value: decoded))
+        }
+
+        private func decode(_ entity: String) -> String {
+            switch entity {
+            case "amp": return "&"
+            case "lt": return "<"
+            case "gt": return ">"
+            case "quot": return "\""
+            case "apos": return "'"
+            default:
+                if entity.hasPrefix("#x") || entity.hasPrefix("#X") {
+                    let hex = entity.dropFirst(2)
+                    if let value = UInt32(hex, radix: 16), let scalar = UnicodeScalar(value) {
+                        return String(Character(scalar))
+                    }
+                } else if entity.hasPrefix("#") {
+                    let num = entity.dropFirst()
+                    if let value = UInt32(num), let scalar = UnicodeScalar(value) {
+                        return String(Character(scalar))
+                    }
+                }
+                return "&" + entity + ";"
+            }
         }
     }
 
