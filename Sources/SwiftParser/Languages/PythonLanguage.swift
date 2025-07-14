@@ -18,6 +18,7 @@ public struct PythonLanguage: CodeLanguage {
         case identifier(String, Range<String.Index>)
         case number(String, Range<String.Index>)
         case string(String, Range<String.Index>)
+        case unterminatedString(String, Range<String.Index>)
         case keyword(String, Range<String.Index>)
         case equal(Range<String.Index>)
         case colon(Range<String.Index>)
@@ -36,6 +37,7 @@ public struct PythonLanguage: CodeLanguage {
             case .identifier: return "identifier"
             case .number: return "number"
             case .string: return "string"
+            case .unterminatedString: return "unterminatedString"
             case .keyword(let k, _): return "keyword(\(k))"
             case .equal: return "="
             case .colon: return ":"
@@ -55,6 +57,8 @@ public struct PythonLanguage: CodeLanguage {
             switch self {
             case let .identifier(s, _), let .number(s, _), let .string(s, _), let .keyword(s, _):
                 return s
+            case let .unterminatedString(s, _):
+                return s
             case .equal: return "="
             case .colon: return ":"
             case .comma: return ","
@@ -71,7 +75,7 @@ public struct PythonLanguage: CodeLanguage {
 
         public var range: Range<String.Index> {
             switch self {
-            case .identifier(_, let r), .number(_, let r), .string(_, let r), .keyword(_, let r), .equal(let r),
+            case .identifier(_, let r), .number(_, let r), .string(_, let r), .unterminatedString(_, let r), .keyword(_, let r), .equal(let r),
                  .colon(let r), .comma(let r), .plus(let r), .minus(let r), .star(let r), .slash(let r),
                  .lparen(let r), .rparen(let r), .newline(let r), .eof(let r):
                 return r
@@ -112,9 +116,14 @@ public struct PythonLanguage: CodeLanguage {
                     while index < input.endIndex && input[index] != quote {
                         advance()
                     }
-                    if index < input.endIndex { advance() }
-                    let text = String(input[start..<index])
-                    add(.string(text, start..<index))
+                    if index < input.endIndex {
+                        advance()
+                        let text = String(input[start..<index])
+                        add(.string(text, start..<index))
+                    } else {
+                        let text = String(input[start..<index])
+                        add(.unterminatedString(text, start..<index))
+                    }
                 } else if ch.isLetter || ch == "_" {
                     let start = index
                     while index < input.endIndex && (input[index].isLetter || input[index].isNumber || input[index] == "_") {
@@ -176,6 +185,9 @@ public struct PythonLanguage: CodeLanguage {
                 return CodeNode(type: Element.number, value: text, range: range)
             case .identifier(let text, let range):
                 return CodeNode(type: Element.identifier, value: text, range: range)
+            case .unterminatedString(let text, let range):
+                context.errors.append(CodeError("Unterminated string", range: range))
+                return CodeNode(type: Element.string, value: text, range: range)
             case .lparen:
                 let node = parse(context: &context, minBP: 0)
                 if context.index < context.tokens.count, let r = context.tokens[context.index] as? Token, case .rparen = r {
