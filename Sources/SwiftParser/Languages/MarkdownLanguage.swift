@@ -244,19 +244,44 @@ public struct MarkdownLanguage: CodeLanguage {
         public init() {}
         public func accept(context: CodeContext, token: any CodeToken) -> Bool {
             guard let tok = token as? Token else { return false }
-            if case .hash = tok { return true }
+            if case .hash = tok {
+                if context.index == 0 { return true }
+                if let prev = context.tokens[context.index - 1] as? Token, case .newline = prev {
+                    return true
+                }
+            }
             return false
         }
         public func build(context: inout CodeContext) {
-            context.index += 1
-            guard context.index < context.tokens.count else { return }
-            if let textTok = context.tokens[context.index] as? Token {
-                let node = CodeNode(type: Element.heading, value: textTok.text)
-                context.currentNode.addChild(node)
+            var count = 0
+            while context.index < context.tokens.count,
+                  let tok = context.tokens[context.index] as? Token,
+                  case .hash = tok,
+                  count < 6 {
+                count += 1
                 context.index += 1
             }
-            // consume newline if exists
-            if let nl = context.tokens[context.index] as? Token, case .newline = nl { context.index += 1 }
+
+            var text = ""
+            while context.index < context.tokens.count {
+                if let tok = context.tokens[context.index] as? Token {
+                    if case .newline = tok {
+                        context.index += 1
+                        break
+                    } else {
+                        text += tok.text
+                        context.index += 1
+                    }
+                } else { context.index += 1 }
+            }
+
+            text = text.trimmingCharacters(in: .whitespaces)
+            while text.hasSuffix("#") {
+                text.removeLast()
+                text = text.trimmingCharacters(in: .whitespaces)
+            }
+
+            context.currentNode.addChild(CodeNode(type: Element.heading, value: text))
         }
     }
 

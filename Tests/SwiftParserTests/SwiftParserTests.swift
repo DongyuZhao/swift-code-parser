@@ -24,6 +24,16 @@ final class SwiftParserTests: XCTestCase {
         XCTAssertEqual(result.root.children.count, 2)
     }
 
+    func testMarkdownComplexATXHeading() {
+        let parser = SwiftParser()
+        let source = "### Complex ###\n"
+        let result = parser.parse(source, language: MarkdownLanguage())
+        XCTAssertEqual(result.errors.count, 0)
+        XCTAssertEqual(result.root.children.count, 1)
+        XCTAssertEqual(result.root.children.first?.type as? MarkdownLanguage.Element, .heading)
+        XCTAssertEqual(result.root.children.first?.value, "Complex")
+    }
+
     func testMarkdownSetextHeading() {
         let parser = SwiftParser()
         let source = "Title\n----\n"
