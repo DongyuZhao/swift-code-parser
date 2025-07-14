@@ -128,7 +128,7 @@ public struct MarkdownLanguage: CodeLanguage {
 
     public var tokenizer: CodeTokenizer { Tokenizer() }
     public var builders: [CodeElementBuilder] { [HeadingBuilder(), ParagraphBuilder()] }
-    public var expressionBuilder: CodeExpressionBuilder? { nil }
+    public var expressionBuilders: [CodeExpressionBuilder] { [] }
     public var rootElement: any CodeElement { Element.root }
     public init() {}
 }

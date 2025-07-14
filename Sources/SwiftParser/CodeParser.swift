@@ -3,12 +3,12 @@ import Foundation
 public final class CodeParser {
     private var builders: [CodeElementBuilder]
     private let tokenizer: CodeTokenizer
-    private var expressionBuilder: CodeExpressionBuilder?
+    private var expressionBuilders: [CodeExpressionBuilder]
 
-    public init(tokenizer: CodeTokenizer, builders: [CodeElementBuilder] = [], expressionBuilder: CodeExpressionBuilder? = nil) {
+    public init(tokenizer: CodeTokenizer, builders: [CodeElementBuilder] = [], expressionBuilders: [CodeExpressionBuilder] = []) {
         self.tokenizer = tokenizer
         self.builders = builders
-        self.expressionBuilder = expressionBuilder
+        self.expressionBuilders = expressionBuilders
     }
 
     public func register(builder: CodeElementBuilder) {
@@ -20,7 +20,7 @@ public final class CodeParser {
     }
 
     public func register(expressionBuilder: CodeExpressionBuilder) {
-        self.expressionBuilder = expressionBuilder
+        expressionBuilders.append(expressionBuilder)
     }
 
     public func parse(_ input: String, rootNode: CodeNode) -> (node: CodeNode, context: CodeContext) {
@@ -39,11 +39,16 @@ public final class CodeParser {
                     break
                 }
             }
-            if !matched, let expr = expressionBuilder, expr.accept(context: context, token: token) {
-                if let node = expr.parse(context: &context) {
-                    context.currentNode.addChild(node)
+            if !matched {
+                for expr in expressionBuilders {
+                    if expr.accept(context: context, token: token) {
+                        if let node = expr.parse(context: &context) {
+                            context.currentNode.addChild(node)
+                        }
+                        matched = true
+                        break
+                    }
                 }
-                matched = true
             }
             if !matched {
                 context.errors.append(CodeError("Unrecognized token \(token.kindDescription)", range: token.range))
@@ -59,7 +64,13 @@ public final class CodeParser {
     }
 
     public func parseExpression(context: inout CodeContext, minBP: Int = 0) -> CodeNode? {
-        guard let expr = expressionBuilder else { return nil }
-        return expr.parse(context: &context, minBP: minBP)
+        guard context.index < context.tokens.count else { return nil }
+        let token = context.tokens[context.index]
+        for expr in expressionBuilders {
+            if expr.accept(context: context, token: token) {
+                return expr.parse(context: &context, minBP: minBP)
+            }
+        }
+        return nil
     }
 }

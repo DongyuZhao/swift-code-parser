@@ -75,5 +75,5 @@ public protocol CodeLanguage {
     var tokenizer: CodeTokenizer { get }
     var builders: [CodeElementBuilder] { get }
     var rootElement: any CodeElement { get }
-    var expressionBuilder: CodeExpressionBuilder? { get }
+    var expressionBuilders: [CodeExpressionBuilder] { get }
 }
