@@ -64,4 +64,14 @@ final class SwiftParserTests: XCTestCase {
         XCTAssertEqual(ctx.errors.count, 0)
         XCTAssertEqual(root.children.count, 0)
     }
+
+    func testIncrementalUpdateRollback() {
+        let lang = PythonLanguage()
+        let parser = CodeParser(tokenizer: lang.tokenizer, builders: lang.builders, expressionBuilders: lang.expressionBuilders)
+        let root = CodeNode(type: lang.rootElement, value: "")
+        _ = parser.parse("x = 1", rootNode: root)
+        XCTAssertEqual(root.children.first?.children.first?.value, "1")
+        _ = parser.update("x = 2", rootNode: root)
+        XCTAssertEqual(root.children.first?.children.first?.value, "2")
+    }
 }
