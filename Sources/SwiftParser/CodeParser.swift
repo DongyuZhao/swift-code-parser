@@ -20,12 +20,32 @@ public final class CodeParser {
         builders.append(builder)
     }
 
+    public func unregister(builder: CodeElementBuilder) {
+        if let target = builder as? AnyObject {
+            if let index = builders.firstIndex(where: { ($0 as? AnyObject) === target }) {
+                builders.remove(at: index)
+            }
+        }
+    }
+
     public func clearBuilders() {
         builders.removeAll()
     }
 
     public func register(expressionBuilder: CodeExpressionBuilder) {
         expressionBuilders.append(expressionBuilder)
+    }
+
+    public func unregister(expressionBuilder: CodeExpressionBuilder) {
+        if let target = expressionBuilder as? AnyObject {
+            if let index = expressionBuilders.firstIndex(where: { ($0 as? AnyObject) === target }) {
+                expressionBuilders.remove(at: index)
+            }
+        }
+    }
+
+    public func clearExpressionBuilders() {
+        expressionBuilders.removeAll()
     }
 
     public func parse(_ input: String, rootNode: CodeNode) -> (node: CodeNode, context: CodeContext) {

@@ -74,4 +74,40 @@ final class SwiftParserTests: XCTestCase {
         _ = parser.update("x = 2", rootNode: root)
         XCTAssertEqual(root.children.first?.children.first?.value, "2")
     }
+
+    func testUnregisterElementBuilder() {
+        let tokenizer = PythonLanguage.Tokenizer()
+        let expr = PythonLanguage.ExpressionBuilder()
+        let assign = PythonLanguage.AssignmentBuilder(expressionBuilder: expr)
+        let parser = CodeParser(tokenizer: tokenizer)
+        parser.register(builder: assign)
+        parser.register(expressionBuilder: expr)
+
+        let root1 = CodeNode(type: PythonLanguage.Element.root, value: "")
+        _ = parser.parse("x = 1", rootNode: root1)
+        XCTAssertEqual(root1.children.first?.type as? PythonLanguage.Element, .assignment)
+
+        parser.unregister(builder: assign)
+
+        let root2 = CodeNode(type: PythonLanguage.Element.root, value: "")
+        _ = parser.parse("x = 1", rootNode: root2)
+        XCTAssertEqual(root2.children.first?.type as? PythonLanguage.Element, .identifier)
+    }
+
+    func testUnregisterExpressionBuilder() {
+        let tokenizer = PythonLanguage.Tokenizer()
+        let expr = PythonLanguage.ExpressionBuilder()
+        let parser = CodeParser(tokenizer: tokenizer)
+        parser.register(expressionBuilder: expr)
+
+        let root1 = CodeNode(type: PythonLanguage.Element.root, value: "")
+        _ = parser.parse("1 + 2", rootNode: root1)
+        XCTAssertEqual(root1.children.count, 1)
+
+        parser.unregister(expressionBuilder: expr)
+
+        let root2 = CodeNode(type: PythonLanguage.Element.root, value: "")
+        _ = parser.parse("1 + 2", rootNode: root2)
+        XCTAssertEqual(root2.children.count, 0)
+    }
 }
