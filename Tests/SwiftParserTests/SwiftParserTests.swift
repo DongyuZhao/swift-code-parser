@@ -104,6 +104,15 @@ final class SwiftParserTests: XCTestCase {
         XCTAssertEqual(result.root.children.first?.type as? MarkdownLanguage.Element, .link)
     }
 
+    func testMarkdownAutoLinkWithoutBrackets() {
+        let parser = SwiftParser()
+        let source = "https://example.com"
+        let result = parser.parse(source, language: MarkdownLanguage())
+        XCTAssertEqual(result.errors.count, 0)
+        XCTAssertEqual(result.root.children.first?.type as? MarkdownLanguage.Element, .autoLink)
+        XCTAssertEqual(result.root.children.first?.value, "https://example.com")
+    }
+
     func testMarkdownReferenceLink() {
         let parser = SwiftParser()
         let source = "[title][ref]\n[ref]: http://example.com"
