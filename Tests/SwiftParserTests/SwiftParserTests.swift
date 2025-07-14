@@ -2,47 +2,34 @@ import XCTest
 @testable import SwiftParser
 
 final class SwiftParserTests: XCTestCase {
-    
+
     func testParserInitialization() {
         let parser = SwiftParser()
         XCTAssertNotNil(parser)
     }
-    
-    func testBasicParsing() {
+
+    func testPythonAssignment() {
         let parser = SwiftParser()
-        let sourceCode = "let x = 42"
-        
-        let result = parser.parse(sourceCode)
-        
-        XCTAssertEqual(result.content, sourceCode)
+        let source = "x = 1"
+        let result = parser.parse(source, language: PythonLanguage())
+        XCTAssertEqual(result.errors.count, 0)
+        XCTAssertEqual(result.root.children.first?.type as? PythonLanguage.Element, PythonLanguage.Element.assignment)
     }
-    
-    func testEmptySourceParsing() {
+
+    func testMarkdownHeading() {
         let parser = SwiftParser()
-        let sourceCode = ""
-        
-        let result = parser.parse(sourceCode)
-        
-        XCTAssertEqual(result.content, sourceCode)
+        let source = "# Title\nHello"
+        let result = parser.parse(source, language: MarkdownLanguage())
+        XCTAssertEqual(result.errors.count, 0)
+        XCTAssertEqual(result.root.children.count, 2)
     }
-    
-    func testComplexSourceParsing() {
+
+    func testPrattExpression() {
         let parser = SwiftParser()
-        let sourceCode = """
-        import Foundation
-        
-        struct Example {
-            let name: String
-            
-            func greet() {
-                print("Hello, \\(name)!")
-            }
-        }
-        """
-        
-        let result = parser.parse(sourceCode)
-        
-        XCTAssertEqual(result.content, sourceCode)
-        XCTAssertTrue(result.content.contains("struct Example"))
+        let source = "x = 1 + 2 * 3"
+        let result = parser.parse(source, language: PythonLanguage())
+        XCTAssertEqual(result.errors.count, 0)
+        let assign = result.root.children.first
+        XCTAssertEqual(assign?.children.first?.type as? PythonLanguage.Element, PythonLanguage.Element.expression)
     }
 }
