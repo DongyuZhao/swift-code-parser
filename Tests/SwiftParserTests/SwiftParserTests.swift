@@ -158,6 +158,26 @@ final class SwiftParserTests: XCTestCase {
         XCTAssertEqual(result.root.children.first?.value, "*not italic*")
     }
 
+    func testMarkdownHardBreakWithSpaces() {
+        let parser = SwiftParser()
+        let source = "line1  \nline2"
+        let result = parser.parse(source, language: MarkdownLanguage())
+        XCTAssertEqual(result.errors.count, 0)
+        XCTAssertEqual(result.root.children.count, 1)
+        XCTAssertEqual(result.root.children.first?.type as? MarkdownLanguage.Element, .paragraph)
+        XCTAssertEqual(result.root.children.first?.value, "line1\nline2")
+    }
+
+    func testMarkdownHardBreakWithBackslash() {
+        let parser = SwiftParser()
+        let source = "line1\\\nline2"
+        let result = parser.parse(source, language: MarkdownLanguage())
+        XCTAssertEqual(result.errors.count, 0)
+        XCTAssertEqual(result.root.children.count, 1)
+        XCTAssertEqual(result.root.children.first?.type as? MarkdownLanguage.Element, .paragraph)
+        XCTAssertEqual(result.root.children.first?.value, "line1\nline2")
+    }
+
     func testMarkdownEntityDecoding() {
         let parser = SwiftParser()
         let source = "&amp;&#35;&#x41;"

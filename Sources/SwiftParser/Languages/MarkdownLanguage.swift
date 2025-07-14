@@ -46,6 +46,7 @@ public struct MarkdownLanguage: CodeLanguage {
         case rparen(Range<String.Index>)
         case dot(Range<String.Index>)
         case number(String, Range<String.Index>)
+        case hardBreak(Range<String.Index>)
         case newline(Range<String.Index>)
         case eof(Range<String.Index>)
 
@@ -72,6 +73,7 @@ public struct MarkdownLanguage: CodeLanguage {
             case .rparen: return ")"
             case .dot: return "."
             case .number: return "number"
+            case .hardBreak: return "hardBreak"
             case .newline: return "newline"
             case .eof: return "eof"
             }
@@ -100,7 +102,7 @@ public struct MarkdownLanguage: CodeLanguage {
             case .rparen: return ")"
             case .dot: return "."
             case .number(let s, _): return s
-            case .newline: return "\n"
+            case .hardBreak, .newline: return "\n"
             case .eof: return ""
             }
         }
@@ -111,7 +113,7 @@ public struct MarkdownLanguage: CodeLanguage {
                  .plus(let r), .backtick(let r), .greaterThan(let r), .exclamation(let r), .tilde(let r),
                  .equal(let r), .lessThan(let r), .ampersand(let r), .semicolon(let r), .pipe(let r),
                  .lbracket(let r), .rbracket(let r), .lparen(let r), .rparen(let r), .dot(let r),
-                 .number(_, let r), .newline(let r), .eof(let r):
+                 .number(_, let r), .hardBreak(let r), .newline(let r), .eof(let r):
                 return r
             }
         }
@@ -220,8 +222,27 @@ public struct MarkdownLanguage: CodeLanguage {
                     add(.number(text, start..<index))
                 } else if ch == "\n" {
                     let start = index
+                    var isHard = false
+                    if start > input.startIndex {
+                        var i = input.index(before: start)
+                        var spaceCount = 0
+                        while input[i] == " " {
+                            spaceCount += 1
+                            if i == input.startIndex { break }
+                            i = input.index(before: i)
+                        }
+                        if spaceCount >= 2 {
+                            isHard = true
+                        } else if spaceCount == 0 && input[i] == "\\" {
+                            isHard = true
+                        }
+                    }
                     advance()
-                    add(.newline(start..<index))
+                    if isHard {
+                        add(.hardBreak(start..<index))
+                    } else {
+                        add(.newline(start..<index))
+                    }
                 } else {
                     let start = index
                     while index < input.endIndex &&
@@ -1152,6 +1173,10 @@ public struct MarkdownLanguage: CodeLanguage {
                     switch tok {
                     case .text(let t, _):
                         text += t
+                        context.index += 1
+                    case .hardBreak:
+                        while text.last == " " { text.removeLast() }
+                        text += "\n"
                         context.index += 1
                     case .newline:
                         context.index += 1
