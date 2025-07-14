@@ -78,6 +78,24 @@ final class SwiftParserTests: XCTestCase {
         XCTAssertEqual(result.root.children.last?.type as? MarkdownLanguage.Element, .inlineCode)
     }
 
+    func testMarkdownFencedCodeBlockWithInfo() {
+        let parser = SwiftParser()
+        let source = "```swift\nprint(\"hi\")\n```"
+        let result = parser.parse(source, language: MarkdownLanguage())
+        XCTAssertEqual(result.errors.count, 0)
+        XCTAssertEqual(result.root.children.count, 1)
+        XCTAssertEqual(result.root.children.first?.type as? MarkdownLanguage.Element, .codeBlock)
+    }
+
+    func testMarkdownTildeCodeBlock() {
+        let parser = SwiftParser()
+        let source = "~~~\nprint(\"hi\")\n~~~"
+        let result = parser.parse(source, language: MarkdownLanguage())
+        XCTAssertEqual(result.errors.count, 0)
+        XCTAssertEqual(result.root.children.count, 1)
+        XCTAssertEqual(result.root.children.first?.type as? MarkdownLanguage.Element, .codeBlock)
+    }
+
     func testMarkdownLink() {
         let parser = SwiftParser()
         let source = "[title](url)"

@@ -470,40 +470,66 @@ public struct MarkdownLanguage: CodeLanguage {
     public class CodeBlockBuilder: CodeElementBuilder {
         public init() {}
         public func accept(context: CodeContext, token: any CodeToken) -> Bool {
-            guard context.index + 2 < context.tokens.count else { return false }
-            guard let t1 = token as? Token,
-                  let t2 = context.tokens[context.index + 1] as? Token,
-                  let t3 = context.tokens[context.index + 2] as? Token else { return false }
-            if case .backtick = t1, case .backtick = t2, case .backtick = t3 {
-                if context.index == 0 { return true }
-                if let prev = context.tokens[context.index - 1] as? Token, case .newline = prev {
-                    return true
-                }
+            guard let first = token as? Token else { return false }
+            let fenceKind: String
+            switch first {
+            case .backtick: fenceKind = "`"
+            case .tilde: fenceKind = "~"
+            default: return false
+            }
+            var idx = context.index
+            var count = 0
+            while idx < context.tokens.count, let t = context.tokens[idx] as? Token, t.kindDescription == fenceKind {
+                count += 1; idx += 1
+            }
+            guard count >= 3 else { return false }
+            if context.index == 0 { return true }
+            if let prev = context.tokens[context.index - 1] as? Token, case .newline = prev {
+                return true
             }
             return false
         }
         public func build(context: inout CodeContext) {
-            context.index += 3 // skip opening ```
+            guard let startTok = context.tokens[context.index] as? Token else { return }
+            let fenceKind = startTok.kindDescription
+            var fenceLength = 0
+            while context.index < context.tokens.count, let t = context.tokens[context.index] as? Token, t.kindDescription == fenceKind {
+                fenceLength += 1
+                context.index += 1
+            }
+            // skip info string until end of line
+            while context.index < context.tokens.count {
+                if let tok = context.tokens[context.index] as? Token, case .newline = tok {
+                    context.index += 1
+                    break
+                } else {
+                    context.index += 1
+                }
+            }
+
+            let blockStart = context.index
             var text = ""
-            while context.index + 2 < context.tokens.count {
-                if let t1 = context.tokens[context.index] as? Token,
-                   let t2 = context.tokens[context.index + 1] as? Token,
-                   let t3 = context.tokens[context.index + 2] as? Token,
-                   case .backtick = t1, case .backtick = t2, case .backtick = t3 {
-                    context.index += 3
-                    if let nl = context.tokens[context.index] as? Token, case .newline = nl {
-                        context.index += 1
+            while context.index < context.tokens.count {
+                if let tok = context.tokens[context.index] as? Token {
+                    // check for closing fence at start of line
+                    if tok.kindDescription == fenceKind && (context.index == blockStart || (context.index > blockStart && (context.tokens[context.index - 1] as? Token)?.kindDescription == "newline")) {
+                        var idx = context.index
+                        var count = 0
+                        while idx < context.tokens.count, let t = context.tokens[idx] as? Token, t.kindDescription == fenceKind {
+                            count += 1; idx += 1
+                        }
+                        if count >= fenceLength {
+                            context.index = idx
+                            if context.index < context.tokens.count, let nl = context.tokens[context.index] as? Token, case .newline = nl { context.index += 1 }
+                            context.currentNode.addChild(CodeNode(type: Element.codeBlock, value: text))
+                            return
+                        }
                     }
-                    let node = CodeNode(type: Element.codeBlock, value: text)
-                    context.currentNode.addChild(node)
-                    return
-                } else if let tok = context.tokens[context.index] as? Token {
                     text += tok.text
                     context.index += 1
                 } else { context.index += 1 }
             }
-            let node = CodeNode(type: Element.codeBlock, value: text)
-            context.currentNode.addChild(node)
+            context.currentNode.addChild(CodeNode(type: Element.codeBlock, value: text))
         }
     }
 
