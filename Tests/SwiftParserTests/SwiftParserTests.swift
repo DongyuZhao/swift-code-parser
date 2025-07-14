@@ -32,4 +32,14 @@ final class SwiftParserTests: XCTestCase {
         let assign = result.root.children.first
         XCTAssertEqual(assign?.children.first?.type as? PythonLanguage.Element, PythonLanguage.Element.expression)
     }
+
+    func testStableNodeID() {
+        let n1 = CodeNode(type: PythonLanguage.Element.identifier, value: "x")
+        n1.addChild(CodeNode(type: PythonLanguage.Element.number, value: "1"))
+
+        let n2 = CodeNode(type: PythonLanguage.Element.identifier, value: "x")
+        n2.addChild(CodeNode(type: PythonLanguage.Element.number, value: "1"))
+
+        XCTAssertEqual(n1.id, n2.id)
+    }
 }

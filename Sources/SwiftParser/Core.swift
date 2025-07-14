@@ -25,7 +25,13 @@ public final class CodeNode {
     public var range: Range<String.Index>?
 
     public var id: Int {
-        return String(describing: type).hashValue ^ value.hashValue
+        var hasher = Hasher()
+        hasher.combine(String(describing: type))
+        hasher.combine(value)
+        for child in children {
+            hasher.combine(child.id)
+        }
+        return hasher.finalize()
     }
 
     public init(type: any CodeElement, value: String, range: Range<String.Index>? = nil) {
