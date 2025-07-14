@@ -42,4 +42,26 @@ final class SwiftParserTests: XCTestCase {
 
         XCTAssertEqual(n1.id, n2.id)
     }
+
+    func testUnterminatedStringError() {
+        let parser = SwiftParser()
+        let source = "x = \"hello"
+        let result = parser.parse(source, language: PythonLanguage())
+        XCTAssertEqual(result.errors.count, 1)
+    }
+
+    func testContextSnapshotRestore() {
+        let tokenizer = PythonLanguage.Tokenizer()
+        let tokens = tokenizer.tokenize("x = 1")
+        let root = CodeNode(type: PythonLanguage.Element.root, value: "")
+        var ctx = CodeContext(tokens: tokens, index: 0, currentNode: root, errors: [], input: "x = 1")
+        let snap = ctx.snapshot()
+        ctx.index = 2
+        ctx.errors.append(CodeError("err"))
+        ctx.currentNode.addChild(CodeNode(type: PythonLanguage.Element.number, value: "1"))
+        ctx.restore(snap)
+        XCTAssertEqual(ctx.index, 0)
+        XCTAssertEqual(ctx.errors.count, 0)
+        XCTAssertEqual(root.children.count, 0)
+    }
 }
