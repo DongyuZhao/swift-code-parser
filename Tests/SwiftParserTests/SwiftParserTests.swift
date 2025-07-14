@@ -158,6 +158,17 @@ final class SwiftParserTests: XCTestCase {
         XCTAssertEqual(result.root.children.first?.value, "*not italic*")
     }
 
+    func testMarkdownEntityDecoding() {
+        let parser = SwiftParser()
+        let source = "&amp;&#35;&#x41;"
+        let result = parser.parse(source, language: MarkdownLanguage())
+        XCTAssertEqual(result.errors.count, 0)
+        XCTAssertEqual(result.root.children.count, 3)
+        XCTAssertEqual(result.root.children[0].value, "&")
+        XCTAssertEqual(result.root.children[1].value, "#")
+        XCTAssertEqual(result.root.children[2].value, "A")
+    }
+
     func testPrattExpression() {
         let parser = SwiftParser()
         let source = "x = 1 + 2 * 3"
