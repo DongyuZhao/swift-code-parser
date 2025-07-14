@@ -126,7 +126,17 @@ public struct MarkdownLanguage: CodeLanguage {
             func add(_ t: Token) { tokens.append(t) }
             while index < input.endIndex {
                 let ch = input[index]
-                if ch == "#" {
+                if ch == "\\" {
+                    let start = index
+                    advance()
+                    if index < input.endIndex {
+                        let escaped = input[index]
+                        advance()
+                        add(.text(String(escaped), start..<index))
+                    } else {
+                        add(.text("\\", start..<index))
+                    }
+                } else if ch == "#" {
                     let start = index
                     advance()
                     add(.hash(start..<index))
@@ -215,7 +225,7 @@ public struct MarkdownLanguage: CodeLanguage {
                     let start = index
                     while index < input.endIndex &&
                           input[index] != "\n" &&
-                          !"#-*+_`[].()<>!~|;&=".contains(input[index]) &&
+                          !"#-*+_`[].()<>!~|;&=\\".contains(input[index]) &&
                           !input[index].isNumber {
                         advance()
                     }
