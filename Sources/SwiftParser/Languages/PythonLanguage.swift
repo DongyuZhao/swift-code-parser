@@ -313,7 +313,7 @@ public struct PythonLanguage: CodeLanguage {
         return [NewlineBuilder(), FunctionBuilder(), AssignmentBuilder(expressionBuilder: expr)]
     }
 
-    public var expressionBuilder: CodeExpressionBuilder? { ExpressionBuilder() }
+    public var expressionBuilders: [CodeExpressionBuilder] { [ExpressionBuilder()] }
 
     public var rootElement: any CodeElement { Element.root }
 
