@@ -3,10 +3,12 @@ import Foundation
 public final class CodeParser {
     private var builders: [CodeElementBuilder]
     private let tokenizer: CodeTokenizer
+    private var expressionBuilder: CodeExpressionBuilder?
 
-    public init(tokenizer: CodeTokenizer, builders: [CodeElementBuilder] = []) {
+    public init(tokenizer: CodeTokenizer, builders: [CodeElementBuilder] = [], expressionBuilder: CodeExpressionBuilder? = nil) {
         self.tokenizer = tokenizer
         self.builders = builders
+        self.expressionBuilder = expressionBuilder
     }
 
     public func register(builder: CodeElementBuilder) {
@@ -15,6 +17,10 @@ public final class CodeParser {
 
     public func clearBuilders() {
         builders.removeAll()
+    }
+
+    public func register(expressionBuilder: CodeExpressionBuilder) {
+        self.expressionBuilder = expressionBuilder
     }
 
     public func parse(_ input: String, rootNode: CodeNode) -> (node: CodeNode, context: CodeContext) {
@@ -33,6 +39,12 @@ public final class CodeParser {
                     break
                 }
             }
+            if !matched, let expr = expressionBuilder, expr.accept(context: context, token: token) {
+                if let node = expr.parse(context: &context) {
+                    context.currentNode.addChild(node)
+                }
+                matched = true
+            }
             if !matched {
                 context.errors.append(CodeError("Unrecognized token \(token.kindDescription)", range: token.range))
                 context.index += 1
@@ -44,5 +56,10 @@ public final class CodeParser {
     public func update(_ input: String, rootNode: CodeNode) -> (node: CodeNode, context: CodeContext) {
         // Simple implementation: reparse everything
         return parse(input, rootNode: rootNode)
+    }
+
+    public func parseExpression(context: inout CodeContext, minBP: Int = 0) -> CodeNode? {
+        guard let expr = expressionBuilder else { return nil }
+        return expr.parse(context: &context, minBP: minBP)
     }
 }

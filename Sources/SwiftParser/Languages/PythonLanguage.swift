@@ -158,56 +158,62 @@ public struct PythonLanguage: CodeLanguage {
         }
     }
 
-    struct ExpressionParser {
-        private let tokens: [any CodeToken]
-        private(set) var index: Int
-
-        init(tokens: [any CodeToken], startIndex: Int) {
-            self.tokens = tokens
-            self.index = startIndex
+    public final class ExpressionBuilder: CodeExpressionBuilder {
+        public func isPrefix(token: any CodeToken) -> Bool {
+            guard let t = token as? Token else { return false }
+            switch t {
+            case .number, .identifier, .lparen:
+                return true
+            default:
+                return false
+            }
         }
 
-        mutating func parse(_ minBP: Int = 0) -> CodeNode? {
-            guard index < tokens.count, let first = tokens[index] as? Token else { return nil }
-            index += 1
-            var left: CodeNode?
-            switch first {
+        public func prefix(context: inout CodeContext, token: any CodeToken) -> CodeNode? {
+            guard let t = token as? Token else { return nil }
+            switch t {
             case .number(let text, let range):
-                left = CodeNode(type: Element.number, value: text, range: range)
+                return CodeNode(type: Element.number, value: text, range: range)
             case .identifier(let text, let range):
-                left = CodeNode(type: Element.identifier, value: text, range: range)
+                return CodeNode(type: Element.identifier, value: text, range: range)
             case .lparen:
-                left = parse(0)
-                if index < tokens.count, let t = tokens[index] as? Token, case .rparen = t { index += 1 }
+                let node = parse(context: &context, minBP: 0)
+                if context.index < context.tokens.count, let r = context.tokens[context.index] as? Token, case .rparen = r {
+                    context.index += 1
+                }
+                return node
             default:
                 return nil
             }
-            guard var l = left else { return nil }
-            while index < tokens.count, let op = tokens[index] as? Token, let bp = infixBindingPower(op), bp.left >= minBP {
-                index += 1
-                let rhs = parse(bp.right) ?? CodeNode(type: Element.number, value: "", range: op.range)
-                let opNode = CodeNode(type: Element.expression, value: op.text, range: op.range)
-                opNode.addChild(l)
-                opNode.addChild(rhs)
-                l = opNode
-            }
-            return l
         }
 
-        private func infixBindingPower(_ token: Token) -> (left: Int, right: Int)? {
-            switch token {
+        public func infixBindingPower(of token: any CodeToken) -> (left: Int, right: Int)? {
+            guard let t = token as? Token else { return nil }
+            switch t {
             case .plus, .minus:
-                return (left: 10, right: 11)
+                return (10, 11)
             case .star, .slash:
-                return (left: 20, right: 21)
+                return (20, 21)
             default:
                 return nil
             }
+        }
+
+        public func infix(context: inout CodeContext, left: CodeNode, token: any CodeToken, right: CodeNode) -> CodeNode {
+            let text = token.text
+            let node = CodeNode(type: Element.expression, value: text, range: token.range)
+            node.addChild(left)
+            node.addChild(right)
+            return node
         }
     }
 
     public class AssignmentBuilder: CodeElementBuilder {
-        public init() {}
+        private let expr: ExpressionBuilder
+
+        public init(expressionBuilder: ExpressionBuilder) {
+            self.expr = expressionBuilder
+        }
         public func accept(context: CodeContext, token: any CodeToken) -> Bool {
             guard context.index + 2 < context.tokens.count else { return false }
             if let tok = context.tokens[context.index] as? Token,
@@ -225,10 +231,8 @@ public struct PythonLanguage: CodeLanguage {
             context.currentNode.addChild(node)
             context.index += 2 // skip identifier and '='
 
-            var parser = ExpressionParser(tokens: context.tokens, startIndex: context.index)
-            if let exprNode = parser.parse() {
+            if let exprNode = expr.parse(context: &context) {
                 node.addChild(exprNode)
-                context.index = parser.index
             }
             if context.index < context.tokens.count,
                let nl = context.tokens[context.index] as? Token,
@@ -304,7 +308,12 @@ public struct PythonLanguage: CodeLanguage {
 
     public var tokenizer: CodeTokenizer { Tokenizer() }
 
-    public var builders: [CodeElementBuilder] { [NewlineBuilder(), FunctionBuilder(), AssignmentBuilder()] }
+    public var builders: [CodeElementBuilder] {
+        let expr = ExpressionBuilder()
+        return [NewlineBuilder(), FunctionBuilder(), AssignmentBuilder(expressionBuilder: expr)]
+    }
+
+    public var expressionBuilder: CodeExpressionBuilder? { ExpressionBuilder() }
 
     public var rootElement: any CodeElement { Element.root }
 
