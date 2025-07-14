@@ -46,7 +46,8 @@ public struct MarkdownLanguage: CodeLanguage {
         case rparen(Range<String.Index>)
         case dot(Range<String.Index>)
         case number(String, Range<String.Index>)
-        case newline(Range<String.Index>)
+        case softBreak(Range<String.Index>)
+        case hardBreak(Range<String.Index>)
         case eof(Range<String.Index>)
 
         public var kindDescription: String {
@@ -72,7 +73,8 @@ public struct MarkdownLanguage: CodeLanguage {
             case .rparen: return ")"
             case .dot: return "."
             case .number: return "number"
-            case .newline: return "newline"
+            case .softBreak: return "softBreak"
+            case .hardBreak: return "hardBreak"
             case .eof: return "eof"
             }
         }
@@ -100,7 +102,8 @@ public struct MarkdownLanguage: CodeLanguage {
             case .rparen: return ")"
             case .dot: return "."
             case .number(let s, _): return s
-            case .newline: return "\n"
+            case .softBreak: return "\n"
+            case .hardBreak: return "\n"
             case .eof: return ""
             }
         }
@@ -111,7 +114,7 @@ public struct MarkdownLanguage: CodeLanguage {
                  .plus(let r), .backtick(let r), .greaterThan(let r), .exclamation(let r), .tilde(let r),
                  .equal(let r), .lessThan(let r), .ampersand(let r), .semicolon(let r), .pipe(let r),
                  .lbracket(let r), .rbracket(let r), .lparen(let r), .rparen(let r), .dot(let r),
-                 .number(_, let r), .newline(let r), .eof(let r):
+                 .number(_, let r), .softBreak(let r), .hardBreak(let r), .eof(let r):
                 return r
             }
         }
@@ -221,7 +224,19 @@ public struct MarkdownLanguage: CodeLanguage {
                 } else if ch == "\n" {
                     let start = index
                     advance()
-                    add(.newline(start..<index))
+                    if let last = tokens.last as? Token {
+                        switch last {
+                        case .text(let t, let r) where t.hasSuffix("  "):
+                            let newText = String(t.dropLast(2))
+                            let newEnd = input.index(r.upperBound, offsetBy: -2)
+                            tokens[tokens.count - 1] = .text(newText, r.lowerBound..<newEnd)
+                            add(.hardBreak(start..<index))
+                        default:
+                            add(.softBreak(start..<index))
+                        }
+                    } else {
+                        add(.softBreak(start..<index))
+                    }
                 } else {
                     let start = index
                     while index < input.endIndex &&
@@ -256,7 +271,10 @@ public struct MarkdownLanguage: CodeLanguage {
                 context.index += 1
             }
             // consume newline if exists
-            if let nl = context.tokens[context.index] as? Token, case .newline = nl { context.index += 1 }
+            if let nl = context.tokens[context.index] as? Token {
+                if case .softBreak = nl { context.index += 1 }
+                else if case .hardBreak = nl { context.index += 1 }
+            }
         }
     }
 
@@ -265,8 +283,13 @@ public struct MarkdownLanguage: CodeLanguage {
         public func accept(context: CodeContext, token: any CodeToken) -> Bool {
             guard token is Token else { return false }
             if context.index > 0 {
-                if let prev = context.tokens[context.index - 1] as? Token, case .newline = prev {
-                    // ok
+                if let prev = context.tokens[context.index - 1] as? Token {
+                    let kd = prev.kindDescription
+                    if kd == "softBreak" || kd == "hardBreak" {
+                        // ok
+                    } else if context.index != 0 {
+                        return false
+                    }
                 } else if context.index != 0 {
                     return false
                 }
@@ -276,13 +299,15 @@ public struct MarkdownLanguage: CodeLanguage {
             var sawText = false
             while idx < context.tokens.count {
                 guard let t = context.tokens[idx] as? Token else { return false }
-                if case .newline = t { break }
+                if case .softBreak = t { break }
+                if case .hardBreak = t { break }
                 if case .eof = t { return false }
                 sawText = true
                 idx += 1
             }
             guard sawText else { return false }
-            guard idx < context.tokens.count, let nl = context.tokens[idx] as? Token, case .newline = nl else { return false }
+            guard idx < context.tokens.count, let nl = context.tokens[idx] as? Token else { return false }
+            if !(nl.kindDescription == "softBreak" || nl.kindDescription == "hardBreak") { return false }
             idx += 1
             guard idx < context.tokens.count else { return false }
 
@@ -299,17 +324,20 @@ public struct MarkdownLanguage: CodeLanguage {
                     if case .equal = kind! { count += 1; idx += 1 } else { return false }
                 case .text(let s, _):
                     if s.trimmingCharacters(in: .whitespaces).isEmpty { idx += 1 } else { return false }
-                case .newline, .eof:
+                case .softBreak, .hardBreak, .eof:
                     break
                 default:
                     return false
                 }
-                if idx < context.tokens.count, let next = context.tokens[idx] as? Token, case .newline = next { break }
+                if idx < context.tokens.count, let next = context.tokens[idx] as? Token {
+                    if case .softBreak = next { break }
+                    if case .hardBreak = next { break }
+                }
             }
             if count == 0 { return false }
             if idx < context.tokens.count, let endTok = context.tokens[idx] as? Token {
                 switch endTok {
-                case .newline, .eof:
+                case .softBreak, .hardBreak, .eof:
                     return true
                 default:
                     return false
@@ -321,7 +349,10 @@ public struct MarkdownLanguage: CodeLanguage {
             var text = ""
             while context.index < context.tokens.count {
                 if let tok = context.tokens[context.index] as? Token {
-                    if case .newline = tok {
+                    if case .softBreak = tok {
+                        context.index += 1
+                        break
+                    } else if case .hardBreak = tok {
                         context.index += 1
                         break
                     } else {
@@ -337,7 +368,7 @@ public struct MarkdownLanguage: CodeLanguage {
                         context.index += 1
                     case .text(let s, _) where s.trimmingCharacters(in: .whitespaces).isEmpty:
                         context.index += 1
-                    case .newline:
+                    case .softBreak, .hardBreak:
                         context.index += 1
                         let node = CodeNode(type: Element.heading, value: text.trimmingCharacters(in: .whitespaces))
                         context.currentNode.addChild(node)
@@ -367,8 +398,9 @@ public struct MarkdownLanguage: CodeLanguage {
                    case .text(let s, _) = next,
                    s.first?.isWhitespace == true {
                     if context.index == 0 { return true }
-                    if let prev = context.tokens[context.index - 1] as? Token, case .newline = prev {
-                        return true
+                    if let prev = context.tokens[context.index - 1] as? Token {
+                        let kd = prev.kindDescription
+                        if kd == "softBreak" || kd == "hardBreak" { return true }
                     }
                 }
             default:
@@ -382,7 +414,7 @@ public struct MarkdownLanguage: CodeLanguage {
             while context.index < context.tokens.count {
                 if let tok = context.tokens[context.index] as? Token {
                     switch tok {
-                        case .newline:
+                        case .softBreak, .hardBreak:
                         context.index += 1
                         let node = CodeNode(type: Element.listItem, value: text.trimmingCharacters(in: .whitespaces))
                         context.currentNode.addChild(node)
@@ -410,8 +442,9 @@ public struct MarkdownLanguage: CodeLanguage {
                    let dot = context.tokens[context.index + 1] as? Token,
                    case .dot = dot {
                     if context.index == 0 { return true }
-                    if let prev = context.tokens[context.index - 1] as? Token, case .newline = prev {
-                        return true
+                    if let prev = context.tokens[context.index - 1] as? Token {
+                        let kd = prev.kindDescription
+                        if kd == "softBreak" || kd == "hardBreak" { return true }
                     }
                 }
             }
@@ -423,7 +456,7 @@ public struct MarkdownLanguage: CodeLanguage {
             while context.index < context.tokens.count {
                 if let tok = context.tokens[context.index] as? Token {
                     switch tok {
-                    case .newline:
+                    case .softBreak, .hardBreak:
                         context.index += 1
                         let node = CodeNode(type: Element.orderedListItem, value: text.trimmingCharacters(in: .whitespaces))
                         context.currentNode.addChild(node)
@@ -451,8 +484,9 @@ public struct MarkdownLanguage: CodeLanguage {
                   let t3 = context.tokens[context.index + 2] as? Token else { return false }
             if case .backtick = t1, case .backtick = t2, case .backtick = t3 {
                 if context.index == 0 { return true }
-                if let prev = context.tokens[context.index - 1] as? Token, case .newline = prev {
-                    return true
+                if let prev = context.tokens[context.index - 1] as? Token {
+                    let kd = prev.kindDescription
+                    if kd == "softBreak" || kd == "hardBreak" { return true }
                 }
             }
             return false
@@ -466,8 +500,9 @@ public struct MarkdownLanguage: CodeLanguage {
                    let t3 = context.tokens[context.index + 2] as? Token,
                    case .backtick = t1, case .backtick = t2, case .backtick = t3 {
                     context.index += 3
-                    if let nl = context.tokens[context.index] as? Token, case .newline = nl {
-                        context.index += 1
+                    if let nl = context.tokens[context.index] as? Token {
+                        if case .softBreak = nl { context.index += 1 }
+                        else if case .hardBreak = nl { context.index += 1 }
                     }
                     let node = CodeNode(type: Element.codeBlock, value: text)
                     context.currentNode.addChild(node)
@@ -488,7 +523,10 @@ public struct MarkdownLanguage: CodeLanguage {
             guard let tok = token as? Token else { return false }
             if case .greaterThan = tok {
                 if context.index == 0 { return true }
-                if let prev = context.tokens[context.index - 1] as? Token, case .newline = prev { return true }
+                if let prev = context.tokens[context.index - 1] as? Token {
+                    let kd = prev.kindDescription
+                    if kd == "softBreak" || kd == "hardBreak" { return true }
+                }
             }
             return false
         }
@@ -498,7 +536,7 @@ public struct MarkdownLanguage: CodeLanguage {
             while context.index < context.tokens.count {
                 if let tok = context.tokens[context.index] as? Token {
                     switch tok {
-                    case .newline:
+                    case .softBreak, .hardBreak:
                         context.index += 1
                         let node = CodeNode(type: Element.blockQuote, value: text.trimmingCharacters(in: .whitespaces))
                         context.currentNode.addChild(node)
@@ -522,7 +560,11 @@ public struct MarkdownLanguage: CodeLanguage {
         public func accept(context: CodeContext, token: any CodeToken) -> Bool {
             guard let tok = token as? Token else { return false }
             if case .text(let s, _) = tok {
-                if (context.index == 0 || (context.tokens[context.index - 1] as? Token)?.kindDescription == "newline") && s.hasPrefix("    ") {
+                var prevBreak = false
+                if context.index > 0, let prev = context.tokens[context.index - 1] as? Token {
+                    prevBreak = prev.kindDescription == "softBreak" || prev.kindDescription == "hardBreak"
+                }
+                if (context.index == 0 || prevBreak) && s.hasPrefix("    ") {
                     return true
                 }
             }
@@ -533,7 +575,7 @@ public struct MarkdownLanguage: CodeLanguage {
             while context.index < context.tokens.count {
                 if let tok = context.tokens[context.index] as? Token {
                     switch tok {
-                    case .newline:
+                    case .softBreak, .hardBreak:
                         context.index += 1
                         if context.index < context.tokens.count, let next = context.tokens[context.index] as? Token, case .text(let s, _) = next, s.hasPrefix("    ") {
                             text += "\n" + String(s.dropFirst(4))
@@ -561,7 +603,8 @@ public struct MarkdownLanguage: CodeLanguage {
             guard let tok = token as? Token else { return false }
             switch tok {
             case .dash, .star, .underscore:
-                if context.index == 0 || (context.index > 0 && (context.tokens[context.index - 1] as? Token) is Token && (context.tokens[context.index - 1] as? Token)?.kindDescription == "newline") {
+                let prevKD = (context.index > 0 ? (context.tokens[context.index - 1] as? Token)?.kindDescription : nil)
+                if context.index == 0 || prevKD == "softBreak" || prevKD == "hardBreak" {
                     var count = 0
                     var idx = context.index
                     while idx < context.tokens.count, let t = context.tokens[idx] as? Token, t.kindDescription == tok.kindDescription {
@@ -587,7 +630,10 @@ public struct MarkdownLanguage: CodeLanguage {
                     }
                 }
             }
-            if let nl = context.tokens[context.index] as? Token, case .newline = nl { context.index += 1 }
+            if let nl = context.tokens[context.index] as? Token {
+                if case .softBreak = nl { context.index += 1 }
+                else if case .hardBreak = nl { context.index += 1 }
+            }
             context.currentNode.addChild(CodeNode(type: Element.thematicBreak, value: ""))
         }
     }
@@ -716,7 +762,10 @@ public struct MarkdownLanguage: CodeLanguage {
             guard let tok = token as? Token else { return false }
             if case .pipe = tok {
                 if context.index == 0 { return true }
-                if let prev = context.tokens[context.index - 1] as? Token, case .newline = prev { return true }
+                if let prev = context.tokens[context.index - 1] as? Token {
+                    let kd = prev.kindDescription
+                    if kd == "softBreak" || kd == "hardBreak" { return true }
+                }
             }
             return false
         }
@@ -731,7 +780,7 @@ public struct MarkdownLanguage: CodeLanguage {
                         cells.append(cell.trimmingCharacters(in: .whitespaces))
                         cell = ""
                         context.index += 1
-                    case .newline:
+                    case .softBreak, .hardBreak:
                         cells.append(cell.trimmingCharacters(in: .whitespaces))
                         context.index += 1
                         context.currentNode.addChild(CodeNode(type: Element.table, value: cells.joined(separator: "|")))
@@ -771,7 +820,8 @@ public struct MarkdownLanguage: CodeLanguage {
                 context.index += 1
                 while context.index < context.tokens.count {
                     if let tok = context.tokens[context.index] as? Token {
-                        if case .newline = tok { context.index += 1; break }
+                        if case .softBreak = tok { context.index += 1; break }
+                        else if case .hardBreak = tok { context.index += 1; break }
                         else { text += tok.text; context.index += 1 }
                     } else { context.index += 1 }
                 }
@@ -812,7 +862,8 @@ public struct MarkdownLanguage: CodeLanguage {
             }
             while context.index < context.tokens.count {
                 if let tok = context.tokens[context.index] as? Token {
-                    if case .newline = tok { context.index += 1; break }
+                    if case .softBreak = tok { context.index += 1; break }
+                    else if case .hardBreak = tok { context.index += 1; break }
                     else { text += tok.text; context.index += 1 }
                 } else { context.index += 1 }
             }
@@ -978,11 +1029,12 @@ public struct MarkdownLanguage: CodeLanguage {
                     case .text(let t, _):
                         text += t
                         context.index += 1
-                    case .newline:
+                    case .softBreak:
+                        text += " "
                         context.index += 1
-                        let node = CodeNode(type: Element.paragraph, value: text)
-                        context.currentNode.addChild(node)
-                        return
+                    case .hardBreak:
+                        text += "\n"
+                        context.index += 1
                     case .dash, .hash, .star, .underscore, .plus, .backtick, .lbracket,
                          .greaterThan, .exclamation, .tilde, .equal, .lessThan, .ampersand, .semicolon, .pipe:
                         let node = CodeNode(type: Element.paragraph, value: text)
