@@ -415,7 +415,28 @@ final class SwiftParserTests: XCTestCase {
         let result = parser.parse(source, language: MarkdownLanguage())
         XCTAssertEqual(result.errors.count, 0)
         XCTAssertEqual(result.root.children.first?.type as? MarkdownLanguage.Element, .linkReferenceDefinition)
-        XCTAssertEqual(result.root.children.first?.value, "ref|http://example.com")
+        let def = result.root.children.first as? MarkdownLinkReferenceDefinitionNode
+        XCTAssertEqual(def?.identifier, "ref")
+        XCTAssertEqual(def?.url, "http://example.com")
+    }
+
+    func testMarkdownFootnoteDefinition() {
+        let parser = SwiftParser()
+        let source = "[^1]: footnote text"
+        let result = parser.parse(source, language: MarkdownLanguage())
+        XCTAssertEqual(result.errors.count, 0)
+        let node = result.root.children.first as? MarkdownFootnoteDefinitionNode
+        XCTAssertEqual(node?.identifier, "1")
+        XCTAssertEqual(node?.text, "footnote text")
+    }
+
+    func testMarkdownFootnoteReference() {
+        let parser = SwiftParser()
+        let source = "[^1]"
+        let result = parser.parse(source, language: MarkdownLanguage())
+        XCTAssertEqual(result.errors.count, 0)
+        let node = result.root.children.first as? MarkdownFootnoteReferenceNode
+        XCTAssertEqual(node?.identifier, "1")
     }
 
     func testMarkdownAllFeatures() {
