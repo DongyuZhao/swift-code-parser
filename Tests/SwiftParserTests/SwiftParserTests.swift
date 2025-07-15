@@ -358,4 +358,57 @@ final class SwiftParserTests: XCTestCase {
         XCTAssertEqual(result.root.children.first?.type as? MarkdownLanguage.Element, .linkReferenceDefinition)
         XCTAssertEqual(result.root.children.first?.value, "ref|http://example.com")
     }
+
+    func testMarkdownAllFeatures() {
+        let parser = SwiftParser()
+        let source = """
+        # ATX Heading
+        Setext Heading
+        --------------
+        Paragraph with **strong** and *em* text, ~~strike~~, and `code`, plus [link](url) and [ref][id], auto links <http://example.com> and https://bare.com, ![alt](img.png).
+        line1  \nline2
+        line3\\
+        line4
+        &amp;&#35;&#x41;
+        > Quote
+        1. One
+        2. Two
+           - Sub
+        - Bullet
+        ***
+        |a|b|
+        <br>
+        ```swift
+        print("hi")
+        ```
+        ~~~
+        tilde
+        ~~~
+            indented
+            code
+        [id]: http://example.com
+        [^1]: footnote text
+        """
+        let result = parser.parse(source, language: MarkdownLanguage())
+        XCTAssertEqual(result.errors.count, 0)
+
+        var elements: Set<MarkdownLanguage.Element> = []
+        func collect(_ node: CodeNode) {
+            if let e = node.type as? MarkdownLanguage.Element {
+                elements.insert(e)
+            }
+            for child in node.children { collect(child) }
+        }
+        collect(result.root)
+
+        let expected: [MarkdownLanguage.Element] = [
+            .heading, .paragraph, .orderedList, .orderedListItem, .unorderedList,
+            .listItem, .emphasis, .strong, .strikethrough, .inlineCode, .codeBlock,
+            .link, .autoLink, .image, .blockQuote, .thematicBreak, .table, .html,
+            .entity, .linkReferenceDefinition
+        ]
+        for e in expected {
+            XCTAssertTrue(elements.contains(e), "Missing \(e)")
+        }
+    }
 }
