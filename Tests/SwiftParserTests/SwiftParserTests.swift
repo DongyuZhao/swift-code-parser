@@ -47,8 +47,11 @@ final class SwiftParserTests: XCTestCase {
         let source = "- item1\n- item2"
         let result = parser.parse(source, language: MarkdownLanguage())
         XCTAssertEqual(result.errors.count, 0)
-        XCTAssertEqual(result.root.children.count, 2)
-        XCTAssertEqual(result.root.children.first?.type as? MarkdownLanguage.Element, .listItem)
+        XCTAssertEqual(result.root.children.count, 1)
+        let list = result.root.children.first
+        XCTAssertEqual(list?.type as? MarkdownLanguage.Element, .unorderedList)
+        XCTAssertEqual(list?.children.count, 2)
+        XCTAssertEqual(list?.children.first?.type as? MarkdownLanguage.Element, .listItem)
     }
 
     func testMarkdownOrderedList() {
@@ -56,7 +59,30 @@ final class SwiftParserTests: XCTestCase {
         let source = "1. first\n2. second"
         let result = parser.parse(source, language: MarkdownLanguage())
         XCTAssertEqual(result.errors.count, 0)
-        XCTAssertEqual(result.root.children.first?.type as? MarkdownLanguage.Element, .orderedListItem)
+        let list = result.root.children.first
+        XCTAssertEqual(list?.type as? MarkdownLanguage.Element, .orderedList)
+        XCTAssertEqual(list?.children.count, 2)
+        XCTAssertEqual(list?.children.first?.type as? MarkdownLanguage.Element, .orderedListItem)
+    }
+
+    func testMarkdownNestedList() {
+        let parser = SwiftParser()
+        let source = "- item1\n  - sub\n- item2"
+        let result = parser.parse(source, language: MarkdownLanguage())
+        XCTAssertEqual(result.errors.count, 0)
+        let list = result.root.children.first
+        XCTAssertEqual(list?.type as? MarkdownLanguage.Element, .unorderedList)
+        XCTAssertEqual(list?.children.count, 2)
+        let sub = list?.children.first?.children.first
+        XCTAssertEqual(sub?.type as? MarkdownLanguage.Element, .unorderedList)
+    }
+
+    func testMarkdownLooseList() {
+        let parser = SwiftParser()
+        let source = "- a\n\n- b"
+        let result = parser.parse(source, language: MarkdownLanguage())
+        XCTAssertEqual(result.errors.count, 0)
+        XCTAssertEqual(result.root.children.first?.value, "loose")
     }
 
     func testMarkdownEmphasisAndStrong() {

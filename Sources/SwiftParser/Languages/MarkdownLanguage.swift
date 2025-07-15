@@ -8,6 +8,8 @@ public struct MarkdownLanguage: CodeLanguage {
         case text
         case listItem
         case orderedListItem
+        case unorderedList
+        case orderedList
         case emphasis
         case strong
         case codeBlock
@@ -402,88 +404,239 @@ public struct MarkdownLanguage: CodeLanguage {
         }
     }
 
-    public class ListItemBuilder: CodeElementBuilder {
+    // MARK: - List Parsing
+
+    public class UnorderedListBuilder: CodeElementBuilder {
         public init() {}
-        public func accept(context: CodeContext, token: any CodeToken) -> Bool {
-            guard let tok = token as? Token else { return false }
-            switch tok {
-            case .dash, .star, .plus:
-                if context.index + 1 < context.tokens.count,
-                   let next = context.tokens[context.index + 1] as? Token,
-                   case .text(let s, _) = next,
-                   s.first?.isWhitespace == true {
-                    if context.index == 0 { return true }
-                    if let prev = context.tokens[context.index - 1] as? Token, case .newline = prev {
-                        return true
-                    }
+
+        private func lineIndent(before idx: Int, in context: CodeContext) -> Int? {
+            if idx == 0 { return 0 }
+            var i = idx - 1
+            var count = 0
+            while i >= 0 {
+                guard let tok = context.tokens[i] as? Token else { return nil }
+                switch tok {
+                case .newline:
+                    return count
+                case .text(let s, _) where s.allSatisfy({ $0 == " " }):
+                    count += s.count
+                    i -= 1
+                default:
+                    return nil
                 }
-            default:
-                break
             }
-            return false
+            return count
         }
+
+        private func isBullet(_ tok: Token) -> Bool {
+            switch tok {
+            case .dash, .star, .plus: return true
+            default: return false
+            }
+        }
+
+        public func accept(context: CodeContext, token: any CodeToken) -> Bool {
+            guard let tok = token as? Token, isBullet(tok) else { return false }
+            guard context.index + 1 < context.tokens.count,
+                  let next = context.tokens[context.index + 1] as? Token,
+                  case .text(let s, _) = next, s.first?.isWhitespace == true else {
+                return false
+            }
+            if let ind = lineIndent(before: context.index, in: context) { return ind >= 0 } else { return false }
+        }
+
         public func build(context: inout CodeContext) {
-            context.index += 1 // skip bullet
-            var text = ""
-            while context.index < context.tokens.count {
-                if let tok = context.tokens[context.index] as? Token {
+            func parseList(_ level: Int) -> CodeNode {
+                let list = CodeNode(type: Element.unorderedList, value: "")
+                var isLoose = false
+                while context.index < context.tokens.count {
+                    guard let bullet = context.tokens[context.index] as? Token, isBullet(bullet), lineIndent(before: context.index, in: context) == level else { break }
+                    let (node, loose) = parseItem(level)
+                    if loose { isLoose = true }
+                    list.addChild(node)
+                }
+                list.value = isLoose ? "loose" : "tight"
+                return list
+            }
+
+            func parseItem(_ level: Int) -> (CodeNode, Bool) {
+                var loose = false
+                // skip bullet and following whitespace
+                context.index += 1
+                if context.index < context.tokens.count,
+                   let t = context.tokens[context.index] as? Token,
+                   case .text(let s, _) = t, s.first?.isWhitespace == true {
+                    context.index += 1
+                }
+
+                let node = CodeNode(type: Element.listItem, value: "")
+                var text = ""
+                itemLoop: while context.index < context.tokens.count {
+                    guard let tok = context.tokens[context.index] as? Token else { context.index += 1; continue }
                     switch tok {
-                        case .newline:
+                    case .newline:
                         context.index += 1
-                        let node = CodeNode(type: Element.listItem, value: text.trimmingCharacters(in: .whitespaces))
-                        context.currentNode.addChild(node)
-                        return
+                        // Check for blank line
+                        if context.index < context.tokens.count, let nl = context.tokens[context.index] as? Token, case .newline = nl {
+                            loose = true
+                            context.index += 1
+                        }
+                        let start = context.index
+                        var spaces = 0
+                        if start < context.tokens.count, let sTok = context.tokens[start] as? Token, case .text(let s, _) = sTok, s.allSatisfy({ $0 == " " }) {
+                            spaces = s.count
+                            context.index += 1
+                        }
+                        if context.index < context.tokens.count, let next = context.tokens[context.index] as? Token, isBullet(next), spaces > level {
+                            let sub = parseList(spaces)
+                            node.addChild(sub)
+                            if context.index < context.tokens.count, let nextTok = context.tokens[context.index] as? Token, isBullet(nextTok), (lineIndent(before: context.index, in: context) ?? 0) <= level {
+                                break itemLoop
+                            }
+                        } else if context.index < context.tokens.count, let next = context.tokens[context.index] as? Token, isBullet(next), spaces == level {
+                            context.index = start
+                            break itemLoop
+                        } else if spaces > level {
+                            text += "\n"
+                        } else if spaces < level {
+                            context.index = start
+                            break itemLoop
+                        } else {
+                            text += "\n"
+                        }
                     case .eof:
-                        let node = CodeNode(type: Element.listItem, value: text.trimmingCharacters(in: .whitespaces))
-                        context.currentNode.addChild(node)
                         context.index += 1
-                        return
+                        break itemLoop
                     default:
                         text += tok.text
                         context.index += 1
                     }
-                } else { context.index += 1 }
+                }
+                node.value = text.trimmingCharacters(in: .whitespaces)
+                return (node, loose)
+            }
+
+            if let ind = lineIndent(before: context.index, in: context) {
+                let list = parseList(ind)
+                context.currentNode.addChild(list)
             }
         }
     }
 
-    public class OrderedListItemBuilder: CodeElementBuilder {
+    public class OrderedListBuilder: CodeElementBuilder {
         public init() {}
-        public func accept(context: CodeContext, token: any CodeToken) -> Bool {
-            guard let tok = token as? Token else { return false }
-            if case .number = tok {
-                if context.index + 1 < context.tokens.count,
-                   let dot = context.tokens[context.index + 1] as? Token,
-                   case .dot = dot {
-                    if context.index == 0 { return true }
-                    if let prev = context.tokens[context.index - 1] as? Token, case .newline = prev {
-                        return true
-                    }
+
+        private func lineIndent(before idx: Int, in context: CodeContext) -> Int? {
+            if idx == 0 { return 0 }
+            var i = idx - 1
+            var count = 0
+            while i >= 0 {
+                guard let tok = context.tokens[i] as? Token else { return nil }
+                switch tok {
+                case .newline:
+                    return count
+                case .text(let s, _) where s.allSatisfy({ $0 == " " }):
+                    count += s.count
+                    i -= 1
+                default:
+                    return nil
                 }
             }
+            return count
+        }
+
+        public func accept(context: CodeContext, token: any CodeToken) -> Bool {
+            guard let tok = token as? Token, case .number = tok else { return false }
+            guard context.index + 1 < context.tokens.count,
+                  let dot = context.tokens[context.index + 1] as? Token, case .dot = dot else { return false }
+            if let _ = lineIndent(before: context.index, in: context) { return true }
             return false
         }
+
         public func build(context: inout CodeContext) {
-            context.index += 2 // skip number and '.'
-            var text = ""
-            while context.index < context.tokens.count {
-                if let tok = context.tokens[context.index] as? Token {
+            func parseList(_ level: Int) -> CodeNode {
+                let list = CodeNode(type: Element.orderedList, value: "")
+                var isLoose = false
+                while context.index < context.tokens.count {
+                    guard context.index + 1 < context.tokens.count,
+                          let num = context.tokens[context.index] as? Token, case .number = num,
+                          let dot = context.tokens[context.index + 1] as? Token, case .dot = dot,
+                          lineIndent(before: context.index, in: context) == level else { break }
+                    let (node, loose) = parseItem(level)
+                    if loose { isLoose = true }
+                    list.addChild(node)
+                }
+                list.value = isLoose ? "loose" : "tight"
+                return list
+            }
+
+            func parseItem(_ level: Int) -> (CodeNode, Bool) {
+                var loose = false
+                context.index += 2
+                if context.index < context.tokens.count,
+                   let t = context.tokens[context.index] as? Token,
+                   case .text(let s, _) = t, s.first?.isWhitespace == true {
+                    context.index += 1
+                }
+
+                let node = CodeNode(type: Element.orderedListItem, value: "")
+                var text = ""
+                itemLoop: while context.index < context.tokens.count {
+                    guard let tok = context.tokens[context.index] as? Token else { context.index += 1; continue }
                     switch tok {
                     case .newline:
                         context.index += 1
-                        let node = CodeNode(type: Element.orderedListItem, value: text.trimmingCharacters(in: .whitespaces))
-                        context.currentNode.addChild(node)
-                        return
+                        if context.index < context.tokens.count, let nl = context.tokens[context.index] as? Token, case .newline = nl {
+                            loose = true
+                            context.index += 1
+                        }
+                        let start = context.index
+                        var spaces = 0
+                        if start < context.tokens.count, let sTok = context.tokens[start] as? Token, case .text(let s, _) = sTok, s.allSatisfy({ $0 == " " }) {
+                            spaces = s.count
+                            context.index += 1
+                        }
+                        if context.index + 1 < context.tokens.count,
+                           let nextNum = context.tokens[context.index] as? Token, case .number = nextNum,
+                           let dot = context.tokens[context.index + 1] as? Token, case .dot = dot,
+                           spaces > level {
+                            let sub = parseList(spaces)
+                            node.addChild(sub)
+                            if context.index + 1 < context.tokens.count,
+                               let nextBullet = context.tokens[context.index] as? Token, case .number = nextBullet,
+                               let ndot = context.tokens[context.index + 1] as? Token, case .dot = ndot,
+                               (lineIndent(before: context.index, in: context) ?? 0) <= level {
+                                break itemLoop
+                            }
+                        } else if context.index + 1 < context.tokens.count,
+                                  let nextNum = context.tokens[context.index] as? Token, case .number = nextNum,
+                                  let dot = context.tokens[context.index + 1] as? Token, case .dot = dot,
+                                  spaces == level {
+                            context.index = start
+                            break itemLoop
+                        } else if spaces > level {
+                            text += "\n"
+                        } else if spaces < level {
+                            context.index = start
+                            break itemLoop
+                        } else {
+                            text += "\n"
+                        }
                     case .eof:
-                        let node = CodeNode(type: Element.orderedListItem, value: text.trimmingCharacters(in: .whitespaces))
-                        context.currentNode.addChild(node)
                         context.index += 1
-                        return
+                        break itemLoop
                     default:
                         text += tok.text
                         context.index += 1
                     }
-                } else { context.index += 1 }
+                }
+                node.value = text.trimmingCharacters(in: .whitespaces)
+                return (node, loose)
+            }
+
+            if let ind = lineIndent(before: context.index, in: context) {
+                let list = parseList(ind)
+                context.currentNode.addChild(list)
             }
         }
     }
@@ -1216,7 +1369,7 @@ public struct MarkdownLanguage: CodeLanguage {
 
     public var tokenizer: CodeTokenizer { Tokenizer() }
     public var builders: [CodeElementBuilder] {
-        [HeadingBuilder(), SetextHeadingBuilder(), CodeBlockBuilder(), IndentedCodeBlockBuilder(), BlockQuoteBuilder(), ThematicBreakBuilder(), OrderedListItemBuilder(), ListItemBuilder(), ImageBuilder(), HTMLBuilder(), EntityBuilder(), StrikethroughBuilder(), AutoLinkBuilder(), BareAutoLinkBuilder(), TableBuilder(), FootnoteBuilder(), LinkReferenceDefinitionBuilder(), LinkBuilder(), StrongBuilder(), EmphasisBuilder(), InlineCodeBuilder(), ParagraphBuilder()]
+        [HeadingBuilder(), SetextHeadingBuilder(), CodeBlockBuilder(), IndentedCodeBlockBuilder(), BlockQuoteBuilder(), ThematicBreakBuilder(), OrderedListBuilder(), UnorderedListBuilder(), ImageBuilder(), HTMLBuilder(), EntityBuilder(), StrikethroughBuilder(), AutoLinkBuilder(), BareAutoLinkBuilder(), TableBuilder(), FootnoteBuilder(), LinkReferenceDefinitionBuilder(), LinkBuilder(), StrongBuilder(), EmphasisBuilder(), InlineCodeBuilder(), ParagraphBuilder()]
     }
     public var expressionBuilders: [CodeExpressionBuilder] { [] }
     public var rootElement: any CodeElement { Element.root }
