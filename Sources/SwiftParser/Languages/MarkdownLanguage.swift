@@ -901,6 +901,27 @@ public struct MarkdownLanguage: CodeLanguage {
         }
     }
 
+    public class HTMLBlockBuilder: CodeElementBuilder {
+        public init() {}
+        public func accept(context: CodeContext, token: any CodeToken) -> Bool {
+            guard let tok = token as? Token else { return false }
+            if case .lessThan = tok, context.index == 0 {
+                let rest = String(context.input[tok.range.upperBound...]).lowercased()
+                return rest.hasPrefix("!doctype") || rest.hasPrefix("html")
+            }
+            return false
+        }
+        public func build(context: inout CodeContext) {
+            var text = ""
+            while context.index < context.tokens.count {
+                if let tok = context.tokens[context.index] as? Token { text += tok.text }
+                context.index += 1
+            }
+            let closed = MarkdownLanguage.isHTMLClosed(text)
+            context.currentNode.addChild(MarkdownHtmlNode(value: text, closed: closed))
+        }
+    }
+
     public class HTMLBuilder: CodeElementBuilder {
         public init() {}
         public func accept(context: CodeContext, token: any CodeToken) -> Bool {
@@ -916,7 +937,9 @@ public struct MarkdownLanguage: CodeLanguage {
                     else { text += tok.text; context.index += 1 }
                 } else { context.index += 1 }
             }
-            context.currentNode.addChild(MarkdownHtmlNode(value: text))
+            let html = "<" + text + ">"
+            let closed = MarkdownLanguage.isHTMLClosed(html)
+            context.currentNode.addChild(MarkdownHtmlNode(value: text, closed: closed))
         }
     }
 
@@ -1354,6 +1377,30 @@ public struct MarkdownLanguage: CodeLanguage {
         return nodes
     }
 
+    static func isHTMLClosed(_ text: String) -> Bool {
+        let voidTags: Set<String> = ["area","base","br","col","embed","hr","img","input","link","meta","param","source","track","wbr"]
+        let pattern = #"<(/?)([A-Za-z][A-Za-z0-9]*)[^>]*?(\/?)>"#
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else { return false }
+        var stack: [String] = []
+        let nsRange = NSRange(text.startIndex..<text.endIndex, in: text)
+        regex.enumerateMatches(in: text, options: [], range: nsRange) { m, _, _ in
+            guard let m = m else { return }
+            let closingRange = m.range(at: 1)
+            let tagRange = m.range(at: 2)
+            let selfClosingRange = m.range(at: 3)
+            guard let tagNameRange = Range(tagRange, in: text) else { return }
+            let name = text[tagNameRange].lowercased()
+            let isClosing = closingRange.location != NSNotFound && Range(closingRange, in: text).map { text[$0] } == "/"
+            let isSelfClosing = selfClosingRange.location != NSNotFound && Range(selfClosingRange, in: text).map { text[$0] } == "/" || voidTags.contains(name)
+            if isClosing {
+                if let last = stack.last, last == name { stack.removeLast() }
+            } else if !isSelfClosing {
+                stack.append(name)
+            }
+        }
+        return stack.isEmpty
+    }
+
     public class StrongBuilder: CodeElementBuilder {
         public init() {}
         public func accept(context: CodeContext, token: any CodeToken) -> Bool {
@@ -1542,7 +1589,7 @@ public struct MarkdownLanguage: CodeLanguage {
 
     public var tokenizer: CodeTokenizer { Tokenizer() }
     public var builders: [CodeElementBuilder] {
-        [HeadingBuilder(), SetextHeadingBuilder(), CodeBlockBuilder(), IndentedCodeBlockBuilder(), BlockQuoteBuilder(), ThematicBreakBuilder(), OrderedListBuilder(), UnorderedListBuilder(), ImageBuilder(), HTMLBuilder(), EntityBuilder(), StrikethroughBuilder(), AutoLinkBuilder(), BareAutoLinkBuilder(), TableBuilder(), FootnoteBuilder(), LinkReferenceDefinitionBuilder(), LinkBuilder(), ParagraphBuilder()]
+        [HeadingBuilder(), SetextHeadingBuilder(), CodeBlockBuilder(), IndentedCodeBlockBuilder(), BlockQuoteBuilder(), ThematicBreakBuilder(), OrderedListBuilder(), UnorderedListBuilder(), ImageBuilder(), HTMLBlockBuilder(), HTMLBuilder(), EntityBuilder(), StrikethroughBuilder(), AutoLinkBuilder(), BareAutoLinkBuilder(), TableBuilder(), FootnoteBuilder(), LinkReferenceDefinitionBuilder(), LinkBuilder(), ParagraphBuilder()]
     }
     public var expressionBuilders: [CodeExpressionBuilder] { [] }
     public var rootElement: any CodeElement { Element.root }

@@ -439,6 +439,46 @@ final class SwiftParserTests: XCTestCase {
         XCTAssertEqual(node?.identifier, "1")
     }
 
+    func testHTMLNodeClosed() {
+        let parser = SwiftParser()
+        let source = """
+<!DOCTYPE html>
+<html lang=\"en\">
+<head>
+  <meta charset=\"UTF-8\">
+  <title>Example Page</title>
+</head>
+<body>
+  <h1>Welcome to my webpage</h1>
+</body>
+</html>
+"""
+        let result = parser.parse(source, language: MarkdownLanguage())
+        XCTAssertEqual(result.errors.count, 0)
+        let html = result.root.children.first as? MarkdownHtmlNode
+        XCTAssertEqual(html?.closed, true)
+        XCTAssertEqual(html?.value, source)
+    }
+
+    func testHTMLNodeUnclosed() {
+        let parser = SwiftParser()
+        let source = """
+<!DOCTYPE html>
+<html lang=\"en\">
+<head>
+  <meta charset=\"UTF-8\">
+  <title>Example Page</title>
+</head>
+<body>
+  <h1>Welcome to my webpage</h1>
+"""
+        let result = parser.parse(source, language: MarkdownLanguage())
+        XCTAssertEqual(result.errors.count, 0)
+        let html = result.root.children.first as? MarkdownHtmlNode
+        XCTAssertEqual(html?.closed, false)
+        XCTAssertEqual(html?.value, source)
+    }
+
     func testMarkdownAllFeatures() {
         let parser = SwiftParser()
         let source = """
