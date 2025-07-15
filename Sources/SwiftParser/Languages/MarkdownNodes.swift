@@ -100,8 +100,22 @@ public final class MarkdownInlineCodeNode: CodeNode {
 }
 
 public final class MarkdownLinkNode: CodeNode {
-    public init(value: String = "", range: Range<String.Index>? = nil) {
-        super.init(type: MarkdownLanguage.Element.link, value: value, range: range)
+    public let text: [CodeNode]
+    public let url: String
+
+    public init(text: [CodeNode], url: String, range: Range<String.Index>? = nil) {
+        self.text = text
+        self.url = url
+        super.init(type: MarkdownLanguage.Element.link, value: "", range: range)
+        text.forEach { addChild($0) }
+    }
+
+    public override var id: Int {
+        var hasher = Hasher()
+        hasher.combine(String(describing: type))
+        hasher.combine(url)
+        for child in children { hasher.combine(child.id) }
+        return hasher.finalize()
     }
 }
 
@@ -118,8 +132,22 @@ public final class MarkdownThematicBreakNode: CodeNode {
 }
 
 public final class MarkdownImageNode: CodeNode {
-    public init(value: String = "", range: Range<String.Index>? = nil) {
-        super.init(type: MarkdownLanguage.Element.image, value: value, range: range)
+    public let alt: String
+    public let url: String
+
+    public init(alt: String, url: String, range: Range<String.Index>? = nil) {
+        self.alt = alt
+        self.url = url
+        super.init(type: MarkdownLanguage.Element.image, value: "", range: range)
+    }
+
+    public override var id: Int {
+        var hasher = Hasher()
+        hasher.combine(String(describing: type))
+        hasher.combine(alt)
+        hasher.combine(url)
+        for child in children { hasher.combine(child.id) }
+        return hasher.finalize()
     }
 }
 
@@ -148,8 +176,19 @@ public final class MarkdownTableNode: CodeNode {
 }
 
 public final class MarkdownAutoLinkNode: CodeNode {
-    public init(value: String = "", range: Range<String.Index>? = nil) {
-        super.init(type: MarkdownLanguage.Element.autoLink, value: value, range: range)
+    public let url: String
+
+    public init(url: String, range: Range<String.Index>? = nil) {
+        self.url = url
+        super.init(type: MarkdownLanguage.Element.autoLink, value: url, range: range)
+    }
+
+    public override var id: Int {
+        var hasher = Hasher()
+        hasher.combine(String(describing: type))
+        hasher.combine(url)
+        for child in children { hasher.combine(child.id) }
+        return hasher.finalize()
     }
 }
 
