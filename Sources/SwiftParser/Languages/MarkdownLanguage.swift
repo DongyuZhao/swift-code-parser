@@ -304,7 +304,7 @@ public struct MarkdownLanguage: CodeLanguage {
                 text = text.trimmingCharacters(in: .whitespaces)
             }
 
-            context.currentNode.addChild(CodeNode(type: Element.heading, value: text))
+            context.currentNode.addChild(MarkdownHeadingNode(value: text, level: count))
         }
     }
 
@@ -378,21 +378,26 @@ public struct MarkdownLanguage: CodeLanguage {
                     }
                 } else { context.index += 1 }
             }
+            var level: Int?
             while context.index < context.tokens.count {
                 if let tok = context.tokens[context.index] as? Token {
                     switch tok {
-                    case .dash, .equal:
+                    case .dash:
+                        if level == nil { level = 2 }
+                        context.index += 1
+                    case .equal:
+                        if level == nil { level = 1 }
                         context.index += 1
                     case .text(let s, _) where s.trimmingCharacters(in: .whitespaces).isEmpty:
                         context.index += 1
                     case .newline:
                         context.index += 1
-                        let node = CodeNode(type: Element.heading, value: text.trimmingCharacters(in: .whitespaces))
+                        let node = MarkdownHeadingNode(value: text.trimmingCharacters(in: .whitespaces), level: level ?? 1)
                         context.currentNode.addChild(node)
                         return
                     case .eof:
                         context.index += 1
-                        let node = CodeNode(type: Element.heading, value: text.trimmingCharacters(in: .whitespaces))
+                        let node = MarkdownHeadingNode(value: text.trimmingCharacters(in: .whitespaces), level: level ?? 1)
                         context.currentNode.addChild(node)
                         return
                     default:
@@ -400,7 +405,7 @@ public struct MarkdownLanguage: CodeLanguage {
                     }
                 } else { context.index += 1 }
             }
-            context.currentNode.addChild(CodeNode(type: Element.heading, value: text.trimmingCharacters(in: .whitespaces)))
+            context.currentNode.addChild(MarkdownHeadingNode(value: text.trimmingCharacters(in: .whitespaces), level: level ?? 1))
         }
     }
 
@@ -447,7 +452,7 @@ public struct MarkdownLanguage: CodeLanguage {
 
         public func build(context: inout CodeContext) {
             func parseList(_ level: Int) -> CodeNode {
-                let list = CodeNode(type: Element.unorderedList, value: "")
+                let list = MarkdownUnorderedListNode(value: "")
                 var isLoose = false
                 while context.index < context.tokens.count {
                     guard let bullet = context.tokens[context.index] as? Token, isBullet(bullet), lineIndent(before: context.index, in: context) == level else { break }
@@ -469,7 +474,7 @@ public struct MarkdownLanguage: CodeLanguage {
                     context.index += 1
                 }
 
-                let node = CodeNode(type: Element.listItem, value: "")
+                let node = MarkdownListItemNode(value: "")
                 var text = ""
                 itemLoop: while context.index < context.tokens.count {
                     guard let tok = context.tokens[context.index] as? Token else { context.index += 1; continue }
@@ -555,7 +560,7 @@ public struct MarkdownLanguage: CodeLanguage {
 
         public func build(context: inout CodeContext) {
             func parseList(_ level: Int) -> CodeNode {
-                let list = CodeNode(type: Element.orderedList, value: "")
+                let list = MarkdownOrderedListNode(value: "")
                 var isLoose = false
                 while context.index < context.tokens.count {
                     guard context.index + 1 < context.tokens.count,
@@ -579,7 +584,7 @@ public struct MarkdownLanguage: CodeLanguage {
                     context.index += 1
                 }
 
-                let node = CodeNode(type: Element.orderedListItem, value: "")
+                let node = MarkdownOrderedListItemNode(value: "")
                 var text = ""
                 itemLoop: while context.index < context.tokens.count {
                     guard let tok = context.tokens[context.index] as? Token else { context.index += 1; continue }
@@ -695,7 +700,7 @@ public struct MarkdownLanguage: CodeLanguage {
                         if count >= fenceLength {
                             context.index = idx
                             if context.index < context.tokens.count, let nl = context.tokens[context.index] as? Token, case .newline = nl { context.index += 1 }
-                            context.currentNode.addChild(CodeNode(type: Element.codeBlock, value: text))
+                            context.currentNode.addChild(MarkdownCodeBlockNode(value: text))
                             return
                         }
                     }
@@ -703,7 +708,7 @@ public struct MarkdownLanguage: CodeLanguage {
                     context.index += 1
                 } else { context.index += 1 }
             }
-            context.currentNode.addChild(CodeNode(type: Element.codeBlock, value: text))
+            context.currentNode.addChild(MarkdownCodeBlockNode(value: text))
         }
     }
 
@@ -725,11 +730,11 @@ public struct MarkdownLanguage: CodeLanguage {
                     switch tok {
                     case .newline:
                         context.index += 1
-                        let node = CodeNode(type: Element.blockQuote, value: text.trimmingCharacters(in: .whitespaces))
+                        let node = MarkdownBlockQuoteNode(value: text.trimmingCharacters(in: .whitespaces))
                         context.currentNode.addChild(node)
                         return
                     case .eof:
-                        let node = CodeNode(type: Element.blockQuote, value: text.trimmingCharacters(in: .whitespaces))
+                        let node = MarkdownBlockQuoteNode(value: text.trimmingCharacters(in: .whitespaces))
                         context.currentNode.addChild(node)
                         context.index += 1
                         return
@@ -764,7 +769,7 @@ public struct MarkdownLanguage: CodeLanguage {
                             text += "\n" + String(s.dropFirst(4))
                             context.index += 1
                         } else {
-                            context.currentNode.addChild(CodeNode(type: Element.codeBlock, value: text))
+                            context.currentNode.addChild(MarkdownCodeBlockNode(value: text))
                             return
                         }
                     case .text(let s, _):
@@ -776,7 +781,7 @@ public struct MarkdownLanguage: CodeLanguage {
                     }
                 } else { context.index += 1 }
             }
-            context.currentNode.addChild(CodeNode(type: Element.codeBlock, value: text))
+            context.currentNode.addChild(MarkdownCodeBlockNode(value: text))
         }
     }
 
@@ -813,7 +818,7 @@ public struct MarkdownLanguage: CodeLanguage {
                 }
             }
             if let nl = context.tokens[context.index] as? Token, case .newline = nl { context.index += 1 }
-            context.currentNode.addChild(CodeNode(type: Element.thematicBreak, value: ""))
+            context.currentNode.addChild(MarkdownThematicBreakNode(value: ""))
         }
     }
 
@@ -846,7 +851,7 @@ public struct MarkdownLanguage: CodeLanguage {
                     } else { context.index += 1 }
                 }
             }
-            context.currentNode.addChild(CodeNode(type: Element.image, value: alt + "|" + url))
+            context.currentNode.addChild(MarkdownImageNode(value: alt + "|" + url))
         }
     }
 
@@ -865,7 +870,7 @@ public struct MarkdownLanguage: CodeLanguage {
                     else { text += tok.text; context.index += 1 }
                 } else { context.index += 1 }
             }
-            context.currentNode.addChild(CodeNode(type: Element.html, value: text))
+            context.currentNode.addChild(MarkdownHtmlNode(value: text))
         }
     }
 
@@ -886,7 +891,7 @@ public struct MarkdownLanguage: CodeLanguage {
                 } else { context.index += 1 }
             }
             let decoded = decode(text)
-            context.currentNode.addChild(CodeNode(type: Element.entity, value: decoded))
+            context.currentNode.addChild(MarkdownEntityNode(value: decoded))
         }
 
         private func decode(_ entity: String) -> String {
@@ -928,14 +933,14 @@ public struct MarkdownLanguage: CodeLanguage {
                    let t2 = context.tokens[context.index + 1] as? Token,
                    t1.kindDescription == "~" && t2.kindDescription == "~" {
                     context.index += 2
-                    context.currentNode.addChild(CodeNode(type: Element.strikethrough, value: text))
+                    context.currentNode.addChild(MarkdownStrikethroughNode(value: text))
                     return
                 } else if let tok = context.tokens[context.index] as? Token {
                     text += tok.text
                     context.index += 1
                 } else { context.index += 1 }
             }
-            context.currentNode.addChild(CodeNode(type: Element.strikethrough, value: text))
+            context.currentNode.addChild(MarkdownStrikethroughNode(value: text))
         }
     }
 
@@ -955,7 +960,7 @@ public struct MarkdownLanguage: CodeLanguage {
                     else { text += tok.text; context.index += 1 }
                 } else { context.index += 1 }
             }
-            context.currentNode.addChild(CodeNode(type: Element.autoLink, value: text))
+            context.currentNode.addChild(MarkdownAutoLinkNode(value: text))
         }
     }
 
@@ -986,7 +991,7 @@ public struct MarkdownLanguage: CodeLanguage {
             guard let m = Self.regex.firstMatch(in: text, range: range) else { return }
             let endPos = context.input.index(start, offsetBy: m.range.length)
             let url = String(context.input[start..<endPos])
-            context.currentNode.addChild(CodeNode(type: Element.autoLink, value: url))
+            context.currentNode.addChild(MarkdownAutoLinkNode(value: url))
             while context.index < context.tokens.count {
                 if let t = context.tokens[context.index] as? Token, t.range.upperBound <= endPos {
                     context.index += 1
@@ -1021,12 +1026,12 @@ public struct MarkdownLanguage: CodeLanguage {
                     case .newline:
                         cells.append(cell.trimmingCharacters(in: .whitespaces))
                         context.index += 1
-                        context.currentNode.addChild(CodeNode(type: Element.table, value: cells.joined(separator: "|")))
+                        context.currentNode.addChild(MarkdownTableNode(value: cells.joined(separator: "|")))
                         return
                     case .eof:
                         cells.append(cell.trimmingCharacters(in: .whitespaces))
                         context.index += 1
-                        context.currentNode.addChild(CodeNode(type: Element.table, value: cells.joined(separator: "|")))
+                        context.currentNode.addChild(MarkdownTableNode(value: cells.joined(separator: "|")))
                         return
                     default:
                         cell += tok.text
@@ -1062,7 +1067,7 @@ public struct MarkdownLanguage: CodeLanguage {
                         else { text += tok.text; context.index += 1 }
                     } else { context.index += 1 }
                 }
-                context.currentNode.addChild(CodeNode(type: Element.text, value: text.trimmingCharacters(in: .whitespaces)))
+                context.currentNode.addChild(MarkdownTextNode(value: text.trimmingCharacters(in: .whitespaces)))
             }
         }
     }
@@ -1107,7 +1112,7 @@ public struct MarkdownLanguage: CodeLanguage {
             if url.hasPrefix(":") { url.removeFirst() }
             url = url.trimmingCharacters(in: .whitespaces)
             context.linkReferences[id.trimmingCharacters(in: .whitespaces).lowercased()] = url
-            context.currentNode.addChild(CodeNode(type: Element.linkReferenceDefinition, value: id + "|" + url))
+            context.currentNode.addChild(MarkdownLinkReferenceDefinitionNode(value: id + "|" + url))
         }
     }
 
@@ -1118,7 +1123,7 @@ public struct MarkdownLanguage: CodeLanguage {
         var closed = false
         func flush() {
             if !text.isEmpty {
-                nodes.append(CodeNode(type: Element.text, value: text))
+                nodes.append(MarkdownTextNode(value: text))
                 text = ""
             }
         }
@@ -1149,7 +1154,7 @@ public struct MarkdownLanguage: CodeLanguage {
                 context.index += 2
                 let (inner, ok) = parseInline(context: &context, closing: tok, count: 2)
                 if ok {
-                    let node = CodeNode(type: Element.strong, value: "")
+                    let node = MarkdownStrongNode(value: "")
                     inner.forEach { node.addChild($0) }
                     nodes.append(node)
                     continue
@@ -1165,7 +1170,7 @@ public struct MarkdownLanguage: CodeLanguage {
                 context.index += 1
                 let (inner, ok) = parseInline(context: &context, closing: tok, count: 1)
                 if ok {
-                    let node = CodeNode(type: Element.emphasis, value: "")
+                    let node = MarkdownEmphasisNode(value: "")
                     inner.forEach { node.addChild($0) }
                     nodes.append(node)
                     continue
@@ -1201,12 +1206,12 @@ public struct MarkdownLanguage: CodeLanguage {
             context.index += 2
             let (children, ok) = MarkdownLanguage.parseInline(context: &context, closing: open, count: 2)
             if ok {
-                let node = CodeNode(type: Element.strong, value: "")
+                let node = MarkdownStrongNode(value: "")
                 children.forEach { node.addChild($0) }
                 context.currentNode.addChild(node)
             } else {
                 context.restore(snap)
-                context.currentNode.addChild(CodeNode(type: Element.text, value: open.text + open.text))
+                context.currentNode.addChild(MarkdownTextNode(value: open.text + open.text))
                 context.index += 2
             }
         }
@@ -1226,12 +1231,12 @@ public struct MarkdownLanguage: CodeLanguage {
             context.index += 1
             let (children, ok) = MarkdownLanguage.parseInline(context: &context, closing: open, count: 1)
             if ok {
-                let node = CodeNode(type: Element.emphasis, value: "")
+                let node = MarkdownEmphasisNode(value: "")
                 children.forEach { node.addChild($0) }
                 context.currentNode.addChild(node)
             } else {
                 context.restore(snap)
-                context.currentNode.addChild(CodeNode(type: Element.text, value: open.text))
+                context.currentNode.addChild(MarkdownTextNode(value: open.text))
                 context.index += 1
             }
         }
@@ -1250,7 +1255,7 @@ public struct MarkdownLanguage: CodeLanguage {
             while context.index < context.tokens.count {
                 if let tok = context.tokens[context.index] as? Token, case .backtick = tok {
                     context.index += 1
-                    let node = CodeNode(type: Element.inlineCode, value: text)
+                    let node = MarkdownInlineCodeNode(value: text)
                     context.currentNode.addChild(node)
                     return
                 } else if let tok = context.tokens[context.index] as? Token {
@@ -1258,7 +1263,7 @@ public struct MarkdownLanguage: CodeLanguage {
                     context.index += 1
                 } else { context.index += 1 }
             }
-            let node = CodeNode(type: Element.inlineCode, value: text)
+            let node = MarkdownInlineCodeNode(value: text)
             context.currentNode.addChild(node)
         }
     }
@@ -1309,7 +1314,7 @@ public struct MarkdownLanguage: CodeLanguage {
                     url = ref
                 }
             }
-            let node = CodeNode(type: Element.link, value: text + "|" + url)
+            let node = MarkdownLinkNode(value: text + "|" + url)
             context.currentNode.addChild(node)
         }
     }
@@ -1333,19 +1338,19 @@ public struct MarkdownLanguage: CodeLanguage {
                         context.index += 1
                     case .newline:
                         context.index += 1
-                        let node = CodeNode(type: Element.paragraph, value: text)
+                        let node = MarkdownParagraphNode(value: text)
                         context.currentNode.addChild(node)
                         return
                     case .dash, .hash, .star, .underscore, .plus, .backtick, .lbracket,
                          .greaterThan, .exclamation, .tilde, .equal, .lessThan, .ampersand, .semicolon, .pipe:
-                        let node = CodeNode(type: Element.paragraph, value: text)
+                        let node = MarkdownParagraphNode(value: text)
                         context.currentNode.addChild(node)
                         return
                     case .number:
                         if context.index + 1 < context.tokens.count,
                            let dot = context.tokens[context.index + 1] as? Token,
                            case .dot = dot {
-                            let node = CodeNode(type: Element.paragraph, value: text)
+                            let node = MarkdownParagraphNode(value: text)
                             context.currentNode.addChild(node)
                             return
                         } else {
@@ -1353,7 +1358,7 @@ public struct MarkdownLanguage: CodeLanguage {
                             context.index += 1
                         }
                     case .eof:
-                        let node = CodeNode(type: Element.paragraph, value: text)
+                        let node = MarkdownParagraphNode(value: text)
                         context.currentNode.addChild(node)
                         context.index += 1
                         return

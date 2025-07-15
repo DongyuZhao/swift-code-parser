@@ -17,7 +17,7 @@ public protocol CodeElementBuilder {
     func build(context: inout CodeContext)
 }
 
-public final class CodeNode {
+public class CodeNode {
     public let type: any CodeElement
     public var value: String
     public weak var parent: CodeNode?

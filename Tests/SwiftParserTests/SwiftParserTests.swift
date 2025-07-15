@@ -22,6 +22,8 @@ final class SwiftParserTests: XCTestCase {
         let result = parser.parse(source, language: MarkdownLanguage())
         XCTAssertEqual(result.errors.count, 0)
         XCTAssertEqual(result.root.children.count, 2)
+        let heading = result.root.children.first as? MarkdownHeadingNode
+        XCTAssertEqual(heading?.level, 1)
     }
 
     func testMarkdownComplexATXHeading() {
@@ -30,8 +32,10 @@ final class SwiftParserTests: XCTestCase {
         let result = parser.parse(source, language: MarkdownLanguage())
         XCTAssertEqual(result.errors.count, 0)
         XCTAssertEqual(result.root.children.count, 1)
-        XCTAssertEqual(result.root.children.first?.type as? MarkdownLanguage.Element, .heading)
-        XCTAssertEqual(result.root.children.first?.value, "Complex")
+        let heading = result.root.children.first as? MarkdownHeadingNode
+        XCTAssertEqual(heading?.type as? MarkdownLanguage.Element, .heading)
+        XCTAssertEqual(heading?.value, "Complex")
+        XCTAssertEqual(heading?.level, 3)
     }
 
     func testMarkdownSetextHeading() {
@@ -39,7 +43,9 @@ final class SwiftParserTests: XCTestCase {
         let source = "Title\n----\n"
         let result = parser.parse(source, language: MarkdownLanguage())
         XCTAssertEqual(result.errors.count, 0)
-        XCTAssertEqual(result.root.children.first?.type as? MarkdownLanguage.Element, .heading)
+        let heading = result.root.children.first as? MarkdownHeadingNode
+        XCTAssertEqual(heading?.type as? MarkdownLanguage.Element, .heading)
+        XCTAssertEqual(heading?.level, 2)
     }
 
     func testMarkdownListItem() {
