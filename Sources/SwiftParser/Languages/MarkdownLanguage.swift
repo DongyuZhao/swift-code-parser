@@ -324,9 +324,9 @@ public struct MarkdownLanguage: CodeLanguage {
                 processed.append(tok)
             }
 
-            let value = processed.map { $0.text }.joined()
+            let trimmedValue = processed.map { $0.text }.joined().trimmingCharacters(in: .whitespaces)
             let children = MarkdownLanguage.parseInlineTokens(processed, input: context.input)
-            let node = MarkdownHeadingNode(value: value, level: count)
+            let node = MarkdownHeadingNode(value: trimmedValue, level: count)
             children.forEach { node.addChild($0) }
             context.currentNode.addChild(node)
         }
@@ -1056,13 +1056,9 @@ public struct MarkdownLanguage: CodeLanguage {
                         cells.append(cell.trimmingCharacters(in: .whitespaces))
                         cell = ""
                         context.index += 1
-                    case .newline:
+                    case .newline, .eof:
                         cells.append(cell.trimmingCharacters(in: .whitespaces))
-                        context.index += 1
-                        context.currentNode.addChild(MarkdownTableNode(value: cells.joined(separator: "|")))
-                        return
-                    case .eof:
-                        cells.append(cell.trimmingCharacters(in: .whitespaces))
+                        if let last = cells.last, last.isEmpty { cells.removeLast() }
                         context.index += 1
                         context.currentNode.addChild(MarkdownTableNode(value: cells.joined(separator: "|")))
                         return
