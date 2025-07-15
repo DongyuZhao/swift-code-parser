@@ -356,11 +356,37 @@ final class SwiftParserTests: XCTestCase {
 
     func testMarkdownTable() {
         let parser = SwiftParser()
-        let source = "|a|b|\n"
+        let source = "|a|b|\n|---|---|\n|c|d|"
         let result = parser.parse(source, language: MarkdownLanguage())
         XCTAssertEqual(result.errors.count, 0)
-        XCTAssertEqual(result.root.children.first?.type as? MarkdownLanguage.Element, .table)
-        XCTAssertEqual(result.root.children.first?.value, "a|b")
+        let table = result.root.children.first as? MarkdownTableNode
+        XCTAssertNotNil(table)
+        XCTAssertEqual(table?.children.count, 2)
+        let header = table?.children.first as? MarkdownTableHeaderNode
+        XCTAssertEqual(header?.children.first?.children.first?.value, "a")
+        XCTAssertEqual(header?.children.last?.children.first?.value, "b")
+        let row = table?.children.last as? MarkdownTableRowNode
+        XCTAssertEqual(row?.children.first?.children.first?.value, "c")
+        XCTAssertEqual(row?.children.last?.children.first?.value, "d")
+    }
+
+    func testMarkdownTableVariants() {
+        let sources = [
+            "| Name  | Age |\n|-------|-----|\n| Alice |  25 |\n| Bob   |  30 |",
+            "| Name  | Age |\n|-------|:-----:|\n| Alice |  25 |\n| Bob   |  30 |",
+            "| Name  | Age |\n|-------|-----|\n| Alice |  25 |\n| Bob   |  30 "
+        ]
+        for src in sources {
+            let parser = SwiftParser()
+            let result = parser.parse(src, language: MarkdownLanguage())
+            XCTAssertEqual(result.errors.count, 0)
+            let table = result.root.children.first as? MarkdownTableNode
+            XCTAssertNotNil(table)
+            XCTAssertEqual(table?.children.count, 3)
+            let header = table?.children.first as? MarkdownTableHeaderNode
+            XCTAssertEqual(header?.children[0].children.first?.value, "Name")
+            XCTAssertEqual(header?.children[1].children.first?.value, "Age")
+        }
     }
 
     func testMarkdownLinkReferenceDefinition() {

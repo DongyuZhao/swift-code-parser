@@ -22,6 +22,9 @@ public struct MarkdownLanguage: CodeLanguage {
         case entity
         case strikethrough
         case table
+        case tableHeader
+        case tableRow
+        case tableCell
         case autoLink
         case linkReferenceDefinition
     }
@@ -1045,10 +1048,10 @@ public struct MarkdownLanguage: CodeLanguage {
             }
             return false
         }
-        public func build(context: inout CodeContext) {
+        func parseRow(_ context: inout CodeContext) -> [String] {
             var cells: [String] = []
             var cell = ""
-            context.index += 1 // skip first pipe
+            context.index += 1 // skip leading pipe
             while context.index < context.tokens.count {
                 if let tok = context.tokens[context.index] as? Token {
                     switch tok {
@@ -1060,8 +1063,7 @@ public struct MarkdownLanguage: CodeLanguage {
                         cells.append(cell.trimmingCharacters(in: .whitespaces))
                         if let last = cells.last, last.isEmpty { cells.removeLast() }
                         context.index += 1
-                        context.currentNode.addChild(MarkdownTableNode(value: cells.joined(separator: "|")))
-                        return
+                        return cells
                     default:
                         cell += tok.text
                         context.index += 1
@@ -1072,7 +1074,64 @@ public struct MarkdownLanguage: CodeLanguage {
             }
             if !cell.isEmpty || !cells.isEmpty {
                 cells.append(cell.trimmingCharacters(in: .whitespaces))
-                context.currentNode.addChild(MarkdownTableNode(value: cells.joined(separator: "|")))
+            }
+            return cells
+        }
+
+        func parseDelimiter(_ context: inout CodeContext) -> [String]? {
+            guard context.index < context.tokens.count,
+                  let first = context.tokens[context.index] as? Token,
+                  case .pipe = first else { return nil }
+            var snapshot = context.snapshot()
+            let cells = parseRow(&context)
+            for cell in cells {
+                var trimmed = cell.trimmingCharacters(in: .whitespaces)
+                if trimmed.hasPrefix(":") { trimmed.removeFirst() }
+                if trimmed.hasSuffix(":") { trimmed.removeLast() }
+                if trimmed.count < 3 { context.restore(snapshot); return nil }
+                if !trimmed.allSatisfy({ $0 == "-" }) {
+                    context.restore(snapshot); return nil
+                }
+            }
+            return cells
+        }
+
+        public func build(context: inout CodeContext) {
+            var ctx = context
+            let header = parseRow(&ctx)
+            let startIndex = ctx.index
+            if let _ = parseDelimiter(&ctx) {
+                var rows: [[String]] = []
+                while ctx.index < ctx.tokens.count,
+                      let tok = ctx.tokens[ctx.index] as? Token,
+                      case .pipe = tok {
+                    rows.append(parseRow(&ctx))
+                }
+
+                let table = MarkdownTableNode()
+                let headerNode = MarkdownTableHeaderNode()
+                for cell in header {
+                    let cellNode = MarkdownTableCellNode()
+                    cellNode.addChild(MarkdownTextNode(value: cell))
+                    headerNode.addChild(cellNode)
+                }
+                table.addChild(headerNode)
+
+                for row in rows {
+                    let rowNode = MarkdownTableRowNode()
+                    for cell in row {
+                        let cellNode = MarkdownTableCellNode()
+                        cellNode.addChild(MarkdownTextNode(value: cell))
+                        rowNode.addChild(cellNode)
+                    }
+                    table.addChild(rowNode)
+                }
+
+                context = ctx
+                context.currentNode.addChild(table)
+            } else {
+                context.index = startIndex
+                context.currentNode.addChild(MarkdownTableNode(value: header.joined(separator: "|")))
             }
         }
     }
