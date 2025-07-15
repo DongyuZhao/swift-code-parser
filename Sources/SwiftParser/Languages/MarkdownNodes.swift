@@ -219,7 +219,58 @@ public final class MarkdownAutoLinkNode: CodeNode {
 }
 
 public final class MarkdownLinkReferenceDefinitionNode: CodeNode {
-    public init(value: String = "", range: Range<String.Index>? = nil) {
-        super.init(type: MarkdownLanguage.Element.linkReferenceDefinition, value: value, range: range)
+    public let identifier: String
+    public let url: String
+
+    public init(identifier: String, url: String, range: Range<String.Index>? = nil) {
+        self.identifier = identifier
+        self.url = url
+        super.init(type: MarkdownLanguage.Element.linkReferenceDefinition, value: "", range: range)
+    }
+
+    public override var id: Int {
+        var hasher = Hasher()
+        hasher.combine(String(describing: type))
+        hasher.combine(identifier)
+        hasher.combine(url)
+        for child in children { hasher.combine(child.id) }
+        return hasher.finalize()
+    }
+}
+
+public final class MarkdownFootnoteDefinitionNode: CodeNode {
+    public let identifier: String
+    public let text: String
+
+    public init(identifier: String, text: String, range: Range<String.Index>? = nil) {
+        self.identifier = identifier
+        self.text = text
+        super.init(type: MarkdownLanguage.Element.footnoteDefinition, value: "", range: range)
+    }
+
+    public override var id: Int {
+        var hasher = Hasher()
+        hasher.combine(String(describing: type))
+        hasher.combine(identifier)
+        hasher.combine(text)
+        for child in children { hasher.combine(child.id) }
+        return hasher.finalize()
+    }
+}
+
+public final class MarkdownFootnoteReferenceNode: CodeNode {
+    public let identifier: String
+
+    public init(identifier: String, range: Range<String.Index>? = nil) {
+        self.identifier = identifier
+        super.init(type: MarkdownLanguage.Element.footnoteReference, value: "", range: range)
+    }
+
+    public override var id: Int {
+        var hasher = Hasher()
+        hasher.combine(String(describing: type))
+        hasher.combine(identifier)
+        for child in children { hasher.combine(child.id) }
+        return hasher.finalize()
     }
 }
