@@ -284,27 +284,51 @@ public struct MarkdownLanguage: CodeLanguage {
                 count += 1
                 context.index += 1
             }
-
-            var text = ""
+            var tokens: [Token] = []
             while context.index < context.tokens.count {
-                if let tok = context.tokens[context.index] as? Token {
-                    if case .newline = tok {
-                        context.index += 1
-                        break
-                    } else {
-                        text += tok.text
-                        context.index += 1
+                guard let tok = context.tokens[context.index] as? Token else { context.index += 1; continue }
+                switch tok {
+                case .newline, .eof:
+                    context.index += 1
+                default:
+                    tokens.append(tok)
+                    context.index += 1
+                }
+                if case .newline = tok { break }
+                if case .eof = tok { break }
+            }
+
+            // Trim trailing whitespace
+            while let last = tokens.last, case .text(let s, _) = last, s.trimmingCharacters(in: .whitespaces).isEmpty {
+                tokens.removeLast()
+            }
+            // Remove trailing '#' sequences
+            while let last = tokens.last, case .hash = last {
+                tokens.removeLast()
+                while let l = tokens.last, case .text(let s, _) = l, s.trimmingCharacters(in: .whitespaces).isEmpty {
+                    tokens.removeLast()
+                }
+            }
+            while let last = tokens.last, case .text(let s, _) = last, s.trimmingCharacters(in: .whitespaces).isEmpty {
+                tokens.removeLast()
+            }
+
+            // Remove spaces before hard breaks
+            var processed: [Token] = []
+            for tok in tokens {
+                if case .hardBreak = tok {
+                    while let l = processed.last, case .text(let s, _) = l, s.allSatisfy({ $0 == " " }) {
+                        processed.removeLast()
                     }
-                } else { context.index += 1 }
+                }
+                processed.append(tok)
             }
 
-            text = text.trimmingCharacters(in: .whitespaces)
-            while text.hasSuffix("#") {
-                text.removeLast()
-                text = text.trimmingCharacters(in: .whitespaces)
-            }
-
-            context.currentNode.addChild(MarkdownHeadingNode(value: text, level: count))
+            let value = processed.map { $0.text }.joined()
+            let children = MarkdownLanguage.parseInlineTokens(processed, input: context.input)
+            let node = MarkdownHeadingNode(value: value, level: count)
+            children.forEach { node.addChild($0) }
+            context.currentNode.addChild(node)
         }
     }
 
@@ -1180,11 +1204,47 @@ public struct MarkdownLanguage: CodeLanguage {
                 }
             }
 
+            // Inline code
+            if tok.kindDescription == "`" {
+                flush()
+                context.index += 1
+                var codeText = ""
+                while context.index < context.tokens.count {
+                    if let t = context.tokens[context.index] as? Token {
+                        if t.kindDescription == "`" {
+                            context.index += 1
+                            let node = MarkdownInlineCodeNode(value: codeText)
+                            nodes.append(node)
+                            break
+                        } else {
+                            codeText += t.text
+                            context.index += 1
+                        }
+                    } else { context.index += 1 }
+                }
+                continue
+            }
+
             text += tok.text
             context.index += 1
         }
         flush()
         return (nodes, closed)
+    }
+
+    /// Parse a sequence of tokens as inline content and return the resulting nodes.
+    /// This is a convenience wrapper around `parseInline` that treats the entire
+    /// token list as a single inline segment.
+    static func parseInlineTokens(_ tokens: [Token], input: String) -> [CodeNode] {
+        let eofRange = tokens.last?.range ?? input.startIndex..<input.startIndex
+        var ctx = CodeContext(tokens: tokens + [.eof(eofRange)],
+                              index: 0,
+                              currentNode: CodeNode(type: Element.root, value: ""),
+                              errors: [],
+                              input: input)
+        let closing = Token.eof(eofRange)
+        let (nodes, _) = parseInline(context: &ctx, closing: closing, count: 1)
+        return nodes
     }
 
     public class StrongBuilder: CodeElementBuilder {
@@ -1325,56 +1385,56 @@ public struct MarkdownLanguage: CodeLanguage {
             if token is Token { return true } else { return false }
         }
         public func build(context: inout CodeContext) {
-            var text = ""
+            var tokens: [Token] = []
+            var ended = false
             while context.index < context.tokens.count {
-                if let tok = context.tokens[context.index] as? Token {
-                    switch tok {
-                    case .text(let t, _):
-                        text += t
-                        context.index += 1
-                    case .hardBreak:
-                        while text.last == " " { text.removeLast() }
-                        text += "\n"
-                        context.index += 1
-                    case .newline:
-                        context.index += 1
-                        let node = MarkdownParagraphNode(value: text)
-                        context.currentNode.addChild(node)
-                        return
-                    case .dash, .hash, .star, .underscore, .plus, .backtick, .lbracket,
-                         .greaterThan, .exclamation, .tilde, .equal, .lessThan, .ampersand, .semicolon, .pipe:
-                        let node = MarkdownParagraphNode(value: text)
-                        context.currentNode.addChild(node)
-                        return
-                    case .number:
-                        if context.index + 1 < context.tokens.count,
-                           let dot = context.tokens[context.index + 1] as? Token,
-                           case .dot = dot {
-                            let node = MarkdownParagraphNode(value: text)
-                            context.currentNode.addChild(node)
-                            return
-                        } else {
-                            text += tok.text
-                            context.index += 1
-                        }
-                    case .eof:
-                        let node = MarkdownParagraphNode(value: text)
-                        context.currentNode.addChild(node)
-                        context.index += 1
-                        return
-                    case .dot, .rbracket, .lparen, .rparen:
-                        // treat as text for now
-                        text += tok.text
+                guard let tok = context.tokens[context.index] as? Token else { context.index += 1; continue }
+                switch tok {
+                case .text, .star, .underscore, .backtick:
+                    tokens.append(tok)
+                    context.index += 1
+                case .hardBreak:
+                    while let last = tokens.last, case .text(let s, _) = last, s.allSatisfy({ $0 == " " }) {
+                        tokens.removeLast()
+                    }
+                    tokens.append(tok)
+                    context.index += 1
+                case .newline:
+                    context.index += 1
+                    ended = true
+                case .dash, .hash, .plus, .lbracket,
+                     .greaterThan, .exclamation, .tilde, .equal, .lessThan, .ampersand, .semicolon, .pipe:
+                    ended = true
+                case .number:
+                    if context.index + 1 < context.tokens.count,
+                       let dot = context.tokens[context.index + 1] as? Token,
+                       case .dot = dot {
+                        ended = true
+                    } else {
+                        tokens.append(tok)
                         context.index += 1
                     }
-                } else { context.index += 1 }
+                case .eof:
+                    context.index += 1
+                    ended = true
+                case .dot, .rbracket, .lparen, .rparen:
+                    tokens.append(tok)
+                    context.index += 1
+                }
+                if ended { break }
             }
+
+            let value = tokens.map { $0.text }.joined()
+            let children = MarkdownLanguage.parseInlineTokens(tokens, input: context.input)
+            let node = MarkdownParagraphNode(value: value)
+            children.forEach { node.addChild($0) }
+            context.currentNode.addChild(node)
         }
     }
 
     public var tokenizer: CodeTokenizer { Tokenizer() }
     public var builders: [CodeElementBuilder] {
-        [HeadingBuilder(), SetextHeadingBuilder(), CodeBlockBuilder(), IndentedCodeBlockBuilder(), BlockQuoteBuilder(), ThematicBreakBuilder(), OrderedListBuilder(), UnorderedListBuilder(), ImageBuilder(), HTMLBuilder(), EntityBuilder(), StrikethroughBuilder(), AutoLinkBuilder(), BareAutoLinkBuilder(), TableBuilder(), FootnoteBuilder(), LinkReferenceDefinitionBuilder(), LinkBuilder(), StrongBuilder(), EmphasisBuilder(), InlineCodeBuilder(), ParagraphBuilder()]
+        [HeadingBuilder(), SetextHeadingBuilder(), CodeBlockBuilder(), IndentedCodeBlockBuilder(), BlockQuoteBuilder(), ThematicBreakBuilder(), OrderedListBuilder(), UnorderedListBuilder(), ImageBuilder(), HTMLBuilder(), EntityBuilder(), StrikethroughBuilder(), AutoLinkBuilder(), BareAutoLinkBuilder(), TableBuilder(), FootnoteBuilder(), LinkReferenceDefinitionBuilder(), LinkBuilder(), ParagraphBuilder()]
     }
     public var expressionBuilders: [CodeExpressionBuilder] { [] }
     public var rootElement: any CodeElement { Element.root }
