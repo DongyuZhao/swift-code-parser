@@ -544,4 +544,43 @@ tilde
             XCTAssertTrue(elements.contains(e), "Missing \(e)")
         }
     }
+
+    func testMarkdownInlineFormula() {
+        let parser = SwiftParser()
+        let source = "Inline \\(a+b\\) text"
+        let result = parser.parse(source, language: MarkdownLanguage())
+        XCTAssertEqual(result.errors.count, 0)
+        let para = result.root.children.first
+        XCTAssertEqual(para?.children.count, 3)
+        let formula = para?.children[1] as? MarkdownFormulaNode
+        XCTAssertEqual(formula?.value, "a+b")
+    }
+
+    func testMarkdownDollarFormula() {
+        let parser = SwiftParser()
+        let source = "Equation $x+y$ here"
+        let result = parser.parse(source, language: MarkdownLanguage())
+        XCTAssertEqual(result.errors.count, 0)
+        let para = result.root.children.first
+        let formula = para?.children[1] as? MarkdownFormulaNode
+        XCTAssertEqual(formula?.value, "x+y")
+    }
+
+    func testMarkdownBracketFormula() {
+        let parser = SwiftParser()
+        let source = "\\[x+y\\]"
+        let result = parser.parse(source, language: MarkdownLanguage())
+        XCTAssertEqual(result.errors.count, 0)
+        let formula = result.root.children.first?.children.first as? MarkdownFormulaNode
+        XCTAssertEqual(formula?.value, "x+y")
+    }
+
+    func testMarkdownMultiLineFormula() {
+        let parser = SwiftParser()
+        let source = "$$x\\ny$$"
+        let result = parser.parse(source, language: MarkdownLanguage())
+        XCTAssertEqual(result.errors.count, 0)
+        let formula = result.root.children.first?.children.first as? MarkdownFormulaNode
+        XCTAssertEqual(formula?.value, "x\\ny")
+    }
 }

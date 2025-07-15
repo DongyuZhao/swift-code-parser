@@ -14,6 +14,7 @@ public struct MarkdownLanguage: CodeLanguage {
         case strong
         case codeBlock
         case inlineCode
+        case formula
         case link
         case blockQuote
         case thematicBreak
@@ -39,6 +40,11 @@ public struct MarkdownLanguage: CodeLanguage {
         case underscore(Range<String.Index>)
         case plus(Range<String.Index>)
         case backtick(Range<String.Index>)
+        case dollar(Range<String.Index>)
+        case backslashLParen(Range<String.Index>)
+        case backslashRParen(Range<String.Index>)
+        case backslashLBracket(Range<String.Index>)
+        case backslashRBracket(Range<String.Index>)
         case greaterThan(Range<String.Index>)
         case exclamation(Range<String.Index>)
         case tilde(Range<String.Index>)
@@ -66,6 +72,11 @@ public struct MarkdownLanguage: CodeLanguage {
             case .underscore: return "_"
             case .plus: return "+"
             case .backtick: return "`"
+            case .dollar: return "$"
+            case .backslashLParen: return "\\("
+            case .backslashRParen: return "\\)"
+            case .backslashLBracket: return "\\["
+            case .backslashRBracket: return "\\]"
             case .greaterThan: return ">"
             case .exclamation: return "!"
             case .tilde: return "~"
@@ -95,6 +106,11 @@ public struct MarkdownLanguage: CodeLanguage {
             case .underscore: return "_"
             case .plus: return "+"
             case .backtick: return "`"
+            case .dollar: return "$"
+            case .backslashLParen: return "\\("
+            case .backslashRParen: return "\\)"
+            case .backslashLBracket: return "\\["
+            case .backslashRBracket: return "\\]"
             case .greaterThan: return ">"
             case .exclamation: return "!"
             case .tilde: return "~"
@@ -107,6 +123,11 @@ public struct MarkdownLanguage: CodeLanguage {
             case .rbracket: return "]"
             case .lparen: return "("
             case .rparen: return ")"
+            case .dollar: return "$"
+            case .backslashLParen: return "\\("
+            case .backslashRParen: return "\\)"
+            case .backslashLBracket: return "\\["
+            case .backslashRBracket: return "\\]"
             case .dot: return "."
             case .number(let s, _): return s
             case .hardBreak, .newline: return "\n"
@@ -117,7 +138,8 @@ public struct MarkdownLanguage: CodeLanguage {
         public var range: Range<String.Index> {
             switch self {
             case .text(_, let r), .hash(let r), .dash(let r), .star(let r), .underscore(let r),
-                 .plus(let r), .backtick(let r), .greaterThan(let r), .exclamation(let r), .tilde(let r),
+                 .plus(let r), .backtick(let r), .dollar(let r), .backslashLParen(let r), .backslashRParen(let r),
+                 .backslashLBracket(let r), .backslashRBracket(let r), .greaterThan(let r), .exclamation(let r), .tilde(let r),
                  .equal(let r), .lessThan(let r), .ampersand(let r), .semicolon(let r), .pipe(let r),
                  .lbracket(let r), .rbracket(let r), .lparen(let r), .rparen(let r), .dot(let r),
                  .number(_, let r), .hardBreak(let r), .newline(let r), .eof(let r):
@@ -142,7 +164,13 @@ public struct MarkdownLanguage: CodeLanguage {
                     if index < input.endIndex {
                         let escaped = input[index]
                         advance()
-                        add(.text(String(escaped), start..<index))
+                        switch escaped {
+                        case "(": add(.backslashLParen(start..<index))
+                        case ")": add(.backslashRParen(start..<index))
+                        case "[": add(.backslashLBracket(start..<index))
+                        case "]": add(.backslashRBracket(start..<index))
+                        default: add(.text(String(escaped), start..<index))
+                        }
                     } else {
                         add(.text("\\", start..<index))
                     }
@@ -170,6 +198,10 @@ public struct MarkdownLanguage: CodeLanguage {
                     let start = index
                     advance()
                     add(.backtick(start..<index))
+                } else if ch == "$" {
+                    let start = index
+                    advance()
+                    add(.dollar(start..<index))
                 } else if ch == ">" {
                     let start = index
                     advance()
@@ -254,7 +286,7 @@ public struct MarkdownLanguage: CodeLanguage {
                     let start = index
                     while index < input.endIndex &&
                           input[index] != "\n" &&
-                          !"#-*+_`[].()<>!~|;&=\\".contains(input[index]) &&
+                          !"#-*+_`[].()<>!~|;&=\\$".contains(input[index]) &&
                           !input[index].isNumber {
                         advance()
                     }
@@ -1270,6 +1302,70 @@ public struct MarkdownLanguage: CodeLanguage {
         }
     }
 
+    public class FormulaBlockBuilder: CodeElementBuilder {
+        public init() {}
+        public func accept(context: CodeContext, token: any CodeToken) -> Bool {
+            guard let tok = token as? Token else { return false }
+            if case .dollar = tok {
+                if context.index + 1 < context.tokens.count,
+                   let next = context.tokens[context.index + 1] as? Token,
+                   case .dollar = next {
+                    if context.index == 0 || (context.tokens[context.index - 1] as? Token)?.kindDescription == "newline" {
+                        return true
+                    }
+                }
+            } else if case .backslashLBracket = tok {
+                if context.index == 0 || (context.tokens[context.index - 1] as? Token)?.kindDescription == "newline" {
+                    return true
+                }
+            }
+            return false
+        }
+        public func build(context: inout CodeContext) {
+            guard let tok = context.tokens[context.index] as? Token else { return }
+            if case .dollar = tok {
+                context.index += 2
+                var formula = ""
+                while context.index + 1 < context.tokens.count {
+                    if let t1 = context.tokens[context.index] as? Token,
+                       let t2 = context.tokens[context.index + 1] as? Token,
+                       t1.kindDescription == "$" && t2.kindDescription == "$" {
+                        context.index += 2
+                        if context.index < context.tokens.count, let nl = context.tokens[context.index] as? Token, case .newline = nl {
+                            context.index += 1
+                        }
+                        context.currentNode.addChild(MarkdownFormulaNode(value: formula))
+                        return
+                    } else if let t = context.tokens[context.index] as? Token {
+                        formula += t.text
+                        context.index += 1
+                    } else { context.index += 1 }
+                }
+                context.currentNode.addChild(MarkdownFormulaNode(value: formula))
+            } else {
+                // \[ \]
+                context.index += 1
+                var formula = ""
+                while context.index < context.tokens.count {
+                    if let t = context.tokens[context.index] as? Token {
+                        if case .backslashRBracket = t {
+                            context.index += 1
+                            if context.index < context.tokens.count, let nl = context.tokens[context.index] as? Token, case .newline = nl {
+                                context.index += 1
+                            }
+                            context.currentNode.addChild(MarkdownFormulaNode(value: formula))
+                            return
+                        } else {
+                            formula += t.text
+                            context.index += 1
+                        }
+                    } else { context.index += 1 }
+                }
+                context.currentNode.addChild(MarkdownFormulaNode(value: formula))
+            }
+        }
+    }
+
     // Helper to parse inline content supporting nested emphasis/strong
     static func parseInline(context: inout CodeContext, closing: Token, count: Int) -> ([CodeNode], Bool) {
         var nodes: [CodeNode] = []
@@ -1348,6 +1444,85 @@ public struct MarkdownLanguage: CodeLanguage {
                             break
                         } else {
                             codeText += t.text
+                            context.index += 1
+                        }
+                    } else { context.index += 1 }
+                }
+                continue
+            }
+
+            // Inline formula with \( \)
+            if tok.kindDescription == "\\(" {
+                flush()
+                context.index += 1
+                var formula = ""
+                while context.index < context.tokens.count {
+                    if let t = context.tokens[context.index] as? Token {
+                        if t.kindDescription == "\\)" {
+                            context.index += 1
+                            nodes.append(MarkdownFormulaNode(value: formula))
+                            break
+                        } else {
+                            formula += t.text
+                            context.index += 1
+                        }
+                    } else { context.index += 1 }
+                }
+                continue
+            }
+
+            // Inline formula with $ or $$
+            if tok.kindDescription == "$" {
+                flush()
+                if context.index + 1 < context.tokens.count,
+                   let next = context.tokens[context.index + 1] as? Token,
+                   next.kindDescription == "$" {
+                    context.index += 2
+                    var formula = ""
+                    while context.index + 1 < context.tokens.count {
+                        if let t1 = context.tokens[context.index] as? Token,
+                           let t2 = context.tokens[context.index + 1] as? Token,
+                           t1.kindDescription == "$" && t2.kindDescription == "$" {
+                            context.index += 2
+                            nodes.append(MarkdownFormulaNode(value: formula))
+                            break
+                        } else if let t = context.tokens[context.index] as? Token {
+                            formula += t.text
+                            context.index += 1
+                        } else { context.index += 1 }
+                    }
+                    continue
+                } else {
+                    context.index += 1
+                    var formula = ""
+                    while context.index < context.tokens.count {
+                        if let t = context.tokens[context.index] as? Token,
+                           t.kindDescription == "$" {
+                            context.index += 1
+                            nodes.append(MarkdownFormulaNode(value: formula))
+                            break
+                        } else if let t = context.tokens[context.index] as? Token {
+                            formula += t.text
+                            context.index += 1
+                        } else { context.index += 1 }
+                    }
+                    continue
+                }
+            }
+
+            // Inline formula with \[ \]
+            if tok.kindDescription == "\\[" {
+                flush()
+                context.index += 1
+                var formula = ""
+                while context.index < context.tokens.count {
+                    if let t = context.tokens[context.index] as? Token {
+                        if t.kindDescription == "\\]" {
+                            context.index += 1
+                            nodes.append(MarkdownFormulaNode(value: formula))
+                            break
+                        } else {
+                            formula += t.text
                             context.index += 1
                         }
                     } else { context.index += 1 }
@@ -1545,7 +1720,7 @@ public struct MarkdownLanguage: CodeLanguage {
             while context.index < context.tokens.count {
                 guard let tok = context.tokens[context.index] as? Token else { context.index += 1; continue }
                 switch tok {
-                case .text, .star, .underscore, .backtick:
+                case .text, .star, .underscore, .backtick, .dollar, .backslashLParen, .backslashRParen, .backslashLBracket, .backslashRBracket:
                     tokens.append(tok)
                     context.index += 1
                 case .hardBreak:
@@ -1589,7 +1764,7 @@ public struct MarkdownLanguage: CodeLanguage {
 
     public var tokenizer: CodeTokenizer { Tokenizer() }
     public var builders: [CodeElementBuilder] {
-        [HeadingBuilder(), SetextHeadingBuilder(), CodeBlockBuilder(), IndentedCodeBlockBuilder(), BlockQuoteBuilder(), ThematicBreakBuilder(), OrderedListBuilder(), UnorderedListBuilder(), ImageBuilder(), HTMLBlockBuilder(), HTMLBuilder(), EntityBuilder(), StrikethroughBuilder(), AutoLinkBuilder(), BareAutoLinkBuilder(), TableBuilder(), FootnoteBuilder(), LinkReferenceDefinitionBuilder(), LinkBuilder(), ParagraphBuilder()]
+        [HeadingBuilder(), SetextHeadingBuilder(), CodeBlockBuilder(), IndentedCodeBlockBuilder(), BlockQuoteBuilder(), ThematicBreakBuilder(), OrderedListBuilder(), UnorderedListBuilder(), ImageBuilder(), HTMLBlockBuilder(), HTMLBuilder(), EntityBuilder(), StrikethroughBuilder(), AutoLinkBuilder(), BareAutoLinkBuilder(), TableBuilder(), FootnoteBuilder(), LinkReferenceDefinitionBuilder(), FormulaBlockBuilder(), LinkBuilder(), ParagraphBuilder()]
     }
     public var expressionBuilders: [CodeExpressionBuilder] { [] }
     public var rootElement: any CodeElement { Element.root }

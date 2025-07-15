@@ -286,3 +286,9 @@ public final class MarkdownFootnoteReferenceNode: CodeNode {
         return hasher.finalize()
     }
 }
+
+public final class MarkdownFormulaNode: CodeNode {
+    public init(value: String = "", range: Range<String.Index>? = nil) {
+        super.init(type: MarkdownLanguage.Element.formula, value: value, range: range)
+    }
+}
