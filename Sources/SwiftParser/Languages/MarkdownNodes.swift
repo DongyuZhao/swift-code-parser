@@ -175,6 +175,24 @@ public final class MarkdownTableNode: CodeNode {
     }
 }
 
+public final class MarkdownTableHeaderNode: CodeNode {
+    public init(value: String = "", range: Range<String.Index>? = nil) {
+        super.init(type: MarkdownLanguage.Element.tableHeader, value: value, range: range)
+    }
+}
+
+public final class MarkdownTableRowNode: CodeNode {
+    public init(value: String = "", range: Range<String.Index>? = nil) {
+        super.init(type: MarkdownLanguage.Element.tableRow, value: value, range: range)
+    }
+}
+
+public final class MarkdownTableCellNode: CodeNode {
+    public init(value: String = "", range: Range<String.Index>? = nil) {
+        super.init(type: MarkdownLanguage.Element.tableCell, value: value, range: range)
+    }
+}
+
 public final class MarkdownAutoLinkNode: CodeNode {
     public let url: String
 
