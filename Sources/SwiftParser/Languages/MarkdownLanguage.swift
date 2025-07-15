@@ -875,7 +875,7 @@ public struct MarkdownLanguage: CodeLanguage {
                     } else { context.index += 1 }
                 }
             }
-            context.currentNode.addChild(MarkdownImageNode(value: alt + "|" + url))
+            context.currentNode.addChild(MarkdownImageNode(alt: alt, url: url))
         }
     }
 
@@ -984,7 +984,7 @@ public struct MarkdownLanguage: CodeLanguage {
                     else { text += tok.text; context.index += 1 }
                 } else { context.index += 1 }
             }
-            context.currentNode.addChild(MarkdownAutoLinkNode(value: text))
+            context.currentNode.addChild(MarkdownAutoLinkNode(url: text))
         }
     }
 
@@ -1015,7 +1015,7 @@ public struct MarkdownLanguage: CodeLanguage {
             guard let m = Self.regex.firstMatch(in: text, range: range) else { return }
             let endPos = context.input.index(start, offsetBy: m.range.length)
             let url = String(context.input[start..<endPos])
-            context.currentNode.addChild(MarkdownAutoLinkNode(value: url))
+            context.currentNode.addChild(MarkdownAutoLinkNode(url: url))
             while context.index < context.tokens.count {
                 if let t = context.tokens[context.index] as? Token, t.range.upperBound <= endPos {
                     context.index += 1
@@ -1337,18 +1337,19 @@ public struct MarkdownLanguage: CodeLanguage {
         }
         public func build(context: inout CodeContext) {
             context.index += 1
-            var text = ""
+            var textTokens: [Token] = []
             while context.index < context.tokens.count {
                 if let tok = context.tokens[context.index] as? Token {
                     if case .rbracket = tok {
                         context.index += 1
                         break
                     } else {
-                        text += tok.text
+                        textTokens.append(tok)
                         context.index += 1
                     }
                 } else { context.index += 1 }
             }
+            let textNodes = MarkdownLanguage.parseInlineTokens(textTokens, input: context.input)
             var url = ""
             if context.index < context.tokens.count, let lparen = context.tokens[context.index] as? Token, case .lparen = lparen {
                 context.index += 1
@@ -1374,7 +1375,7 @@ public struct MarkdownLanguage: CodeLanguage {
                     url = ref
                 }
             }
-            let node = MarkdownLinkNode(value: text + "|" + url)
+            let node = MarkdownLinkNode(text: textNodes, url: url)
             context.currentNode.addChild(node)
         }
     }

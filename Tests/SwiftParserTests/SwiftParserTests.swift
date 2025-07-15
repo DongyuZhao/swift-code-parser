@@ -156,6 +156,9 @@ final class SwiftParserTests: XCTestCase {
         let result = parser.parse(source, language: MarkdownLanguage())
         XCTAssertEqual(result.errors.count, 0)
         XCTAssertEqual(result.root.children.first?.type as? MarkdownLanguage.Element, .link)
+        let link = result.root.children.first as? MarkdownLinkNode
+        XCTAssertEqual(link?.url, "url")
+        XCTAssertEqual((link?.text.first as? MarkdownTextNode)?.value, "title")
     }
 
     func testMarkdownAutoLinkWithoutBrackets() {
@@ -164,7 +167,8 @@ final class SwiftParserTests: XCTestCase {
         let result = parser.parse(source, language: MarkdownLanguage())
         XCTAssertEqual(result.errors.count, 0)
         XCTAssertEqual(result.root.children.first?.type as? MarkdownLanguage.Element, .autoLink)
-        XCTAssertEqual(result.root.children.first?.value, "https://example.com")
+        let auto = result.root.children.first as? MarkdownAutoLinkNode
+        XCTAssertEqual(auto?.url, "https://example.com")
     }
 
     func testMarkdownReferenceLink() {
@@ -189,6 +193,9 @@ final class SwiftParserTests: XCTestCase {
         let result = parser.parse(source, language: MarkdownLanguage())
         XCTAssertEqual(result.errors.count, 0)
         XCTAssertEqual(result.root.children.first?.type as? MarkdownLanguage.Element, .image)
+        let image = result.root.children.first as? MarkdownImageNode
+        XCTAssertEqual(image?.alt, "alt")
+        XCTAssertEqual(image?.url, "url")
     }
 
     func testMarkdownEscapedCharacters() {
