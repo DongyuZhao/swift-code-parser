@@ -420,7 +420,6 @@ tilde
             .emphasis, .strong, .strikethrough, .inlineCode,
             .link, .image, .blockQuote, .html, .entity
         ]
-        print("elements", elements)
         for e in expected {
             XCTAssertTrue(elements.contains(e), "Missing \(e)")
         }
