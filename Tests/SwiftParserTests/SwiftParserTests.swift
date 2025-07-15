@@ -58,6 +58,7 @@ final class SwiftParserTests: XCTestCase {
         XCTAssertEqual(list?.type as? MarkdownLanguage.Element, .unorderedList)
         XCTAssertEqual(list?.children.count, 2)
         XCTAssertEqual(list?.children.first?.type as? MarkdownLanguage.Element, .listItem)
+        XCTAssertEqual((list as? MarkdownUnorderedListNode)?.level, 1)
     }
 
     func testMarkdownOrderedList() {
@@ -69,6 +70,7 @@ final class SwiftParserTests: XCTestCase {
         XCTAssertEqual(list?.type as? MarkdownLanguage.Element, .orderedList)
         XCTAssertEqual(list?.children.count, 2)
         XCTAssertEqual(list?.children.first?.type as? MarkdownLanguage.Element, .orderedListItem)
+        XCTAssertEqual((list as? MarkdownOrderedListNode)?.level, 1)
     }
 
     func testMarkdownNestedList() {
@@ -81,6 +83,8 @@ final class SwiftParserTests: XCTestCase {
         XCTAssertEqual(list?.children.count, 2)
         let sub = list?.children.first?.children.first
         XCTAssertEqual(sub?.type as? MarkdownLanguage.Element, .unorderedList)
+        XCTAssertEqual((list as? MarkdownUnorderedListNode)?.level, 1)
+        XCTAssertEqual((sub as? MarkdownUnorderedListNode)?.level, 2)
     }
 
     func testMarkdownLooseList() {

@@ -47,15 +47,31 @@ public final class MarkdownOrderedListItemNode: CodeNode {
     }
 }
 
-public final class MarkdownUnorderedListNode: CodeNode {
-    public init(value: String = "", range: Range<String.Index>? = nil) {
-        super.init(type: MarkdownLanguage.Element.unorderedList, value: value, range: range)
+public class MarkdownListNode: CodeNode {
+    public let level: Int
+    public init(type: any CodeElement, value: String = "", level: Int, range: Range<String.Index>? = nil) {
+        self.level = level
+        super.init(type: type, value: value, range: range)
+    }
+    public override var id: Int {
+        var hasher = Hasher()
+        hasher.combine(String(describing: type))
+        hasher.combine(value)
+        hasher.combine(level)
+        for child in children { hasher.combine(child.id) }
+        return hasher.finalize()
     }
 }
 
-public final class MarkdownOrderedListNode: CodeNode {
-    public init(value: String = "", range: Range<String.Index>? = nil) {
-        super.init(type: MarkdownLanguage.Element.orderedList, value: value, range: range)
+public final class MarkdownUnorderedListNode: MarkdownListNode {
+    public init(value: String = "", level: Int, range: Range<String.Index>? = nil) {
+        super.init(type: MarkdownLanguage.Element.unorderedList, value: value, level: level, range: range)
+    }
+}
+
+public final class MarkdownOrderedListNode: MarkdownListNode {
+    public init(value: String = "", level: Int, range: Range<String.Index>? = nil) {
+        super.init(type: MarkdownLanguage.Element.orderedList, value: value, level: level, range: range)
     }
 }
 

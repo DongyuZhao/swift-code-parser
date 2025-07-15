@@ -451,12 +451,12 @@ public struct MarkdownLanguage: CodeLanguage {
         }
 
         public func build(context: inout CodeContext) {
-            func parseList(_ level: Int) -> CodeNode {
-                let list = MarkdownUnorderedListNode(value: "")
+            func parseList(_ indent: Int, _ depth: Int) -> CodeNode {
+                let list = MarkdownUnorderedListNode(value: "", level: depth)
                 var isLoose = false
                 while context.index < context.tokens.count {
-                    guard let bullet = context.tokens[context.index] as? Token, isBullet(bullet), lineIndent(before: context.index, in: context) == level else { break }
-                    let (node, loose) = parseItem(level)
+                    guard let bullet = context.tokens[context.index] as? Token, isBullet(bullet), lineIndent(before: context.index, in: context) == indent else { break }
+                    let (node, loose) = parseItem(indent, depth)
                     if loose { isLoose = true }
                     list.addChild(node)
                 }
@@ -464,7 +464,7 @@ public struct MarkdownLanguage: CodeLanguage {
                 return list
             }
 
-            func parseItem(_ level: Int) -> (CodeNode, Bool) {
+            func parseItem(_ indent: Int, _ depth: Int) -> (CodeNode, Bool) {
                 var loose = false
                 // skip bullet and following whitespace
                 context.index += 1
@@ -492,18 +492,18 @@ public struct MarkdownLanguage: CodeLanguage {
                             spaces = s.count
                             context.index += 1
                         }
-                        if context.index < context.tokens.count, let next = context.tokens[context.index] as? Token, isBullet(next), spaces > level {
-                            let sub = parseList(spaces)
+                        if context.index < context.tokens.count, let next = context.tokens[context.index] as? Token, isBullet(next), spaces > indent {
+                            let sub = parseList(spaces, depth + 1)
                             node.addChild(sub)
-                            if context.index < context.tokens.count, let nextTok = context.tokens[context.index] as? Token, isBullet(nextTok), (lineIndent(before: context.index, in: context) ?? 0) <= level {
+                            if context.index < context.tokens.count, let nextTok = context.tokens[context.index] as? Token, isBullet(nextTok), (lineIndent(before: context.index, in: context) ?? 0) <= indent {
                                 break itemLoop
                             }
-                        } else if context.index < context.tokens.count, let next = context.tokens[context.index] as? Token, isBullet(next), spaces == level {
+                        } else if context.index < context.tokens.count, let next = context.tokens[context.index] as? Token, isBullet(next), spaces == indent {
                             context.index = start
                             break itemLoop
-                        } else if spaces > level {
+                        } else if spaces > indent {
                             text += "\n"
-                        } else if spaces < level {
+                        } else if spaces < indent {
                             context.index = start
                             break itemLoop
                         } else {
@@ -522,7 +522,7 @@ public struct MarkdownLanguage: CodeLanguage {
             }
 
             if let ind = lineIndent(before: context.index, in: context) {
-                let list = parseList(ind)
+                let list = parseList(ind, 1)
                 context.currentNode.addChild(list)
             }
         }
@@ -559,15 +559,15 @@ public struct MarkdownLanguage: CodeLanguage {
         }
 
         public func build(context: inout CodeContext) {
-            func parseList(_ level: Int) -> CodeNode {
-                let list = MarkdownOrderedListNode(value: "")
+            func parseList(_ indent: Int, _ depth: Int) -> CodeNode {
+                let list = MarkdownOrderedListNode(value: "", level: depth)
                 var isLoose = false
                 while context.index < context.tokens.count {
                     guard context.index + 1 < context.tokens.count,
                           let num = context.tokens[context.index] as? Token, case .number = num,
                           let dot = context.tokens[context.index + 1] as? Token, case .dot = dot,
-                          lineIndent(before: context.index, in: context) == level else { break }
-                    let (node, loose) = parseItem(level)
+                          lineIndent(before: context.index, in: context) == indent else { break }
+                    let (node, loose) = parseItem(indent, depth)
                     if loose { isLoose = true }
                     list.addChild(node)
                 }
@@ -575,7 +575,7 @@ public struct MarkdownLanguage: CodeLanguage {
                 return list
             }
 
-            func parseItem(_ level: Int) -> (CodeNode, Bool) {
+            func parseItem(_ indent: Int, _ depth: Int) -> (CodeNode, Bool) {
                 var loose = false
                 context.index += 2
                 if context.index < context.tokens.count,
@@ -604,24 +604,24 @@ public struct MarkdownLanguage: CodeLanguage {
                         if context.index + 1 < context.tokens.count,
                            let nextNum = context.tokens[context.index] as? Token, case .number = nextNum,
                            let dot = context.tokens[context.index + 1] as? Token, case .dot = dot,
-                           spaces > level {
-                            let sub = parseList(spaces)
+                           spaces > indent {
+                            let sub = parseList(spaces, depth + 1)
                             node.addChild(sub)
                             if context.index + 1 < context.tokens.count,
                                let nextBullet = context.tokens[context.index] as? Token, case .number = nextBullet,
                                let ndot = context.tokens[context.index + 1] as? Token, case .dot = ndot,
-                               (lineIndent(before: context.index, in: context) ?? 0) <= level {
+                               (lineIndent(before: context.index, in: context) ?? 0) <= indent {
                                 break itemLoop
                             }
                         } else if context.index + 1 < context.tokens.count,
                                   let nextNum = context.tokens[context.index] as? Token, case .number = nextNum,
                                   let dot = context.tokens[context.index + 1] as? Token, case .dot = dot,
-                                  spaces == level {
+                                  spaces == indent {
                             context.index = start
                             break itemLoop
-                        } else if spaces > level {
+                        } else if spaces > indent {
                             text += "\n"
-                        } else if spaces < level {
+                        } else if spaces < indent {
                             context.index = start
                             break itemLoop
                         } else {
@@ -640,7 +640,7 @@ public struct MarkdownLanguage: CodeLanguage {
             }
 
             if let ind = lineIndent(before: context.index, in: context) {
-                let list = parseList(ind)
+                let list = parseList(ind, 1)
                 context.currentNode.addChild(list)
             }
         }
