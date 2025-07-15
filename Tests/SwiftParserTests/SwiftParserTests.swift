@@ -100,9 +100,11 @@ final class SwiftParserTests: XCTestCase {
         let source = "*em* **strong**"
         let result = parser.parse(source, language: MarkdownLanguage())
         XCTAssertEqual(result.errors.count, 0)
-        XCTAssertEqual(result.root.children.count, 3)
-        XCTAssertEqual(result.root.children[0].type as? MarkdownLanguage.Element, .emphasis)
-        XCTAssertEqual(result.root.children[2].type as? MarkdownLanguage.Element, .strong)
+        XCTAssertEqual(result.root.children.count, 1)
+        let para = result.root.children.first
+        XCTAssertEqual(para?.type as? MarkdownLanguage.Element, .paragraph)
+        XCTAssertEqual(para?.children.first?.type as? MarkdownLanguage.Element, .emphasis)
+        XCTAssertEqual(para?.children.last?.type as? MarkdownLanguage.Element, .strong)
     }
 
     func testMarkdownNestedEmphasis() {
@@ -111,7 +113,9 @@ final class SwiftParserTests: XCTestCase {
         let result = parser.parse(source, language: MarkdownLanguage())
         XCTAssertEqual(result.errors.count, 0)
         XCTAssertEqual(result.root.children.count, 1)
-        let em = result.root.children.first
+        let para = result.root.children.first
+        XCTAssertEqual(para?.type as? MarkdownLanguage.Element, .paragraph)
+        let em = para?.children.first
         XCTAssertEqual(em?.type as? MarkdownLanguage.Element, .emphasis)
         XCTAssertEqual(em?.children.count, 3)
         XCTAssertEqual(em?.children[1].type as? MarkdownLanguage.Element, .strong)
@@ -123,7 +127,9 @@ final class SwiftParserTests: XCTestCase {
         let result = parser.parse(source, language: MarkdownLanguage())
         XCTAssertEqual(result.errors.count, 0)
         XCTAssertEqual(result.root.children.first?.type as? MarkdownLanguage.Element, .codeBlock)
-        XCTAssertEqual(result.root.children.last?.type as? MarkdownLanguage.Element, .inlineCode)
+        let para = result.root.children.last
+        XCTAssertEqual(para?.type as? MarkdownLanguage.Element, .paragraph)
+        XCTAssertEqual(para?.children.last?.type as? MarkdownLanguage.Element, .inlineCode)
     }
 
     func testMarkdownFencedCodeBlockWithInfo() {
