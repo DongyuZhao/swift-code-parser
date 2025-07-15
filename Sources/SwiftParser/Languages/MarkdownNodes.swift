@@ -160,8 +160,20 @@ public final class MarkdownImageNode: CodeNode {
 }
 
 public final class MarkdownHtmlNode: CodeNode {
-    public init(value: String = "", range: Range<String.Index>? = nil) {
+    public let closed: Bool
+
+    public init(value: String = "", closed: Bool = false, range: Range<String.Index>? = nil) {
+        self.closed = closed
         super.init(type: MarkdownLanguage.Element.html, value: value, range: range)
+    }
+
+    public override var id: Int {
+        var hasher = Hasher()
+        hasher.combine(String(describing: type))
+        hasher.combine(value)
+        hasher.combine(closed)
+        for child in children { hasher.combine(child.id) }
+        return hasher.finalize()
     }
 }
 
