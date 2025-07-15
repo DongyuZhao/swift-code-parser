@@ -88,8 +88,16 @@ public final class MarkdownStrongNode: CodeNode {
 }
 
 public final class MarkdownCodeBlockNode: CodeNode {
-    public init(value: String = "", range: Range<String.Index>? = nil) {
-        super.init(type: MarkdownLanguage.Element.codeBlock, value: value, range: range)
+    public let lang: String?
+
+    public var content: String {
+        get { value }
+        set { value = newValue }
+    }
+
+    public init(lang: String? = nil, content: String = "", range: Range<String.Index>? = nil) {
+        self.lang = lang
+        super.init(type: MarkdownLanguage.Element.codeBlock, value: content, range: range)
     }
 }
 

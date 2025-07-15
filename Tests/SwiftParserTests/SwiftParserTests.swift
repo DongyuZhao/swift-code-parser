@@ -126,7 +126,10 @@ final class SwiftParserTests: XCTestCase {
         let source = "```\ncode\n```\ninline `code`"
         let result = parser.parse(source, language: MarkdownLanguage())
         XCTAssertEqual(result.errors.count, 0)
-        XCTAssertEqual(result.root.children.first?.type as? MarkdownLanguage.Element, .codeBlock)
+        let block = result.root.children.first as? MarkdownCodeBlockNode
+        XCTAssertEqual(block?.type as? MarkdownLanguage.Element, .codeBlock)
+        XCTAssertNil(block?.lang)
+        XCTAssertEqual(block?.content, "code\n")
         let para = result.root.children.last
         XCTAssertEqual(para?.type as? MarkdownLanguage.Element, .paragraph)
         XCTAssertEqual(para?.children.last?.type as? MarkdownLanguage.Element, .inlineCode)
@@ -138,7 +141,10 @@ final class SwiftParserTests: XCTestCase {
         let result = parser.parse(source, language: MarkdownLanguage())
         XCTAssertEqual(result.errors.count, 0)
         XCTAssertEqual(result.root.children.count, 1)
-        XCTAssertEqual(result.root.children.first?.type as? MarkdownLanguage.Element, .codeBlock)
+        let block = result.root.children.first as? MarkdownCodeBlockNode
+        XCTAssertEqual(block?.type as? MarkdownLanguage.Element, .codeBlock)
+        XCTAssertEqual(block?.lang, "swift")
+        XCTAssertEqual(block?.content, "print(\"hi\")\n")
     }
 
     func testMarkdownTildeCodeBlock() {
@@ -147,7 +153,21 @@ final class SwiftParserTests: XCTestCase {
         let result = parser.parse(source, language: MarkdownLanguage())
         XCTAssertEqual(result.errors.count, 0)
         XCTAssertEqual(result.root.children.count, 1)
-        XCTAssertEqual(result.root.children.first?.type as? MarkdownLanguage.Element, .codeBlock)
+        let block = result.root.children.first as? MarkdownCodeBlockNode
+        XCTAssertEqual(block?.type as? MarkdownLanguage.Element, .codeBlock)
+        XCTAssertNil(block?.lang)
+        XCTAssertEqual(block?.content, "print(\"hi\")\n")
+    }
+
+    func testMarkdownMultiLineFencedCodeBlock() {
+        let parser = SwiftParser()
+        let source = "```swift\nprint(\"hi\")\nprint(\"bye\")\n```"
+        let result = parser.parse(source, language: MarkdownLanguage())
+        XCTAssertEqual(result.errors.count, 0)
+        XCTAssertEqual(result.root.children.count, 1)
+        let block = result.root.children.first as? MarkdownCodeBlockNode
+        XCTAssertEqual(block?.lang, "swift")
+        XCTAssertEqual(block?.content, "print(\"hi\")\nprint(\"bye\")\n")
     }
 
     func testMarkdownLink() {

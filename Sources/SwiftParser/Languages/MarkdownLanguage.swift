@@ -706,15 +706,23 @@ public struct MarkdownLanguage: CodeLanguage {
                 fenceLength += 1
                 context.index += 1
             }
-            // skip info string until end of line
+            // capture info string until end of line and trim whitespace
+            var info = ""
             while context.index < context.tokens.count {
-                if let tok = context.tokens[context.index] as? Token, case .newline = tok {
-                    context.index += 1
-                    break
+                if let tok = context.tokens[context.index] as? Token {
+                    if case .newline = tok {
+                        context.index += 1
+                        break
+                    } else {
+                        info += tok.text
+                        context.index += 1
+                    }
                 } else {
                     context.index += 1
                 }
             }
+            info = info.trimmingCharacters(in: .whitespaces)
+            let lang = info.split(whereSeparator: { $0.isWhitespace }).first.map(String.init)
 
             let blockStart = context.index
             var text = ""
@@ -730,7 +738,7 @@ public struct MarkdownLanguage: CodeLanguage {
                         if count >= fenceLength {
                             context.index = idx
                             if context.index < context.tokens.count, let nl = context.tokens[context.index] as? Token, case .newline = nl { context.index += 1 }
-                            context.currentNode.addChild(MarkdownCodeBlockNode(value: text))
+                            context.currentNode.addChild(MarkdownCodeBlockNode(lang: lang, content: text))
                             return
                         }
                     }
@@ -738,7 +746,7 @@ public struct MarkdownLanguage: CodeLanguage {
                     context.index += 1
                 } else { context.index += 1 }
             }
-            context.currentNode.addChild(MarkdownCodeBlockNode(value: text))
+            context.currentNode.addChild(MarkdownCodeBlockNode(lang: lang, content: text))
         }
     }
 
@@ -799,7 +807,7 @@ public struct MarkdownLanguage: CodeLanguage {
                             text += "\n" + String(s.dropFirst(4))
                             context.index += 1
                         } else {
-                            context.currentNode.addChild(MarkdownCodeBlockNode(value: text))
+                            context.currentNode.addChild(MarkdownCodeBlockNode(lang: nil, content: text))
                             return
                         }
                     case .text(let s, _):
@@ -811,7 +819,7 @@ public struct MarkdownLanguage: CodeLanguage {
                     }
                 } else { context.index += 1 }
             }
-            context.currentNode.addChild(MarkdownCodeBlockNode(value: text))
+            context.currentNode.addChild(MarkdownCodeBlockNode(lang: nil, content: text))
         }
     }
 
