@@ -831,17 +831,23 @@ public struct MarkdownLanguage: CodeLanguage {
             return false
         }
         public func build(context: inout CodeContext) {
-            if let tok = context.tokens[context.index] as? Token {
+            if context.index < context.tokens.count,
+               let tok = context.tokens[context.index] as? Token {
                 let kind = tok.kindDescription
                 while context.index < context.tokens.count {
-                    if let t = context.tokens[context.index] as? Token, t.kindDescription == kind {
+                    if let t = context.tokens[context.index] as? Token,
+                       t.kindDescription == kind {
                         context.index += 1
                     } else {
                         break
                     }
                 }
             }
-            if let nl = context.tokens[context.index] as? Token, case .newline = nl { context.index += 1 }
+            if context.index < context.tokens.count,
+               let nl = context.tokens[context.index] as? Token,
+               case .newline = nl {
+                context.index += 1
+            }
             context.currentNode.addChild(MarkdownThematicBreakNode(value: ""))
         }
     }
@@ -1061,7 +1067,13 @@ public struct MarkdownLanguage: CodeLanguage {
                         cell += tok.text
                         context.index += 1
                     }
-                } else { context.index += 1 }
+                } else {
+                    context.index += 1
+                }
+            }
+            if !cell.isEmpty || !cells.isEmpty {
+                cells.append(cell.trimmingCharacters(in: .whitespaces))
+                context.currentNode.addChild(MarkdownTableNode(value: cells.joined(separator: "|")))
             }
         }
     }
