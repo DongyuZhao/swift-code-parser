@@ -831,12 +831,14 @@ public struct MarkdownLanguage: CodeLanguage {
             return false
         }
         public func build(context: inout CodeContext) {
-            if context.index < context.tokens.count,
-               let tok = context.tokens[context.index] as? Token {
+            guard context.index < context.tokens.count else { return }
+            var consumed = false
+            if let tok = context.tokens[context.index] as? Token {
                 let kind = tok.kindDescription
                 while context.index < context.tokens.count {
                     if let t = context.tokens[context.index] as? Token,
                        t.kindDescription == kind {
+                        consumed = true
                         context.index += 1
                     } else {
                         break
@@ -846,6 +848,9 @@ public struct MarkdownLanguage: CodeLanguage {
             if context.index < context.tokens.count,
                let nl = context.tokens[context.index] as? Token,
                case .newline = nl {
+                context.index += 1
+            } else if !consumed {
+                // Ensure progress even if the line is malformed
                 context.index += 1
             }
             context.currentNode.addChild(MarkdownThematicBreakNode(value: ""))
@@ -1046,7 +1051,9 @@ public struct MarkdownLanguage: CodeLanguage {
             var cells: [String] = []
             var cell = ""
             context.index += 1 // skip first pipe
+            var progressed = false
             while context.index < context.tokens.count {
+                progressed = true
                 if let tok = context.tokens[context.index] as? Token {
                     switch tok {
                     case .pipe:
@@ -1074,6 +1081,9 @@ public struct MarkdownLanguage: CodeLanguage {
             if !cell.isEmpty || !cells.isEmpty {
                 cells.append(cell.trimmingCharacters(in: .whitespaces))
                 context.currentNode.addChild(MarkdownTableNode(value: cells.joined(separator: "|")))
+            }
+            if !progressed {
+                context.index += 1
             }
         }
     }
