@@ -311,4 +311,51 @@ final class SwiftParserTests: XCTestCase {
         _ = parser.parse("1 + 2", rootNode: root2)
         XCTAssertEqual(root2.children.count, 0)
     }
+
+    // MARK: - Additional CommonMark Tests
+
+    func testMarkdownThematicBreak() {
+        let parser = SwiftParser()
+        let source = "***\n"
+        let result = parser.parse(source, language: MarkdownLanguage())
+        XCTAssertEqual(result.errors.count, 0)
+        XCTAssertEqual(result.root.children.count, 1)
+        XCTAssertEqual(result.root.children.first?.type as? MarkdownLanguage.Element, .thematicBreak)
+    }
+
+    func testMarkdownHTMLBlock() {
+        let parser = SwiftParser()
+        let source = "<br>"
+        let result = parser.parse(source, language: MarkdownLanguage())
+        XCTAssertEqual(result.errors.count, 0)
+        XCTAssertEqual(result.root.children.first?.type as? MarkdownLanguage.Element, .html)
+        XCTAssertEqual(result.root.children.first?.value, "br")
+    }
+
+    func testMarkdownStrikethrough() {
+        let parser = SwiftParser()
+        let source = "~~strike~~"
+        let result = parser.parse(source, language: MarkdownLanguage())
+        XCTAssertEqual(result.errors.count, 0)
+        XCTAssertEqual(result.root.children.first?.type as? MarkdownLanguage.Element, .strikethrough)
+        XCTAssertEqual(result.root.children.first?.value, "strike")
+    }
+
+    func testMarkdownTable() {
+        let parser = SwiftParser()
+        let source = "|a|b|\n"
+        let result = parser.parse(source, language: MarkdownLanguage())
+        XCTAssertEqual(result.errors.count, 0)
+        XCTAssertEqual(result.root.children.first?.type as? MarkdownLanguage.Element, .table)
+        XCTAssertEqual(result.root.children.first?.value, "a|b")
+    }
+
+    func testMarkdownLinkReferenceDefinition() {
+        let parser = SwiftParser()
+        let source = "[ref]: http://example.com"
+        let result = parser.parse(source, language: MarkdownLanguage())
+        XCTAssertEqual(result.errors.count, 0)
+        XCTAssertEqual(result.root.children.first?.type as? MarkdownLanguage.Element, .linkReferenceDefinition)
+        XCTAssertEqual(result.root.children.first?.value, "ref|http://example.com")
+    }
 }
