@@ -1326,6 +1326,7 @@ public struct MarkdownLanguage: CodeLanguage {
             if case .dollar = tok {
                 context.index += 2
                 var formula = ""
+                var foundEnd = false
                 while context.index + 1 < context.tokens.count {
                     if let t1 = context.tokens[context.index] as? Token,
                        let t2 = context.tokens[context.index + 1] as? Token,
@@ -1335,17 +1336,22 @@ public struct MarkdownLanguage: CodeLanguage {
                             context.index += 1
                         }
                         context.currentNode.addChild(MarkdownFormulaNode(value: formula))
-                        return
+                        foundEnd = true
+                        break
                     } else if let t = context.tokens[context.index] as? Token {
                         formula += t.text
                         context.index += 1
                     } else { context.index += 1 }
                 }
-                context.currentNode.addChild(MarkdownFormulaNode(value: formula))
+                if !foundEnd {
+                    context.index = context.tokens.count
+                    context.currentNode.addChild(MarkdownFormulaNode(value: formula))
+                }
             } else {
                 // \[ \]
                 context.index += 1
                 var formula = ""
+                var foundEnd = false
                 while context.index < context.tokens.count {
                     if let t = context.tokens[context.index] as? Token {
                         if case .backslashRBracket = t {
@@ -1354,14 +1360,18 @@ public struct MarkdownLanguage: CodeLanguage {
                                 context.index += 1
                             }
                             context.currentNode.addChild(MarkdownFormulaNode(value: formula))
-                            return
+                            foundEnd = true
+                            break
                         } else {
                             formula += t.text
                             context.index += 1
                         }
                     } else { context.index += 1 }
                 }
-                context.currentNode.addChild(MarkdownFormulaNode(value: formula))
+                if !foundEnd {
+                    context.index = context.tokens.count
+                    context.currentNode.addChild(MarkdownFormulaNode(value: formula))
+                }
             }
         }
     }
@@ -1479,32 +1489,44 @@ public struct MarkdownLanguage: CodeLanguage {
                    next.kindDescription == "$" {
                     context.index += 2
                     var formula = ""
+                    var foundEnd = false
                     while context.index + 1 < context.tokens.count {
                         if let t1 = context.tokens[context.index] as? Token,
                            let t2 = context.tokens[context.index + 1] as? Token,
                            t1.kindDescription == "$" && t2.kindDescription == "$" {
                             context.index += 2
                             nodes.append(MarkdownFormulaNode(value: formula))
+                            foundEnd = true
                             break
                         } else if let t = context.tokens[context.index] as? Token {
                             formula += t.text
                             context.index += 1
                         } else { context.index += 1 }
                     }
+                    if !foundEnd {
+                        context.index = context.tokens.count
+                        nodes.append(MarkdownFormulaNode(value: formula))
+                    }
                     continue
                 } else {
                     context.index += 1
                     var formula = ""
+                    var foundEnd = false
                     while context.index < context.tokens.count {
                         if let t = context.tokens[context.index] as? Token,
                            t.kindDescription == "$" {
                             context.index += 1
                             nodes.append(MarkdownFormulaNode(value: formula))
+                            foundEnd = true
                             break
                         } else if let t = context.tokens[context.index] as? Token {
                             formula += t.text
                             context.index += 1
                         } else { context.index += 1 }
+                    }
+                    if !foundEnd {
+                        context.index = context.tokens.count
+                        nodes.append(MarkdownFormulaNode(value: formula))
                     }
                     continue
                 }
