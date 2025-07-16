@@ -29,6 +29,7 @@ public struct MarkdownLanguage: CodeLanguage {
         case linkReferenceDefinition
         case footnoteDefinition
         case footnoteReference
+        case formulaBlock
     }
 
     public enum Token: CodeToken {
@@ -53,6 +54,9 @@ public struct MarkdownLanguage: CodeLanguage {
         case rparen(Range<String.Index>)
         case dot(Range<String.Index>)
         case number(String, Range<String.Index>)
+        case doubleDollar(Range<String.Index>)
+        case backslashLbracket(Range<String.Index>)
+        case backslashRbracket(Range<String.Index>)
         case hardBreak(Range<String.Index>)
         case newline(Range<String.Index>)
         case eof(Range<String.Index>)
@@ -80,6 +84,9 @@ public struct MarkdownLanguage: CodeLanguage {
             case .rparen: return ")"
             case .dot: return "."
             case .number: return "number"
+            case .doubleDollar: return "$$"
+            case .backslashLbracket: return "\\["
+            case .backslashRbracket: return "\\]"
             case .hardBreak: return "hardBreak"
             case .newline: return "newline"
             case .eof: return "eof"
@@ -109,6 +116,9 @@ public struct MarkdownLanguage: CodeLanguage {
             case .rparen: return ")"
             case .dot: return "."
             case .number(let s, _): return s
+            case .doubleDollar: return "$$"
+            case .backslashLbracket: return "\\["
+            case .backslashRbracket: return "\\]"
             case .hardBreak, .newline: return "\n"
             case .eof: return ""
             }
@@ -120,7 +130,8 @@ public struct MarkdownLanguage: CodeLanguage {
                  .plus(let r), .backtick(let r), .greaterThan(let r), .exclamation(let r), .tilde(let r),
                  .equal(let r), .lessThan(let r), .ampersand(let r), .semicolon(let r), .pipe(let r),
                  .lbracket(let r), .rbracket(let r), .lparen(let r), .rparen(let r), .dot(let r),
-                 .number(_, let r), .hardBreak(let r), .newline(let r), .eof(let r):
+                 .number(_, let r), .doubleDollar(let r), .backslashLbracket(let r), .backslashRbracket(let r),
+                 .hardBreak(let r), .newline(let r), .eof(let r):
                 return r
             }
         }
@@ -140,11 +151,26 @@ public struct MarkdownLanguage: CodeLanguage {
                     let start = index
                     advance()
                     if index < input.endIndex {
-                        let escaped = input[index]
+                        let next = input[index]
                         advance()
-                        add(.text(String(escaped), start..<index))
+                        if next == "[" {
+                            add(.backslashLbracket(start..<index))
+                        } else if next == "]" {
+                            add(.backslashRbracket(start..<index))
+                        } else {
+                            add(.text(String(next), start..<index))
+                        }
                     } else {
                         add(.text("\\", start..<index))
+                    }
+                } else if ch == "$" {
+                    let start = index
+                    advance()
+                    if index < input.endIndex && input[index] == "$" {
+                        advance()
+                        add(.doubleDollar(start..<index))
+                    } else {
+                        add(.text("$", start..<index))
                     }
                 } else if ch == "#" {
                     let start = index
@@ -901,6 +927,59 @@ public struct MarkdownLanguage: CodeLanguage {
         }
     }
 
+    public class FormulaBlockBuilder: CodeElementBuilder {
+        public init() {}
+        public func accept(context: CodeContext, token: any CodeToken) -> Bool {
+            guard let tok = token as? Token else { return false }
+            if context.index > 0 {
+                if let prev = context.tokens[context.index - 1] as? Token, case .newline = prev {
+                    // ok
+                } else if context.index != 0 {
+                    return false
+                }
+            }
+            switch tok {
+            case .doubleDollar, .backslashLbracket:
+                return true
+            default:
+                return false
+            }
+        }
+        public func build(context: inout CodeContext) {
+            guard context.index < context.tokens.count else { return }
+            let token = context.tokens[context.index]
+            context.index += 1
+            guard let start = token as? Token else { return }
+            switch start {
+            case .doubleDollar, .backslashLbracket:
+                break
+            default:
+                context.errors.append(CodeError("Unexpected token \(start.kindDescription) for formula block", range: start.range))
+                return
+            }
+            var text = ""
+            var closed = false
+            while context.index < context.tokens.count {
+                guard let tok = context.tokens[context.index] as? Token else { context.index += 1; continue }
+                switch tok {
+                case .doubleDollar where start.kindDescription == "$$",
+                     .backslashRbracket where start.kindDescription == "\\[":
+                    context.index += 1
+                    closed = true
+                    break
+                default:
+                    text += tok.text
+                    context.index += 1
+                }
+                if closed { break }
+            }
+            if !closed {
+                context.errors.append(CodeError("Unterminated formula block", range: start.range))
+            }
+            context.currentNode.addChild(MarkdownFormulaBlockNode(value: text))
+        }
+    }
+
     public class HTMLBlockBuilder: CodeElementBuilder {
         public init() {}
         public func accept(context: CodeContext, token: any CodeToken) -> Bool {
@@ -1545,7 +1624,7 @@ public struct MarkdownLanguage: CodeLanguage {
             while context.index < context.tokens.count {
                 guard let tok = context.tokens[context.index] as? Token else { context.index += 1; continue }
                 switch tok {
-                case .text, .star, .underscore, .backtick:
+                case .text, .star, .underscore, .backtick, .backslashRbracket:
                     tokens.append(tok)
                     context.index += 1
                 case .hardBreak:
@@ -1558,7 +1637,8 @@ public struct MarkdownLanguage: CodeLanguage {
                     context.index += 1
                     ended = true
                 case .dash, .hash, .plus, .lbracket,
-                     .greaterThan, .exclamation, .tilde, .equal, .lessThan, .ampersand, .semicolon, .pipe:
+                     .greaterThan, .exclamation, .tilde, .equal, .lessThan, .ampersand, .semicolon, .pipe,
+                     .doubleDollar, .backslashLbracket:
                     ended = true
                 case .number:
                     if context.index + 1 < context.tokens.count,
@@ -1589,7 +1669,7 @@ public struct MarkdownLanguage: CodeLanguage {
 
     public var tokenizer: CodeTokenizer { Tokenizer() }
     public var builders: [CodeElementBuilder] {
-        [HeadingBuilder(), SetextHeadingBuilder(), CodeBlockBuilder(), IndentedCodeBlockBuilder(), BlockQuoteBuilder(), ThematicBreakBuilder(), OrderedListBuilder(), UnorderedListBuilder(), ImageBuilder(), HTMLBlockBuilder(), HTMLBuilder(), EntityBuilder(), StrikethroughBuilder(), AutoLinkBuilder(), BareAutoLinkBuilder(), TableBuilder(), FootnoteBuilder(), LinkReferenceDefinitionBuilder(), LinkBuilder(), ParagraphBuilder()]
+        [HeadingBuilder(), SetextHeadingBuilder(), CodeBlockBuilder(), IndentedCodeBlockBuilder(), BlockQuoteBuilder(), ThematicBreakBuilder(), OrderedListBuilder(), UnorderedListBuilder(), ImageBuilder(), FormulaBlockBuilder(), HTMLBlockBuilder(), HTMLBuilder(), EntityBuilder(), StrikethroughBuilder(), AutoLinkBuilder(), BareAutoLinkBuilder(), TableBuilder(), FootnoteBuilder(), LinkReferenceDefinitionBuilder(), LinkBuilder(), ParagraphBuilder()]
     }
     public var expressionBuilders: [CodeExpressionBuilder] { [] }
     public var rootElement: any CodeElement { Element.root }

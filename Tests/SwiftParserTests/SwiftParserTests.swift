@@ -544,4 +544,21 @@ tilde
             XCTAssertTrue(elements.contains(e), "Missing \(e)")
         }
     }
+
+    func testInvalidBlockFormulaStart() {
+        let parser = SwiftParser()
+        let source = "$ invalid"
+        let result = parser.parse(source, language: MarkdownLanguage())
+        XCTAssertGreaterThan(result.root.children.count, 0)
+    }
+
+    func testFormulaBlockParsing() {
+        let parser = SwiftParser()
+        let source = "$$\nE=mc^2\n$$"
+        let result = parser.parse(source, language: MarkdownLanguage())
+        XCTAssertEqual(result.errors.count, 0)
+        XCTAssertEqual(result.root.children.count, 1)
+        let block = result.root.children.first as? MarkdownFormulaBlockNode
+        XCTAssertEqual(block?.value, "\nE=mc^2\n")
+    }
 }
