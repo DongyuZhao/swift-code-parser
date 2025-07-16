@@ -286,3 +286,37 @@ public final class MarkdownFootnoteReferenceNode: CodeNode {
         return hasher.finalize()
     }
 }
+
+public final class MarkdownInlineTexFormulaNode: CodeNode {
+    public let formula: String
+
+    public init(formula: String, range: Range<String.Index>? = nil) {
+        self.formula = formula
+        super.init(type: MarkdownLanguage.Element.inlineTexFormula, value: formula, range: range)
+    }
+
+    public override var id: Int {
+        var hasher = Hasher()
+        hasher.combine(String(describing: type))
+        hasher.combine(formula)
+        for child in children { hasher.combine(child.id) }
+        return hasher.finalize()
+    }
+}
+
+public final class MarkdownBlockTexFormulaNode: CodeNode {
+    public let formula: String
+
+    public init(formula: String, range: Range<String.Index>? = nil) {
+        self.formula = formula
+        super.init(type: MarkdownLanguage.Element.blockTexFormula, value: formula, range: range)
+    }
+
+    public override var id: Int {
+        var hasher = Hasher()
+        hasher.combine(String(describing: type))
+        hasher.combine(formula)
+        for child in children { hasher.combine(child.id) }
+        return hasher.finalize()
+    }
+}

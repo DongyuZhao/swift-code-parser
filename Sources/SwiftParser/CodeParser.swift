@@ -55,7 +55,17 @@ public final class CodeParser {
         snapshots = [:]
         lastTokens = tokens
 
+        // Infinite loop protection: track index progression
+        var lastIndex = -1
+
         while context.index < context.tokens.count {
+            // Infinite loop detection - if index hasn't advanced, terminate parsing immediately
+            if context.index == lastIndex {
+                context.errors.append(CodeError("Infinite loop detected: parser stuck at token index \(context.index). Terminating parse to prevent hang.", range: context.tokens[context.index].range))
+                break
+            }
+            lastIndex = context.index
+            
             snapshots[context.index] = context.snapshot()
             let token = context.tokens[context.index]
             if token.kindDescription == "eof" {
@@ -119,7 +129,17 @@ public final class CodeParser {
         snapshots = snapshots.filter { $0.key <= restoreIndex }
         lastTokens = newTokens
 
+        // Infinite loop protection for update method
+        var lastIndex = -1
+
         while context.index < context.tokens.count {
+            // Infinite loop detection - if index hasn't advanced, terminate parsing immediately
+            if context.index == lastIndex {
+                context.errors.append(CodeError("Infinite loop detected in update: parser stuck at token index \(context.index). Terminating parse to prevent hang.", range: context.tokens[context.index].range))
+                break
+            }
+            lastIndex = context.index
+            
             snapshots[context.index] = context.snapshot()
             let token = context.tokens[context.index]
             if token.kindDescription == "eof" { break }

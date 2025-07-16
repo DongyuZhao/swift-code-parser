@@ -25,6 +25,7 @@ extension MarkdownLanguage {
         case number(String, Range<String.Index>)
         case hardBreak(Range<String.Index>)
         case newline(Range<String.Index>)
+        case dollar(Range<String.Index>)
         case eof(Range<String.Index>)
 
         public var kindDescription: String {
@@ -52,6 +53,7 @@ extension MarkdownLanguage {
             case .number: return "number"
             case .hardBreak: return "hardBreak"
             case .newline: return "newline"
+            case .dollar: return "$"
             case .eof: return "eof"
             }
         }
@@ -80,6 +82,7 @@ extension MarkdownLanguage {
             case .dot: return "."
             case .number(let s, _): return s
             case .hardBreak, .newline: return "\n"
+            case .dollar: return "$"
             case .eof: return ""
             }
         }
@@ -90,7 +93,7 @@ extension MarkdownLanguage {
                  .plus(let r), .backtick(let r), .greaterThan(let r), .exclamation(let r), .tilde(let r),
                  .equal(let r), .lessThan(let r), .ampersand(let r), .semicolon(let r), .pipe(let r),
                  .lbracket(let r), .rbracket(let r), .lparen(let r), .rparen(let r), .dot(let r),
-                 .number(_, let r), .hardBreak(let r), .newline(let r), .eof(let r):
+                 .number(_, let r), .hardBreak(let r), .newline(let r), .dollar(let r), .eof(let r):
                 return r
             }
         }

@@ -544,4 +544,119 @@ tilde
             XCTAssertTrue(elements.contains(e), "Missing \(e)")
         }
     }
+
+    func testMarkdownInlineTexFormula() {
+        let parser = SwiftParser()
+        let source = "Here is an inline formula $E = mc^2$ in the text."
+        let result = parser.parse(source, language: MarkdownLanguage())
+        XCTAssertEqual(result.errors.count, 0)
+        
+        // Should have one paragraph node
+        XCTAssertEqual(result.root.children.count, 1)
+        let paragraph2 = result.root.children.first as? MarkdownParagraphNode
+        XCTAssertNotNil(paragraph2)
+        
+        // Paragraph should contain text, TeX formula and more text
+        XCTAssertEqual(paragraph2?.children.count, 3)
+        
+        // Check TeX formula node
+        let texNode = paragraph2?.children[1] as? MarkdownInlineTexFormulaNode
+        XCTAssertNotNil(texNode)
+        XCTAssertEqual(texNode?.formula, "E = mc^2")
+        XCTAssertEqual(texNode?.type as? MarkdownLanguage.Element, .inlineTexFormula)
+    }
+
+    func testMarkdownBlockTexFormula() {
+        let parser = SwiftParser()
+        let source = """
+        Block formula:
+        $$
+        \\int_{-\\infty}^{\\infty} e^{-x^2} dx = \\sqrt{\\pi}
+        $$
+        """
+        let result = parser.parse(source, language: MarkdownLanguage())
+        XCTAssertEqual(result.errors.count, 0)
+        
+        // Should have paragraph and block formula
+        XCTAssertEqual(result.root.children.count, 2)
+        
+        // Check block TeX formula node
+        let texNode = result.root.children[1] as? MarkdownBlockTexFormulaNode
+        XCTAssertNotNil(texNode)
+        XCTAssertEqual(texNode?.formula, "\\int_{-\\infty}^{\\infty} e^{-x^2} dx = \\sqrt{\\pi}")
+        XCTAssertEqual(texNode?.type as? MarkdownLanguage.Element, .blockTexFormula)
+    }
+
+    func testMarkdownMixedTexFormulas() {
+        let parser = SwiftParser()
+        let source = """
+        这是一个包含TeX公式的文档。
+
+        内联公式：$\\alpha + \\beta = \\gamma$ 这里。
+
+        块级公式：
+        $$
+        \\sum_{n=1}^{\\infty} \\frac{1}{n^2} = \\frac{\\pi^2}{6}
+        $$
+
+        更多文本和另一个内联公式 $f(x) = x^2$ 结束。
+        """
+        let result = parser.parse(source, language: MarkdownLanguage())
+        XCTAssertEqual(result.errors.count, 0)
+        
+        // 收集所有TeX公式节点
+        var inlineFormulas: [MarkdownInlineTexFormulaNode] = []
+        var blockFormulas: [MarkdownBlockTexFormulaNode] = []
+        
+        func collect(_ node: CodeNode) {
+            if let inlineTex = node as? MarkdownInlineTexFormulaNode {
+                inlineFormulas.append(inlineTex)
+            } else if let blockTex = node as? MarkdownBlockTexFormulaNode {
+                blockFormulas.append(blockTex)
+            }
+            for child in node.children { collect(child) }
+        }
+        collect(result.root)
+        
+        // 验证找到的公式
+        XCTAssertEqual(inlineFormulas.count, 2)
+        XCTAssertEqual(blockFormulas.count, 1)
+        
+        XCTAssertEqual(inlineFormulas[0].formula, "\\alpha + \\beta = \\gamma")
+        XCTAssertEqual(inlineFormulas[1].formula, "f(x) = x^2")
+        XCTAssertEqual(blockFormulas[0].formula, "\\sum_{n=1}^{\\infty} \\frac{1}{n^2} = \\frac{\\pi^2}{6}")
+    }
+
+    func testMarkdownTexFormulaEdgeCases() {
+        let parser = SwiftParser()
+        
+        // 测试不完整的内联公式（没有闭合的$）
+        let source1 = "不完整的公式 $E = mc^2"
+        let result1 = parser.parse(source1, language: MarkdownLanguage())
+        XCTAssertEqual(result1.errors.count, 0)
+        // 应该被解析为普通文本
+        
+        // 测试不完整的块级公式（没有闭合的$$）
+        let source2 = "$$\\int x dx"
+        let result2 = parser.parse(source2, language: MarkdownLanguage())
+        XCTAssertEqual(result2.errors.count, 0)
+        // 应该被解析为普通文本
+        
+        // 测试空的公式
+        let source3 = "空公式 $$ 这里。"
+        let result3 = parser.parse(source3, language: MarkdownLanguage())
+        XCTAssertEqual(result3.errors.count, 0)
+        
+        var inlineFormulas: [MarkdownInlineTexFormulaNode] = []
+        func collect(_ node: CodeNode) {
+            if let inlineTex = node as? MarkdownInlineTexFormulaNode {
+                inlineFormulas.append(inlineTex)
+            }
+            for child in node.children { collect(child) }
+        }
+        collect(result3.root)
+        
+        XCTAssertEqual(inlineFormulas.count, 1)
+        XCTAssertEqual(inlineFormulas[0].formula, "")
+    }
 }

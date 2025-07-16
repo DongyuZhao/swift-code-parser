@@ -9,6 +9,7 @@ public struct MarkdownLanguage: CodeLanguage {
         var nodes: [CodeNode] = []
         var text = ""
         var closed = false
+        var lastIndex = -1
         func flush() {
             if !text.isEmpty {
                 nodes.append(MarkdownTextNode(value: text))
@@ -16,6 +17,15 @@ public struct MarkdownLanguage: CodeLanguage {
             }
         }
         while context.index < context.tokens.count {
+            // Infinite loop protection - if index hasn't advanced, terminate parsing immediately
+            if context.index == lastIndex {
+                let currentTokenRange = context.index < context.tokens.count ? 
+                    (context.tokens[context.index] as? Token)?.range : nil
+                context.errors.append(CodeError("Infinite loop detected in parseInline at token index \(context.index). Terminating parse to prevent hang.", range: currentTokenRange))
+                break
+            }
+            lastIndex = context.index
+            
             guard let tok = context.tokens[context.index] as? Token else { context.index += 1; continue }
             // Check for closing delimiter first
             if tok.kindDescription == closing.kindDescription {
@@ -89,6 +99,50 @@ public struct MarkdownLanguage: CodeLanguage {
                 continue
             }
 
+            // TeX Formula
+            if tok.kindDescription == "$" {
+                flush()
+                let startIndex = context.index
+                let formulaStartRange = (context.tokens[context.index] as? Token)?.range
+                context.index += 1
+                var formulaEndRange: Range<String.Index>? = nil
+                var foundClosing = false
+                while context.index < context.tokens.count {
+                    if let t = context.tokens[context.index] as? Token {
+                        if t.kindDescription == "$" {
+                            formulaEndRange = t.range
+                            context.index += 1
+                            foundClosing = true
+                            break
+                        } else {
+                            context.index += 1
+                        }
+                    } else { 
+                        context.index += 1 
+                    }
+                }
+                
+                if foundClosing, let startRange = formulaStartRange, let endRange = formulaEndRange {
+                    // Extract formula content using original input string
+                    let formulaStart = startRange.upperBound
+                    let formulaEnd = endRange.lowerBound
+                    let formulaText = String(context.input[formulaStart..<formulaEnd])
+                    let node = MarkdownInlineTexFormulaNode(formula: formulaText)
+                    nodes.append(node)
+                } else {
+                    // If no closing $ found, reprocess these tokens as text
+                    var textContent = "$"
+                    for i in (startIndex + 1)..<context.index {
+                        if let t = context.tokens[i] as? Token {
+                            textContent += t.text
+                        }
+                    }
+                    let textNode = MarkdownTextNode(value: textContent)
+                    nodes.append(textNode)
+                }
+                continue
+            }
+
             text += tok.text
             context.index += 1
         }
@@ -138,7 +192,7 @@ public struct MarkdownLanguage: CodeLanguage {
 
     public var tokenizer: CodeTokenizer { Tokenizer() }
     public var builders: [CodeElementBuilder] {
-        [HeadingBuilder(), SetextHeadingBuilder(), CodeBlockBuilder(), IndentedCodeBlockBuilder(), BlockQuoteBuilder(), ThematicBreakBuilder(), OrderedListBuilder(), UnorderedListBuilder(), ImageBuilder(), HTMLBlockBuilder(), HTMLBuilder(), EntityBuilder(), StrikethroughBuilder(), AutoLinkBuilder(), BareAutoLinkBuilder(), TableBuilder(), FootnoteBuilder(), LinkReferenceDefinitionBuilder(), LinkBuilder(), ParagraphBuilder()]
+        [HeadingBuilder(), SetextHeadingBuilder(), CodeBlockBuilder(), IndentedCodeBlockBuilder(), BlockQuoteBuilder(), ThematicBreakBuilder(), OrderedListBuilder(), UnorderedListBuilder(), ImageBuilder(), HTMLBlockBuilder(), HTMLBuilder(), EntityBuilder(), StrikethroughBuilder(), AutoLinkBuilder(), BareAutoLinkBuilder(), TableBuilder(), FootnoteBuilder(), LinkReferenceDefinitionBuilder(), LinkBuilder(), BlockTexFormulaBuilder(), ParagraphBuilder()]
     }
     public var expressionBuilders: [CodeExpressionBuilder] { [] }
     public var rootElement: any CodeElement { Element.root }
