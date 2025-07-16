@@ -123,11 +123,6 @@ public struct MarkdownLanguage: CodeLanguage {
             case .rbracket: return "]"
             case .lparen: return "("
             case .rparen: return ")"
-            case .dollar: return "$"
-            case .backslashLParen: return "\\("
-            case .backslashRParen: return "\\)"
-            case .backslashLBracket: return "\\["
-            case .backslashRBracket: return "\\]"
             case .dot: return "."
             case .number(let s, _): return s
             case .hardBreak, .newline: return "\n"
@@ -1315,6 +1310,10 @@ public struct MarkdownLanguage: CodeLanguage {
                     }
                 }
             } else if case .backslashLBracket = tok {
+                if context.index == 0 || (context.tokens[context.index - 1] as? Token)?.kindDescription == "newline" {
+                    return true
+                }
+            } else if case .backslashLParen = tok {
                 if context.index == 0 || (context.tokens[context.index - 1] as? Token)?.kindDescription == "newline" {
                     return true
                 }
