@@ -97,6 +97,10 @@ extension MarkdownLanguage {
                     let start = index
                     advance()
                     add(.dot(start..<index))
+                } else if ch == "$" {
+                    let start = index
+                    advance()
+                    add(.dollar(start..<index))
                 } else if ch.isNumber {
                     let start = index
                     while index < input.endIndex && input[index].isNumber { advance() }
@@ -129,7 +133,7 @@ extension MarkdownLanguage {
                     let start = index
                     while index < input.endIndex &&
                           input[index] != "\n" &&
-                          !"#-*+_`[].()<>!~|;&=\\".contains(input[index]) &&
+                          !"#-*+_`[].()<>!~|;&=\\$".contains(input[index]) &&
                           !input[index].isNumber {
                         advance()
                     }

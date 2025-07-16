@@ -29,6 +29,8 @@ extension MarkdownLanguage {
         case linkReferenceDefinition
         case footnoteDefinition
         case footnoteReference
+        case inlineTexFormula
+        case blockTexFormula
     }
 
 }
