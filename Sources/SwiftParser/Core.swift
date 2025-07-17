@@ -12,9 +12,10 @@ public protocol CodeTokenizer {
     func tokenize(_ input: String) -> [any CodeToken]
 }
 
-public protocol CodeElementBuilder {
-    func accept(context: CodeContext, token: any CodeToken) -> Bool
-    func build(context: inout CodeContext)
+/// Consumes a token and optionally updates the AST if it is recognized.
+/// - Returns: `true` if the token was handled and the context advanced.
+public protocol CodeTokenConsumer {
+    func consume(context: inout CodeContext, token: any CodeToken) -> Bool
 }
 
 public class CodeNode {
@@ -138,52 +139,18 @@ public struct CodeError: Error {
 
 public struct CodeContext {
     public var tokens: [any CodeToken]
-    public var index: Int
     public var currentNode: CodeNode
     public var errors: [CodeError]
-    public let input: String
-    public var linkReferences: [String: String]
 
-    public init(tokens: [any CodeToken], index: Int, currentNode: CodeNode, errors: [CodeError], input: String, linkReferences: [String: String] = [:]) {
+    public init(tokens: [any CodeToken], currentNode: CodeNode, errors: [CodeError]) {
         self.tokens = tokens
-        self.index = index
         self.currentNode = currentNode
         self.errors = errors
-        self.input = input
-        self.linkReferences = linkReferences
-    }
-
-    /// Snapshot represents a parser state that can be restored later.
-    public struct Snapshot {
-        fileprivate let index: Int
-        fileprivate let node: CodeNode
-        fileprivate let childCount: Int
-        fileprivate let errorCount: Int
-        fileprivate let linkReferences: [String: String]
-    }
-
-    /// Capture the current parser state so it can be restored on demand.
-    public func snapshot() -> Snapshot {
-        Snapshot(index: index, node: currentNode, childCount: currentNode.children.count, errorCount: errors.count, linkReferences: linkReferences)
-    }
-
-    /// Restore the parser to a previously captured state, discarding any new nodes or errors.
-    public mutating func restore(_ snapshot: Snapshot) {
-        index = snapshot.index
-        currentNode = snapshot.node
-        if currentNode.children.count > snapshot.childCount {
-            currentNode.children.removeLast(currentNode.children.count - snapshot.childCount)
-        }
-        if errors.count > snapshot.errorCount {
-            errors.removeLast(errors.count - snapshot.errorCount)
-        }
-        linkReferences = snapshot.linkReferences
     }
 }
 
 public protocol CodeLanguage {
     var tokenizer: CodeTokenizer { get }
-    var builders: [CodeElementBuilder] { get }
+    var consumers: [CodeTokenConsumer] { get }
     var rootElement: any CodeElement { get }
-    var expressionBuilders: [CodeExpressionBuilder] { get }
 }
