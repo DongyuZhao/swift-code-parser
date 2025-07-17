@@ -143,15 +143,12 @@ public struct CodeContext {
     public var currentNode: CodeNode
     public var errors: [CodeError]
     public let input: String
-    public var linkReferences: [String: String]
-
-    public init(tokens: [any CodeToken], index: Int, currentNode: CodeNode, errors: [CodeError], input: String, linkReferences: [String: String] = [:]) {
+    public init(tokens: [any CodeToken], index: Int, currentNode: CodeNode, errors: [CodeError], input: String) {
         self.tokens = tokens
         self.index = index
         self.currentNode = currentNode
         self.errors = errors
         self.input = input
-        self.linkReferences = linkReferences
     }
 
 }
