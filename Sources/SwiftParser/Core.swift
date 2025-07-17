@@ -139,16 +139,14 @@ public struct CodeError: Error {
 
 public struct CodeContext {
     public var tokens: [any CodeToken]
-    public var index: Int
     public var currentNode: CodeNode
     public var errors: [CodeError]
-    public init(tokens: [any CodeToken], index: Int, currentNode: CodeNode, errors: [CodeError]) {
+
+    public init(tokens: [any CodeToken], currentNode: CodeNode, errors: [CodeError]) {
         self.tokens = tokens
-        self.index = index
         self.currentNode = currentNode
         self.errors = errors
     }
-
 }
 
 public protocol CodeLanguage {

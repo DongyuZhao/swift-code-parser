@@ -30,19 +30,19 @@ public final class CodeParser {
 
     public func parse(_ input: String, rootNode: CodeNode) -> (node: CodeNode, context: CodeContext) {
         let tokens = tokenizer.tokenize(input)
-        var context = CodeContext(tokens: tokens, index: 0, currentNode: rootNode, errors: [])
+        var context = CodeContext(tokens: tokens, currentNode: rootNode, errors: [])
 
-        // Infinite loop protection: track index progression
-        var lastIndex = -1
+        // Infinite loop protection: track token count progression
+        var lastCount = context.tokens.count + 1
 
-        while context.index < context.tokens.count {
-            // Infinite loop detection - if index hasn't advanced, terminate parsing immediately
-            if context.index == lastIndex {
-                context.errors.append(CodeError("Infinite loop detected: parser stuck at token index \(context.index). Terminating parse to prevent hang.", range: context.tokens[context.index].range))
+        while let token = context.tokens.first {
+            // Infinite loop detection - if token count hasn't decreased, terminate parsing immediately
+            if context.tokens.count == lastCount {
+                context.errors.append(CodeError("Infinite loop detected: parser stuck at token \(token.kindDescription). Terminating parse to prevent hang.", range: token.range))
                 break
             }
-            lastIndex = context.index
-            let token = context.tokens[context.index]
+            lastCount = context.tokens.count
+
             if token.kindDescription == "eof" {
                 break
             }
@@ -53,10 +53,10 @@ public final class CodeParser {
                     break
                 }
             }
-            // No expression builders remaining
+
             if !matched {
                 context.errors.append(CodeError("Unrecognized token \(token.kindDescription)", range: token.range))
-                context.index += 1
+                context.tokens.removeFirst()
             }
         }
         return (rootNode, context)
