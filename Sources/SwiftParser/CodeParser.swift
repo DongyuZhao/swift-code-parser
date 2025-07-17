@@ -3,17 +3,15 @@ import Foundation
 public final class CodeParser {
     private var consumers: [CodeTokenConsumer]
     private let tokenizer: CodeTokenizer
-    private var expressionBuilders: [CodeExpressionBuilder]
 
     // State for incremental parsing
     private var lastContext: CodeContext?
     private var snapshots: [Int: CodeContext.Snapshot] = [:]
     private var lastTokens: [any CodeToken] = []
 
-    public init(tokenizer: CodeTokenizer, consumers: [CodeTokenConsumer] = [], expressionBuilders: [CodeExpressionBuilder] = []) {
+    public init(tokenizer: CodeTokenizer, consumers: [CodeTokenConsumer] = []) {
         self.tokenizer = tokenizer
         self.consumers = consumers
-        self.expressionBuilders = expressionBuilders
     }
 
     public func register(consumer: CodeTokenConsumer) {
@@ -32,21 +30,6 @@ public final class CodeParser {
         consumers.removeAll()
     }
 
-    public func register(expressionBuilder: CodeExpressionBuilder) {
-        expressionBuilders.append(expressionBuilder)
-    }
-
-    public func unregister(expressionBuilder: CodeExpressionBuilder) {
-        if let target = expressionBuilder as? AnyObject {
-            if let index = expressionBuilders.firstIndex(where: { ($0 as? AnyObject) === target }) {
-                expressionBuilders.remove(at: index)
-            }
-        }
-    }
-
-    public func clearExpressionBuilders() {
-        expressionBuilders.removeAll()
-    }
 
     public func parse(_ input: String, rootNode: CodeNode) -> (node: CodeNode, context: CodeContext) {
         let tokens = tokenizer.tokenize(input)
@@ -78,14 +61,7 @@ public final class CodeParser {
                     break
                 }
             }
-            if !matched {
-                for expr in expressionBuilders {
-                    if expr.consume(context: &context, token: token) {
-                        matched = true
-                        break
-                    }
-                }
-            }
+            // No expression builders remaining
             if !matched {
                 context.errors.append(CodeError("Unrecognized token \(token.kindDescription)", range: token.range))
                 context.index += 1
@@ -146,14 +122,7 @@ public final class CodeParser {
                     break
                 }
             }
-            if !matched {
-                for expr in expressionBuilders {
-                    if expr.consume(context: &context, token: token) {
-                        matched = true
-                        break
-                    }
-                }
-            }
+            // No expression builders remaining
             if !matched {
                 context.errors.append(CodeError("Unrecognized token \(token.kindDescription)", range: token.range))
                 context.index += 1
@@ -168,14 +137,4 @@ public final class CodeParser {
         return a.kindDescription == b.kindDescription && a.text == b.text
     }
 
-    public func parseExpression(context: inout CodeContext, minBP: Int = 0) -> CodeNode? {
-        guard context.index < context.tokens.count else { return nil }
-        let token = context.tokens[context.index]
-        for expr in expressionBuilders {
-            if expr.isPrefix(token: token) {
-                return expr.parse(context: &context, minBP: minBP)
-            }
-        }
-        return nil
-    }
 }
