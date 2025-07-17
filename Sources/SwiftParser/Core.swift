@@ -154,32 +154,6 @@ public struct CodeContext {
         self.linkReferences = linkReferences
     }
 
-    /// Snapshot represents a parser state that can be restored later.
-    public struct Snapshot {
-        fileprivate let index: Int
-        fileprivate let node: CodeNode
-        fileprivate let childCount: Int
-        fileprivate let errorCount: Int
-        fileprivate let linkReferences: [String: String]
-    }
-
-    /// Capture the current parser state so it can be restored on demand.
-    public func snapshot() -> Snapshot {
-        Snapshot(index: index, node: currentNode, childCount: currentNode.children.count, errorCount: errors.count, linkReferences: linkReferences)
-    }
-
-    /// Restore the parser to a previously captured state, discarding any new nodes or errors.
-    public mutating func restore(_ snapshot: Snapshot) {
-        index = snapshot.index
-        currentNode = snapshot.node
-        if currentNode.children.count > snapshot.childCount {
-            currentNode.children.removeLast(currentNode.children.count - snapshot.childCount)
-        }
-        if errors.count > snapshot.errorCount {
-            errors.removeLast(errors.count - snapshot.errorCount)
-        }
-        linkReferences = snapshot.linkReferences
-    }
 }
 
 public protocol CodeLanguage {
