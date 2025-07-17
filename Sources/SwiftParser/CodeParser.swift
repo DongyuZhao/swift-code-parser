@@ -11,21 +11,6 @@ public final class CodeParser {
         self.consumers = language.consumers
     }
 
-    public func register(consumer: CodeTokenConsumer) {
-        consumers.append(consumer)
-    }
-
-    public func unregister(consumer: CodeTokenConsumer) {
-        if let target = consumer as? AnyObject {
-            if let index = consumers.firstIndex(where: { ($0 as? AnyObject) === target }) {
-                consumers.remove(at: index)
-            }
-        }
-    }
-
-    public func clearConsumers() {
-        consumers.removeAll()
-    }
 
 
     public func parse(_ input: String, rootNode: CodeNode) -> (node: CodeNode, context: CodeContext) {
