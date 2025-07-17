@@ -1,6 +1,6 @@
 import Foundation
 
-/// Markdown语言实现，符合CommonMark规范
+/// Markdown language implementation following the CommonMark specification
 public class MarkdownLanguage: CodeLanguage {
     
     public let tokenizer: CodeTokenizer
@@ -11,10 +11,10 @@ public class MarkdownLanguage: CodeLanguage {
         self.tokenizer = MarkdownTokenizer()
         self.rootElement = MarkdownElement.document
         
-        // 按优先级顺序组织consumers
-        // 块级元素优先级较高，因为它们通常在行首
+        // Consumers are ordered by priority
+        // Block-level elements have higher priority as they typically start a line
         self.consumers = [
-            // 1. 块级元素 (Block-level elements) - 最高优先级
+            // 1. Block-level elements - highest priority
             MarkdownHeaderConsumer(),
             MarkdownCodeBlockConsumer(),
             MarkdownBlockquoteConsumer(),
@@ -23,7 +23,7 @@ public class MarkdownLanguage: CodeLanguage {
             MarkdownTableConsumer(),
             MarkdownLinkReferenceConsumer(),
             
-            // 2. 高优先级内联元素 (High priority inline elements)
+            // 2. High priority inline elements
             MarkdownInlineCodeConsumer(),
             MarkdownLinkConsumer(),
             MarkdownImageConsumer(),
@@ -32,23 +32,23 @@ public class MarkdownLanguage: CodeLanguage {
             MarkdownStrikethroughConsumer(),
             MarkdownHTMLInlineConsumer(),
             
-            // 3. 换行和文本处理 - 较低优先级
+            // 3. Line breaks and text handling - lower priority
             MarkdownNewlineConsumer(),
             MarkdownLineBreakConsumer(),
             MarkdownParagraphConsumer(),
             MarkdownTextConsumer(),
             
-            // 4. 兜底处理 - 最低优先级
+            // 4. Fallback handling - lowest priority
             MarkdownFallbackConsumer()
         ]
     }
     
-    /// 创建默认的文档根节点
+    /// Create the default document root node
     public func createDocumentNode() -> CodeNode {
         return CodeNode(type: MarkdownElement.document, value: "")
     }
     
-    /// 解析Markdown文本
+    /// Parse Markdown text
     public func parse(_ text: String) -> (node: CodeNode, errors: [CodeError]) {
         let parser = CodeParser(language: self)
         let rootNode = createDocumentNode()
@@ -57,13 +57,13 @@ public class MarkdownLanguage: CodeLanguage {
     }
 }
 
-/// Markdown Consumer工厂类，用于创建和管理不同类型的Consumer
+/// Factory class used to create and manage different consumers
 public class MarkdownConsumerFactory {
     
-    /// 创建所有标准Markdown consumers
+    /// Create all standard Markdown consumers
     public static func createStandardConsumers() -> [CodeTokenConsumer] {
         return [
-            // 块级元素
+            // Block-level elements
             MarkdownHeaderConsumer(),
             MarkdownCodeBlockConsumer(),
             MarkdownBlockquoteConsumer(),
@@ -72,7 +72,7 @@ public class MarkdownConsumerFactory {
             MarkdownTableConsumer(),
             MarkdownLinkReferenceConsumer(),
             
-            // 内联元素
+            // Inline elements
             MarkdownLinkConsumer(),
             MarkdownImageConsumer(),
             MarkdownAutolinkConsumer(),
@@ -81,7 +81,7 @@ public class MarkdownConsumerFactory {
             MarkdownStrikethroughConsumer(),
             MarkdownHTMLInlineConsumer(),
             
-            // 文本处理
+            // Text handling
             MarkdownLineBreakConsumer(),
             MarkdownParagraphConsumer(),
             MarkdownTextConsumer(),
@@ -89,10 +89,10 @@ public class MarkdownConsumerFactory {
         ]
     }
     
-    /// 创建只包含基础CommonMark规范的consumers（不包括GFM扩展）
+    /// Create consumers containing only basic CommonMark support (no GFM extensions)
     public static func createCommonMarkConsumers() -> [CodeTokenConsumer] {
         return [
-            // 基础块级元素
+            // Core block-level elements
             MarkdownHeaderConsumer(),
             MarkdownCodeBlockConsumer(),
             MarkdownBlockquoteConsumer(),
@@ -100,7 +100,7 @@ public class MarkdownConsumerFactory {
             MarkdownHorizontalRuleConsumer(),
             MarkdownLinkReferenceConsumer(),
             
-            // 基础内联元素
+            // Core inline elements
             MarkdownLinkConsumer(),
             MarkdownImageConsumer(),
             MarkdownAutolinkConsumer(),
@@ -108,7 +108,7 @@ public class MarkdownConsumerFactory {
             MarkdownInlineCodeConsumer(),
             MarkdownHTMLInlineConsumer(),
             
-            // 文本处理
+            // Text handling
             MarkdownLineBreakConsumer(),
             MarkdownParagraphConsumer(),
             MarkdownTextConsumer(),
@@ -116,7 +116,7 @@ public class MarkdownConsumerFactory {
         ]
     }
     
-    /// 创建GitHub Flavored Markdown (GFM) 扩展consumers
+    /// Create consumers for GitHub Flavored Markdown (GFM) extensions
     public static func createGFMExtensions() -> [CodeTokenConsumer] {
         return [
             MarkdownTableConsumer(),
@@ -124,7 +124,7 @@ public class MarkdownConsumerFactory {
         ]
     }
     
-    /// 创建自定义consumer配置
+    /// Create a custom consumer configuration
     public static func createCustomConsumers(
         includeHeaders: Bool = true,
         includeCodeBlocks: Bool = true,
@@ -139,7 +139,7 @@ public class MarkdownConsumerFactory {
         
         var consumers: [CodeTokenConsumer] = []
         
-        // 块级元素
+        // Block-level elements
         if includeHeaders {
             consumers.append(MarkdownHeaderConsumer())
         }
@@ -159,7 +159,7 @@ public class MarkdownConsumerFactory {
         consumers.append(MarkdownHorizontalRuleConsumer())
         consumers.append(MarkdownLinkReferenceConsumer())
         
-        // 内联元素
+        // Inline elements
         if includeLinks {
             consumers.append(MarkdownLinkConsumer())
         }
@@ -177,7 +177,7 @@ public class MarkdownConsumerFactory {
         consumers.append(MarkdownInlineCodeConsumer())
         consumers.append(MarkdownHTMLInlineConsumer())
         
-        // 基础处理
+        // Basic handling
         consumers.append(MarkdownLineBreakConsumer())
         consumers.append(MarkdownParagraphConsumer())
         consumers.append(MarkdownTextConsumer())
@@ -187,37 +187,36 @@ public class MarkdownConsumerFactory {
     }
 }
 
-/// 部分节点处理器，用于处理前缀歧义情况
+/// Partial node resolver used to handle prefix ambiguities
 public class MarkdownPartialNodeResolver {
     
-    /// 解析部分链接节点
+    /// Resolve a partial link node
     public static func resolvePartialLink(_ partialNode: CodeNode, in context: CodeContext) -> CodeNode? {
         guard partialNode.type as? MarkdownElement == .partialLink else { return nil }
         
-        // 这里可以实现更复杂的链接解析逻辑
-        // 比如查找链接引用定义等
-        
-        // 简单实现：将部分链接转换为普通文本
+        // More complex link parsing could be implemented here,
+        // such as looking up link reference definitions.
+        // Simple implementation: convert the partial link to plain text
         return CodeNode(type: MarkdownElement.text, value: "[" + partialNode.value + "]")
     }
     
-    /// 解析部分图片节点
+    /// Resolve a partial image node
     public static func resolvePartialImage(_ partialNode: CodeNode, in context: CodeContext) -> CodeNode? {
         guard partialNode.type as? MarkdownElement == .partialImage else { return nil }
         
-        // 简单实现：将部分图片转换为普通文本
+        // Simple implementation: convert the partial image to plain text
         return CodeNode(type: MarkdownElement.text, value: "![" + partialNode.value + "]")
     }
     
-    /// 解析部分强调节点
+    /// Resolve a partial emphasis node
     public static func resolvePartialEmphasis(_ partialNode: CodeNode, in context: CodeContext) -> CodeNode? {
         guard partialNode.type as? MarkdownElement == .partialEmphasis else { return nil }
         
-        // 简单实现：将部分强调转换为普通文本
+        // Simple implementation: convert the partial emphasis to plain text
         return CodeNode(type: MarkdownElement.text, value: "*" + partialNode.value + "*")
     }
     
-    /// 解析所有部分节点
+    /// Resolve all partial nodes
     public static func resolveAllPartialNodes(in rootNode: CodeNode, context: CodeContext) {
         rootNode.traverseDepthFirst { node in
             guard let element = node.type as? MarkdownElement, element.isPartial else { return }
@@ -236,7 +235,7 @@ public class MarkdownPartialNodeResolver {
             }
             
             if let resolved = resolvedNode, let parent = node.parent {
-                // 替换部分节点
+                // Replace the partial node
                 if let index = parent.children.firstIndex(where: { $0 === node }) {
                     parent.replaceChild(at: index, with: resolved)
                 }

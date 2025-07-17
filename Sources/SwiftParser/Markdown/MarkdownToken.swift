@@ -1,18 +1,18 @@
 import Foundation
 
-/// Markdown Token类型定义
+/// Markdown token definitions
 public enum MarkdownTokenKind: String, CaseIterable {
-    // 基础字符类
+    // Basic character classes
     case text
     case whitespace
     case newline
     case eof
     
-    // 标题相关
+    // Header related
     case hash           // #
     case headerText
     
-    // 列表相关
+    // List related
     case asterisk       // *
     case dash           // -
     case plus           // +
@@ -20,44 +20,44 @@ public enum MarkdownTokenKind: String, CaseIterable {
     case dot            // .
     case rightParen     // )
     
-    // Task list相关 (GFM extension)
+    // Task list markers (GFM extension)
     case taskListMarker // [ ] or [x] or [X]
     
-    // 强调相关
+    // Emphasis related
     case underscore     // _
     
-    // 代码相关
+    // Code related
     case backtick       // `
     case tildeTriple    // ~~~
     case indentedCode   // 4+ spaces at line start
     
-    // 引用相关
+    // Blockquote related
     case greaterThan    // >
     
-    // 链接相关
+    // Link related
     case leftBracket    // [
     case rightBracket   // ]
     case leftParen      // (
     case rightParen2    // )
     case exclamation    // !
     
-    // HTML相关
+    // HTML related
     case leftAngle      // <
     case rightAngle     // >
     case htmlTag
     
-    // 表格相关
+    // Table related
     case pipe           // |
     case colon          // :
     
-    // 水平线相关
+    // Horizontal rule related
     case horizontalRule // --- or *** or ___
     
-    // 转义相关
+    // Escape related
     case backslash      // \
     case escaped
     
-    // 其他
+    // Others
     case ampersand      // &
     case entityRef
     case charRef

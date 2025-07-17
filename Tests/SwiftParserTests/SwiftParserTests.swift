@@ -58,53 +58,53 @@ final class SwiftParserTests: XCTestCase {
     
     func testMarkdownUnorderedList() {
         let markdown = """
-        - 项目1
-        - 项目2
-        - 项目3
+        - item1
+        - item2
+        - item3
         """
         
         let language = MarkdownLanguage()
         let parser = CodeParser(language: language)
         let result = parser.parse(markdown, rootNode: CodeNode(type: MarkdownElement.document, value: ""))
         
-        // 查找无序列表
+        // Find unordered list
         let listNodes = result.node.findAll { 
             ($0.type as? MarkdownElement) == .unorderedList 
         }
         XCTAssertEqual(listNodes.count, 1)
         
-        // 检查列表项
+        // Verify list items
         let listItems = listNodes[0].children
         XCTAssertEqual(listItems.count, 3)
         
-        // 检查第一个列表项的内容
+        // Verify first list item content
         let firstItem = listItems[0]
         XCTAssertEqual(firstItem.children.count, 1)
-        XCTAssertEqual(firstItem.children[0].value, "项目1")
+        XCTAssertEqual(firstItem.children[0].value, "item1")
     }
 
     func testMarkdownOrderedList() {
         let markdown = """
-        1. 第一项
-        1. 第二项
-        1. 第三项
+        1. first
+        1. second
+        1. third
         """
         
         let language = MarkdownLanguage()
         let parser = CodeParser(language: language)
         let result = parser.parse(markdown, rootNode: CodeNode(type: MarkdownElement.document, value: ""))
         
-        // 查找有序列表
+        // Find ordered list
         let listNodes = result.node.findAll { 
             ($0.type as? MarkdownElement) == .orderedList 
         }
         XCTAssertEqual(listNodes.count, 1)
         
-        // 检查列表项
+        // Verify list items
         let listItems = listNodes[0].children
         XCTAssertEqual(listItems.count, 3)
         
-        // 检查自动编号
+        // Verify auto numbering
         XCTAssertEqual(listItems[0].value, "1.")
         XCTAssertEqual(listItems[1].value, "2.")
         XCTAssertEqual(listItems[2].value, "3.")
@@ -112,26 +112,26 @@ final class SwiftParserTests: XCTestCase {
 
     func testMarkdownTaskList() {
         let markdown = """
-        - [ ] 未完成任务
-        - [x] 已完成任务
-        - [ ] 另一个任务
+        - [ ] unfinished
+        - [x] finished
+        - [ ] another
         """
         
         let language = MarkdownLanguage()
         let parser = CodeParser(language: language)
         let result = parser.parse(markdown, rootNode: CodeNode(type: MarkdownElement.document, value: ""))
         
-        // 查找任务列表
+        // Find task list
         let taskListNodes = result.node.findAll { 
             ($0.type as? MarkdownElement) == .taskList 
         }
         XCTAssertEqual(taskListNodes.count, 1)
         
-        // 检查任务列表项
+        // Verify task list items
         let taskItems = taskListNodes[0].children
         XCTAssertEqual(taskItems.count, 3)
         
-        // 检查任务状态
+        // Verify task state
         XCTAssertEqual(taskItems[0].value, "[ ]")
         XCTAssertEqual(taskItems[1].value, "[x]")
         XCTAssertEqual(taskItems[2].value, "[ ]")
@@ -141,32 +141,32 @@ final class SwiftParserTests: XCTestCase {
     
     func testMarkdownBasicParsing() {
         let parser = SwiftParser()
-        let markdown = "# 标题\n\n这是段落文本。"
+        let markdown = "# Title\n\nThis is a paragraph."
         let result = parser.parseMarkdown(markdown)
         
-        XCTAssertFalse(result.hasErrors, "解析不应该有错误")
-        XCTAssertEqual(result.root.children.count, 2, "应该有2个子节点（标题和段落）")
+        XCTAssertFalse(result.hasErrors, "Parsing should not produce errors")
+        XCTAssertEqual(result.root.children.count, 2, "There should be two nodes (header and paragraph)")
         
-        // 检查标题
+        // Check header
         let headers = result.markdownNodes(ofType: .header1)
-        XCTAssertEqual(headers.count, 1, "应该有1个一级标题")
-        XCTAssertEqual(headers.first?.value, "标题", "标题文本应该正确")
+        XCTAssertEqual(headers.count, 1, "There should be one H1 header")
+        XCTAssertEqual(headers.first?.value, "Title", "Header text should match")
         
-        // 检查段落
+        // Check paragraph
         let paragraphs = result.markdownNodes(ofType: .paragraph)
-        XCTAssertEqual(paragraphs.count, 1, "应该有1个段落")
-        XCTAssertEqual(paragraphs.first?.value, "这是段落文本。", "段落文本应该正确")
+        XCTAssertEqual(paragraphs.count, 1, "There should be one paragraph")
+        XCTAssertEqual(paragraphs.first?.value, "This is a paragraph.", "Paragraph text should match")
     }
     
     func testMarkdownHeaders() {
         let parser = SwiftParser()
         let markdown = """
-        # 一级标题
-        ## 二级标题
-        ### 三级标题
-        #### 四级标题
-        ##### 五级标题
-        ###### 六级标题
+        # H1
+        ## H2
+        ### H3
+        #### H4
+        ##### H5
+        ###### H6
         """
         
         let result = parser.parseMarkdown(markdown)
@@ -179,27 +179,27 @@ final class SwiftParserTests: XCTestCase {
         XCTAssertEqual(result.markdownNodes(ofType: .header5).count, 1)
         XCTAssertEqual(result.markdownNodes(ofType: .header6).count, 1)
         
-        XCTAssertEqual(result.markdownNodes(ofType: .header1).first?.value, "一级标题")
-        XCTAssertEqual(result.markdownNodes(ofType: .header6).first?.value, "六级标题")
+        XCTAssertEqual(result.markdownNodes(ofType: .header1).first?.value, "H1")
+        XCTAssertEqual(result.markdownNodes(ofType: .header6).first?.value, "H6")
     }
     
     func testMarkdownEmphasis() {
         let parser = SwiftParser()
         
-        // 测试最简单的情况，并添加调试输出
-        print("\n=== 测试基本emphasis ===")
+        // Test the simplest case with debug output
+        print("\n=== Basic emphasis test ===")
         let simpleMarkdown = "*test*"
         let simpleResult = parser.parseMarkdown(simpleMarkdown)
         
-        print("输入: \(simpleMarkdown)")
-        print("解析结果:")
+        print("Input: \(simpleMarkdown)")
+        print("Result:")
         printNodeTree(simpleResult.root, indent: "")
         
-        let markdown = "*斜体* **粗体** ***粗斜体***"
+        let markdown = "*italic* **bold** ***bold italic***"
         let result = parser.parseMarkdown(markdown)
         
-        print("\n输入: \(markdown)")
-        print("解析结果:")
+        print("\nInput: \(markdown)")
+        print("Result:")
         printNodeTree(result.root, indent: "")
         
         XCTAssertFalse(result.hasErrors)
@@ -207,29 +207,29 @@ final class SwiftParserTests: XCTestCase {
         let emphasis = result.markdownNodes(ofType: .emphasis)
         let strongEmphasis = result.markdownNodes(ofType: .strongEmphasis)
         
-        XCTAssertGreaterThanOrEqual(emphasis.count, 1, "应该至少有1个斜体")
-        XCTAssertGreaterThanOrEqual(strongEmphasis.count, 1, "应该至少有1个粗体")
+        XCTAssertGreaterThanOrEqual(emphasis.count, 1, "Should have at least one italic")
+        XCTAssertGreaterThanOrEqual(strongEmphasis.count, 1, "Should have at least one bold")
     }
     
     func testMarkdownNestedEmphasis() {
         let parser = SwiftParser()
         
-        // 先测试最简单的情况
-        print("\n=== 测试简单情况 ===")
+        // Start with a simple case
+        print("\n=== Simple case ===")
         let simpleTest = "*test*"
         let simpleResult = parser.parseMarkdown(simpleTest)
-        print("输入: \(simpleTest)")
-        print("解析结果:")
+        print("Input: \(simpleTest)")
+        print("Result:")
         printNodeTree(simpleResult.root, indent: "")
         
-        // 测试三星号
-        print("\n=== 测试三星号 ===")
+        // Test triple markers
+        print("\n=== Triple marker test ===")
         let tripleTest = "***test***"
         
-        // 先看看token化结果
+        // Inspect tokenization result
         let tokenizer = MarkdownTokenizer()
         let tokens = tokenizer.tokenize(tripleTest)
-        print("Token化结果:")
+        print("Tokenization result:")
         for (i, token) in tokens.enumerated() {
             if let mdToken = token as? MarkdownToken {
                 print("  [\(i)]: \(mdToken.kind) = '\(mdToken.text)'")
@@ -237,58 +237,58 @@ final class SwiftParserTests: XCTestCase {
         }
         
         let tripleResult = parser.parseMarkdown(tripleTest)
-        print("输入: \(tripleTest)")
-        print("解析结果:")
+        print("Input: \(tripleTest)")
+        print("Result:")
         printNodeTree(tripleResult.root, indent: "")
         
-        // 验证三星号结果
+        // Verify triple marker result
         let strongNodes = tripleResult.markdownNodes(ofType: .strongEmphasis)
         if strongNodes.count > 0 {
-            print("找到 \(strongNodes.count) 个 strongEmphasis 节点")
+            print("Found \(strongNodes.count) strongEmphasis nodes")
         } else {
-            print("没有找到 strongEmphasis 节点")
+            print("No strongEmphasis nodes found")
         }
         
-        // 测试嵌套的emphasis结构
+        // Test nested emphasis structures
         let testCases = [
-            ("*外层*内部*斜体*", "连续的单星号"),
-            ("**外层**内部**粗体**", "连续的双星号"),
-            ("***三星号***", "三星号应该解析为粗斜体"),
-            ("*斜体**粗体**斜体*", "斜体中嵌套粗体"),
-            ("**粗体*斜体*粗体**", "粗体中嵌套斜体"),
-            ("*外层_下划线_外层*", "星号中嵌套下划线"),
-            ("_下划线*星号*下划线_", "下划线中嵌套星号")
+            ("*outer*inner*italic*", "consecutive single asterisks"),
+            ("**outer**inner**bold**", "consecutive double asterisks"),
+            ("***triple***", "triple markers should become bold italic"),
+            ("*italic**bold**italic*", "bold nested in italic"),
+            ("**bold*italic*bold**", "italic nested in bold"),
+            ("*outer_underline_outer*", "asterisk containing underscore"),
+            ("_underline*asterisk*underline_", "underscore containing asterisk")
         ]
         
         for (markdown, description) in testCases {
             let result = parser.parseMarkdown(markdown)
             
-            // 基本验证：确保没有错误并且解析出了内容
-            XCTAssertFalse(result.hasErrors, "\(description): 不应该有解析错误")
-            XCTAssertGreaterThan(result.root.children.count, 0, "\(description): 应该解析出内容")
+            // Basic validation: ensure no errors and content parsed
+            XCTAssertFalse(result.hasErrors, "\(description): should parse without errors")
+            XCTAssertGreaterThan(result.root.children.count, 0, "\(description): should produce content")
             
-            // 打印结果用于调试
-            print("\n测试用例: \(description)")
-            print("输入: \(markdown)")
-            print("解析结果:")
+            // Print result for debugging
+            print("\nTest case: \(description)")
+            print("Input: \(markdown)")
+            print("Result:")
             printNodeTree(result.root, indent: "")
             
-            // 特别验证三星号的情况
-            if markdown == "***三星号***" {
+            // Special validation for triple markers
+            if markdown == "***triple***" {
                 let strongEmphasisNodes = result.markdownNodes(ofType: .strongEmphasis)
-                XCTAssertGreaterThan(strongEmphasisNodes.count, 0, "三星号应该产生strongEmphasis节点")
+                    XCTAssertGreaterThan(strongEmphasisNodes.count, 0, "Triple markers should create strongEmphasis")
                 
                 if let strongNode = strongEmphasisNodes.first {
                     let emphasisNodes = strongNode.children.filter { 
                         ($0.type as? MarkdownElement) == .emphasis 
                     }
-                    XCTAssertGreaterThan(emphasisNodes.count, 0, "strongEmphasis应该包含嵌套的emphasis节点")
+                    XCTAssertGreaterThan(emphasisNodes.count, 0, "strongEmphasis should contain nested emphasis")
                 }
             }
         }
     }
     
-    // 辅助函数：打印节点树结构
+    // Helper: print node tree
     private func printNodeTree(_ node: CodeNode, indent: String) {
         if let element = node.type as? MarkdownElement {
             print("\(indent)\(element.description): '\(node.value)'")
@@ -303,15 +303,15 @@ final class SwiftParserTests: XCTestCase {
     
     func testMarkdownInlineCode() {
         let parser = SwiftParser()
-        let markdown = "这是 `内联代码` 测试"
+        let markdown = "This is `inline code` test"
         let result = parser.parseMarkdown(markdown)
         
         XCTAssertFalse(result.hasErrors)
         
         let inlineCode = result.markdownNodes(ofType: .inlineCode)
         
-        XCTAssertEqual(inlineCode.count, 1, "应该有1个内联代码")
-        XCTAssertEqual(inlineCode.first?.value, "内联代码", "内联代码内容应该正确")
+        XCTAssertEqual(inlineCode.count, 1, "Should find one inline code")
+        XCTAssertEqual(inlineCode.first?.value, "inline code", "Inline code content should match")
     }
     
     func testMarkdownCodeBlock() {
@@ -327,14 +327,14 @@ final class SwiftParserTests: XCTestCase {
         XCTAssertFalse(result.hasErrors)
         
         let codeBlocks = result.markdownNodes(ofType: .fencedCodeBlock)
-        XCTAssertEqual(codeBlocks.count, 1, "应该有1个代码块")
+        XCTAssertEqual(codeBlocks.count, 1, "Should find one code block")
         
         let codeBlock = codeBlocks.first!
-        XCTAssertTrue(codeBlock.value.contains("let code"), "代码块应该包含代码内容")
+        XCTAssertTrue(codeBlock.value.contains("let code"), "Code block should contain code")
         
-        // 检查语言标识符
+        // Check language identifier
         if let langNode = codeBlock.children.first {
-            XCTAssertEqual(langNode.value, "swift", "语言标识符应该是swift")
+            XCTAssertEqual(langNode.value, "swift", "Language identifier should be swift")
         }
     }
     
@@ -346,13 +346,13 @@ final class SwiftParserTests: XCTestCase {
         XCTAssertFalse(result.hasErrors)
         
         let links = result.markdownNodes(ofType: .link)
-        XCTAssertEqual(links.count, 1, "应该有1个链接")
+        XCTAssertEqual(links.count, 1, "Should find one link")
         
         let link = links.first!
-        XCTAssertEqual(link.value, "Google", "链接文本应该正确")
+        XCTAssertEqual(link.value, "Google", "Link text should match")
         
         if let urlNode = link.children.first {
-            XCTAssertEqual(urlNode.value, "https://google.com", "链接URL应该正确")
+            XCTAssertEqual(urlNode.value, "https://google.com", "Link URL should match")
         }
     }
     
@@ -364,41 +364,41 @@ final class SwiftParserTests: XCTestCase {
         XCTAssertFalse(result.hasErrors)
         
         let images = result.markdownNodes(ofType: .image)
-        XCTAssertEqual(images.count, 1, "应该有1个图片")
+        XCTAssertEqual(images.count, 1, "Should find one image")
         
         let image = images.first!
-        XCTAssertEqual(image.value, "Alt text", "图片alt文本应该正确")
+        XCTAssertEqual(image.value, "Alt text", "Image alt text should match")
         
         if let urlNode = image.children.first {
-            XCTAssertEqual(urlNode.value, "image.jpg", "图片URL应该正确")
+            XCTAssertEqual(urlNode.value, "image.jpg", "Image URL should match")
         }
     }
     
     func testMarkdownBlockquote() {
         let parser = SwiftParser()
-        let markdown = "> 这是引用文本\n> 多行引用"
+        let markdown = "> A quote\n> Multiple lines"
         let result = parser.parseMarkdown(markdown)
         
         XCTAssertFalse(result.hasErrors)
         
         let blockquotes = result.markdownNodes(ofType: .blockquote)
-        XCTAssertEqual(blockquotes.count, 1, "应该有1个引用块")
+        XCTAssertEqual(blockquotes.count, 1, "Should find one blockquote")
         
         let blockquote = blockquotes.first!
-        XCTAssertTrue(blockquote.value.contains("引用文本"), "引用块应该包含正确内容")
+        XCTAssertTrue(blockquote.value.contains("A quote"), "Blockquote should contain text")
     }
     
     func testSpecificNesting() {
         let parser = SwiftParser()
-        let testCase = "**粗体*斜体*粗体**"
+        let testCase = "**bold*italic*bold**"
         
-        print("\n=== 调试具体案例 ===")
-        print("输入: \(testCase)")
+        print("\n=== Debug specific case ===")
+        print("Input: \(testCase)")
         
-        // 先看看token化结果
+        // Check tokenization result
         let tokenizer = MarkdownTokenizer()
         let tokens = tokenizer.tokenize(testCase)
-        print("Token化结果:")
+        print("Tokenization result:")
         for (i, token) in tokens.enumerated() {
             if let mdToken = token as? MarkdownToken {
                 print("  [\(i)]: \(mdToken.kind) = '\(mdToken.text)'")
@@ -406,13 +406,13 @@ final class SwiftParserTests: XCTestCase {
         }
         
         let result = parser.parseMarkdown(testCase)
-        print("解析结果:")
+        print("Result:")
         printNodeTree(result.root, indent: "")
         
         let strongEmphasis = result.markdownNodes(ofType: .strongEmphasis)
-        print("找到 \(strongEmphasis.count) 个 strongEmphasis 节点")
+        print("Found \(strongEmphasis.count) strongEmphasis nodes")
         
-        // 应该有1个strongEmphasis节点包含正确的内容
-        XCTAssertEqual(strongEmphasis.count, 1, "应该有1个strongEmphasis节点")
+        // Should have one strongEmphasis node with correct content
+        XCTAssertEqual(strongEmphasis.count, 1, "Should have one strongEmphasis node")
     }
 }
