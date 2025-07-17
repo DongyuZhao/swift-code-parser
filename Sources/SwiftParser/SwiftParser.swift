@@ -6,7 +6,7 @@ public struct SwiftParser {
 
     public func parse(_ source: String, language: CodeLanguage) -> ParsedSource {
         let root = CodeNode(type: language.rootElement, value: "")
-        let parser = CodeParser(tokenizer: language.tokenizer, consumers: language.consumers)
+        let parser = CodeParser(language: language)
         let result = parser.parse(source, rootNode: root)
         return ParsedSource(content: source, root: result.node, errors: result.context.errors)
     }

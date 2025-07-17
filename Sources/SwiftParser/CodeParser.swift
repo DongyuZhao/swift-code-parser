@@ -6,9 +6,9 @@ public final class CodeParser {
 
     // Registered state is now reset for each parse run
 
-    public init(tokenizer: CodeTokenizer, consumers: [CodeTokenConsumer] = []) {
-        self.tokenizer = tokenizer
-        self.consumers = consumers
+    public init(language: CodeLanguage) {
+        self.tokenizer = language.tokenizer
+        self.consumers = language.consumers
     }
 
     public func register(consumer: CodeTokenConsumer) {
