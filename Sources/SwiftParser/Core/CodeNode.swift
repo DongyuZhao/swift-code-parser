@@ -1,23 +1,5 @@
 import Foundation
 
-public protocol CodeElement {}
-
-public protocol CodeToken {
-    var kindDescription: String { get }
-    var text: String { get }
-    var range: Range<String.Index> { get }
-}
-
-public protocol CodeTokenizer {
-    func tokenize(_ input: String) -> [any CodeToken]
-}
-
-/// Consumes a token and optionally updates the AST if it is recognized.
-/// - Returns: `true` if the token was handled and the context advanced.
-public protocol CodeTokenConsumer {
-    func consume(context: inout CodeContext, token: any CodeToken) -> Bool
-}
-
 public class CodeNode {
     public let type: any CodeElement
     public var value: String
@@ -126,31 +108,4 @@ public class CodeNode {
         }
         return d
     }
-}
-
-public struct CodeError: Error {
-    public let message: String
-    public let range: Range<String.Index>?
-    public init(_ message: String, range: Range<String.Index>? = nil) {
-        self.message = message
-        self.range = range
-    }
-}
-
-public struct CodeContext {
-    public var tokens: [any CodeToken]
-    public var currentNode: CodeNode
-    public var errors: [CodeError]
-
-    public init(tokens: [any CodeToken], currentNode: CodeNode, errors: [CodeError]) {
-        self.tokens = tokens
-        self.currentNode = currentNode
-        self.errors = errors
-    }
-}
-
-public protocol CodeLanguage {
-    var tokenizer: CodeTokenizer { get }
-    var consumers: [CodeTokenConsumer] { get }
-    var rootElement: any CodeElement { get }
 }
