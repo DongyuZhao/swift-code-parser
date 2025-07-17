@@ -1,6 +1,6 @@
 import Foundation
 
-public protocol CodeExpressionBuilder: CodeElementBuilder {
+public protocol CodeExpressionBuilder: CodeTokenConsumer {
     func isPrefix(token: any CodeToken) -> Bool
     func prefix(context: inout CodeContext, token: any CodeToken) -> CodeNode?
     func infixBindingPower(of token: any CodeToken) -> (left: Int, right: Int)?
@@ -8,14 +8,12 @@ public protocol CodeExpressionBuilder: CodeElementBuilder {
 }
 
 public extension CodeExpressionBuilder {
-    func accept(context: CodeContext, token: any CodeToken) -> Bool {
-        return isPrefix(token: token)
-    }
-
-    func build(context: inout CodeContext) {
+    func consume(context: inout CodeContext, token: any CodeToken) -> Bool {
+        guard isPrefix(token: token) else { return false }
         if let node = parse(context: &context) {
             context.currentNode.addChild(node)
         }
+        return true
     }
 
     func parse(context: inout CodeContext, minBP: Int = 0) -> CodeNode? {

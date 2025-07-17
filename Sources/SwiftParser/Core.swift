@@ -12,9 +12,10 @@ public protocol CodeTokenizer {
     func tokenize(_ input: String) -> [any CodeToken]
 }
 
-public protocol CodeElementBuilder {
-    func accept(context: CodeContext, token: any CodeToken) -> Bool
-    func build(context: inout CodeContext)
+/// Consumes a token and optionally updates the AST if it is recognized.
+/// - Returns: `true` if the token was handled and the context advanced.
+public protocol CodeTokenConsumer {
+    func consume(context: inout CodeContext, token: any CodeToken) -> Bool
 }
 
 public class CodeNode {
@@ -183,7 +184,7 @@ public struct CodeContext {
 
 public protocol CodeLanguage {
     var tokenizer: CodeTokenizer { get }
-    var builders: [CodeElementBuilder] { get }
+    var consumers: [CodeTokenConsumer] { get }
     var rootElement: any CodeElement { get }
     var expressionBuilders: [CodeExpressionBuilder] { get }
 }

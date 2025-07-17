@@ -1,7 +1,7 @@
 import Foundation
 
 public final class CodeParser {
-    private var builders: [CodeElementBuilder]
+    private var consumers: [CodeTokenConsumer]
     private let tokenizer: CodeTokenizer
     private var expressionBuilders: [CodeExpressionBuilder]
 
@@ -10,26 +10,26 @@ public final class CodeParser {
     private var snapshots: [Int: CodeContext.Snapshot] = [:]
     private var lastTokens: [any CodeToken] = []
 
-    public init(tokenizer: CodeTokenizer, builders: [CodeElementBuilder] = [], expressionBuilders: [CodeExpressionBuilder] = []) {
+    public init(tokenizer: CodeTokenizer, consumers: [CodeTokenConsumer] = [], expressionBuilders: [CodeExpressionBuilder] = []) {
         self.tokenizer = tokenizer
-        self.builders = builders
+        self.consumers = consumers
         self.expressionBuilders = expressionBuilders
     }
 
-    public func register(builder: CodeElementBuilder) {
-        builders.append(builder)
+    public func register(consumer: CodeTokenConsumer) {
+        consumers.append(consumer)
     }
 
-    public func unregister(builder: CodeElementBuilder) {
-        if let target = builder as? AnyObject {
-            if let index = builders.firstIndex(where: { ($0 as? AnyObject) === target }) {
-                builders.remove(at: index)
+    public func unregister(consumer: CodeTokenConsumer) {
+        if let target = consumer as? AnyObject {
+            if let index = consumers.firstIndex(where: { ($0 as? AnyObject) === target }) {
+                consumers.remove(at: index)
             }
         }
     }
 
-    public func clearBuilders() {
-        builders.removeAll()
+    public func clearConsumers() {
+        consumers.removeAll()
     }
 
     public func register(expressionBuilder: CodeExpressionBuilder) {
@@ -72,19 +72,15 @@ public final class CodeParser {
                 break
             }
             var matched = false
-            for builder in builders {
-                if builder.accept(context: context, token: token) {
-                    builder.build(context: &context)
+            for consumer in consumers {
+                if consumer.consume(context: &context, token: token) {
                     matched = true
                     break
                 }
             }
             if !matched {
                 for expr in expressionBuilders {
-                    if expr.accept(context: context, token: token) {
-                        if let node = expr.parse(context: &context) {
-                            context.currentNode.addChild(node)
-                        }
+                    if expr.consume(context: &context, token: token) {
                         matched = true
                         break
                     }
@@ -144,19 +140,15 @@ public final class CodeParser {
             let token = context.tokens[context.index]
             if token.kindDescription == "eof" { break }
             var matched = false
-            for builder in builders {
-                if builder.accept(context: context, token: token) {
-                    builder.build(context: &context)
+            for consumer in consumers {
+                if consumer.consume(context: &context, token: token) {
                     matched = true
                     break
                 }
             }
             if !matched {
                 for expr in expressionBuilders {
-                    if expr.accept(context: context, token: token) {
-                        if let node = expr.parse(context: &context) {
-                            context.currentNode.addChild(node)
-                        }
+                    if expr.consume(context: &context, token: token) {
                         matched = true
                         break
                     }
@@ -180,7 +172,7 @@ public final class CodeParser {
         guard context.index < context.tokens.count else { return nil }
         let token = context.tokens[context.index]
         for expr in expressionBuilders {
-            if expr.accept(context: context, token: token) {
+            if expr.isPrefix(token: token) {
                 return expr.parse(context: &context, minBP: minBP)
             }
         }
