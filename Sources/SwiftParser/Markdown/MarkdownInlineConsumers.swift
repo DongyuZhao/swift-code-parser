@@ -1,6 +1,6 @@
 import Foundation
 
-/// 处理标题的Consumer，支持ATX标题（# 标题）
+/// Consumer for handling headers, supports ATX headers (# Header)
 public class MarkdownHeaderConsumer: CodeTokenConsumer {
     
     public init() {}
@@ -8,7 +8,7 @@ public class MarkdownHeaderConsumer: CodeTokenConsumer {
     public func consume(context: inout CodeContext, token: any CodeToken) -> Bool {
         guard let mdToken = token as? MarkdownToken else { return false }
         
-        // 检查是否是行首的#字符
+        // Check if this is a # character at the beginning of a line
         if mdToken.kind == .hash && mdToken.isAtLineStart {
             return consumeAtxHeader(context: &context, token: mdToken)
         }
@@ -17,46 +17,46 @@ public class MarkdownHeaderConsumer: CodeTokenConsumer {
     }
     
     private func consumeAtxHeader(context: inout CodeContext, token: MarkdownToken) -> Bool {
-        // 移除当前#号token
+        // Remove current # token
         context.tokens.removeFirst()
         
-        // 计算标题级别
+        // Calculate header level
         var level = 1
         var headerText = ""
         
-        // 消费连续的#号
+        // Consume consecutive # characters
         while let nextToken = context.tokens.first as? MarkdownToken,
               nextToken.kind == .hash {
             level += 1
             context.tokens.removeFirst()
             
-            // 最大支持6级标题
+            // Maximum 6 levels of headers supported
             if level > 6 {
                 level = 6
                 break
             }
         }
         
-        // 跳过空白
+        // Skip whitespace
         while let nextToken = context.tokens.first as? MarkdownToken,
               nextToken.kind == .whitespace {
             context.tokens.removeFirst()
         }
         
-        // 收集标题文本直到行末
+        // Collect header text until end of line
         while let nextToken = context.tokens.first as? MarkdownToken,
               nextToken.kind != .newline && nextToken.kind != .eof {
             headerText += nextToken.text
             context.tokens.removeFirst()
         }
         
-        // 移除尾部的#号和空白
+        // Remove trailing # characters and whitespace
         headerText = headerText.trimmingCharacters(in: .whitespaces)
         if headerText.hasSuffix("#") {
             headerText = String(headerText.dropLast()).trimmingCharacters(in: .whitespaces)
         }
         
-        // 创建对应级别的标题节点
+        // Create header node for the corresponding level
         let headerElement: MarkdownElement
         switch level {
         case 1: headerElement = .header1
@@ -74,7 +74,7 @@ public class MarkdownHeaderConsumer: CodeTokenConsumer {
     }
 }
 
-/// 处理段落的Consumer
+/// Consumer for handling paragraphs
 public class MarkdownParagraphConsumer: CodeTokenConsumer {
     
     public init() {}
@@ -82,7 +82,7 @@ public class MarkdownParagraphConsumer: CodeTokenConsumer {
     public func consume(context: inout CodeContext, token: any CodeToken) -> Bool {
         guard let mdToken = token as? MarkdownToken else { return false }
         
-        // 如果是文本token，开始段落
+        // If it's a text token, start a paragraph
         if mdToken.kind == .text && mdToken.isAtLineStart {
             return consumeParagraph(context: &context, token: mdToken)
         }
@@ -91,17 +91,17 @@ public class MarkdownParagraphConsumer: CodeTokenConsumer {
     }
     
     private func consumeParagraph(context: inout CodeContext, token: MarkdownToken) -> Bool {
-        // 创建段落节点
+        // Create paragraph node
         let paragraphNode = CodeNode(type: MarkdownElement.paragraph, value: "", range: token.range)
         context.currentNode.addChild(paragraphNode)
         
-        // 进入段落上下文
+        // Enter paragraph context
         let previousNode = context.currentNode
         context.currentNode = paragraphNode
         
         var paragraphText = ""
         
-        // 收集段落内容直到遇到空行或块级元素
+        // Collect paragraph content until encountering blank line or block-level element
         while let currentToken = context.tokens.first as? MarkdownToken {
             if currentToken.kind == .eof {
                 break
@@ -110,18 +110,18 @@ public class MarkdownParagraphConsumer: CodeTokenConsumer {
             if currentToken.kind == .newline {
                 context.tokens.removeFirst()
                 
-                // 检查下一行是否为空行或块级元素开始
+                // Check if next line is blank or starts with block-level element
                 if let nextToken = context.tokens.first as? MarkdownToken {
                     if nextToken.kind == .newline || isBlockElementStart(nextToken) {
                         break
                     }
-                    // 如果不是空行，添加空格
+                    // If not a blank line, add space
                     paragraphText += " "
                 }
                 continue
             }
             
-            // 尝试让内联consumers处理这个token
+            // Try to let inline consumers handle this token
             var consumed = false
             for inlineConsumer in getInlineConsumers() {
                 if inlineConsumer.consume(context: &context, token: currentToken) {
@@ -130,23 +130,23 @@ public class MarkdownParagraphConsumer: CodeTokenConsumer {
                 }
             }
             
-            // 如果没有内联consumer处理，添加到段落文本
+            // If no inline consumer handled it, add to paragraph text
             if !consumed {
                 paragraphText += currentToken.text
                 context.tokens.removeFirst()
             }
         }
         
-        // 如果有剩余的文本，创建文本节点
+        // If there's remaining text, create text node
         if !paragraphText.isEmpty {
             let textNode = CodeNode(type: MarkdownElement.text, value: paragraphText.trimmingCharacters(in: .whitespaces), range: token.range)
             paragraphNode.addChild(textNode)
         }
         
-        // 恢复上下文
+        // Restore context
         context.currentNode = previousNode
         
-        // 设置段落的值为所有子节点的文本内容
+        // Set paragraph value as the joined text content of all child nodes
         paragraphNode.value = paragraphNode.children.map { $0.value }.joined()
         
         return true
@@ -160,7 +160,9 @@ public class MarkdownParagraphConsumer: CodeTokenConsumer {
             MarkdownAutolinkConsumer(),
             MarkdownEmphasisConsumer(),
             MarkdownStrikethroughConsumer(),
-            MarkdownHTMLInlineConsumer()
+            MarkdownHTMLInlineConsumer(),
+            MarkdownFootnoteReferenceConsumer(),
+            MarkdownCitationReferenceConsumer()
         ]
     }
     
@@ -172,14 +174,14 @@ public class MarkdownParagraphConsumer: CodeTokenConsumer {
     }
 }
 
-/// Token类型
+/// Token type
 enum FlatTokenType {
     case partial
     case text
     case other
 }
 
-/// 展平的token表示
+/// Flattened token representation
 struct FlatToken {
     let type: FlatTokenType
     let content: String
@@ -192,19 +194,19 @@ struct FlatToken {
     }
 }
 
-/// Emphasis匹配结果
+/// Emphasis match result
 struct EmphasisMatch {
     let endIndex: Int
     let count: Int
 }
 
-/// 节点组类型
+/// Node group type
 enum NodeGroupType {
     case partial
     case content
 }
 
-/// 节点组
+/// Node group
 struct NodeGroup {
     let type: NodeGroupType
     var startIndex: Int
@@ -213,7 +215,7 @@ struct NodeGroup {
     var markerCount: Int
 }
 
-/// Emphasis重组方案
+/// Emphasis reorganization plan
 struct EmphasisReorganization {
     let startGroup: (index: Int, group: NodeGroup)
     let endGroup: (index: Int, group: NodeGroup)
@@ -222,7 +224,7 @@ struct EmphasisReorganization {
     let marker: String
 }
 
-/// 处理强调的Consumer（* 和 _），使用回溯重组策略
+/// Consumer for handling emphasis (* and _), using backtrack reorganization strategy
 public class MarkdownEmphasisConsumer: CodeTokenConsumer {
     
     public init() {}
@@ -237,11 +239,11 @@ public class MarkdownEmphasisConsumer: CodeTokenConsumer {
         return false
     }
     
-    /// 处理emphasis token - 使用回溯重组策略
+    /// Handle emphasis token - using backtrack reorganization strategy
     private func handleEmphasisToken(context: inout CodeContext, token: MarkdownToken) -> Bool {
         let marker = token.text
         
-        // 首先移除当前token并计算连续marker数量
+        // First remove current token and calculate consecutive marker count
         context.tokens.removeFirst()
         var markerCount = 1
         
@@ -252,9 +254,8 @@ public class MarkdownEmphasisConsumer: CodeTokenConsumer {
             context.tokens.removeFirst()
         }
         
-        print("handleEmphasisToken: marker='\(marker)', count=\(markerCount)")
         
-        // 先添加新的partial nodes
+        // First add new partial nodes
         var newPartials: [CodeNode] = []
         for _ in 0..<markerCount {
             let partialNode = CodeNode(
@@ -266,31 +267,30 @@ public class MarkdownEmphasisConsumer: CodeTokenConsumer {
             context.currentNode.addChild(partialNode)
         }
         
-        // 然后回溯重组整个AST以寻找最佳emphasis结构
+        // Then backtrack and reorganize entire AST to find best emphasis structure
         backtrackAndReorganizeEmphasis(context: &context, marker: marker)
         
         return true
     }
-    /// 回溯并重组emphasis结构 - 支持重新评估已有结构
+    /// Backtrack and reorganize emphasis structure - supports re-evaluating existing structures
     private func backtrackAndReorganizeEmphasis(context: inout CodeContext, marker: String) {
         let parentNode = context.currentNode
         
-        print("开始回溯重组，当前子节点数量: \(parentNode.children.count)")
         
-        // 如果是新添加的partial markers，先尝试全局重组
+        // If these are newly added partial markers, try global reorganization first
         if shouldPerformGlobalReorganization(parentNode, marker: marker) {
-            print("检测到需要全局重组")
+            
             performGlobalReorganization(parentNode, marker: marker)
             return
         }
         
-        // 否则进行常规的多轮重组
+        // Otherwise perform regular multi-round reorganization
         performLocalReorganization(parentNode, marker: marker)
     }
     
-    /// 检查是否需要进行全局重组
+    /// Check if global reorganization is needed
     private func shouldPerformGlobalReorganization(_ parentNode: CodeNode, marker: String) -> Bool {
-        // 统计partial markers和emphasis节点
+        // Count partial markers and emphasis nodes
         var partialCount = 0
         var emphasisCount = 0
         
@@ -304,34 +304,28 @@ public class MarkdownEmphasisConsumer: CodeTokenConsumer {
             }
         }
         
-        // 如果有多个partial markers和emphasis节点，可能需要全局重组
+        // If there are multiple partial markers and emphasis nodes, may need global reorganization
         return partialCount >= 2 && emphasisCount > 0
     }
     
-    /// 执行全局重组：将所有内容展平后重新匹配
+    /// Perform global reorganization: flatten all content then re-match
     private func performGlobalReorganization(_ parentNode: CodeNode, marker: String) {
-        print("开始全局重组")
         
-        // 收集所有的原始tokens和内容
+        // Collect all original tokens and content
         var flatTokens: [FlatToken] = []
         
         for child in parentNode.children {
             flattenNode(child, into: &flatTokens, marker: marker)
         }
         
-        print("展平后的tokens: \(flatTokens.count)个")
-        for (i, token) in flatTokens.enumerated() {
-            print("  [\(i)]: \(token.type) = '\(token.content)'")
-        }
-        
-        // 清空现有的children
+        // Clear existing children
         parentNode.children.removeAll()
         
-        // 重新构建emphasis结构
+        // Rebuild emphasis structure
         rebuildEmphasisStructure(parentNode, flatTokens: flatTokens, marker: marker)
     }
     
-    /// 展平节点为tokens
+    /// Flatten node to tokens
     private func flattenNode(_ node: CodeNode, into tokens: inout [FlatToken], marker: String) {
         if let element = node.type as? MarkdownElement {
             switch element {
@@ -340,7 +334,7 @@ public class MarkdownEmphasisConsumer: CodeTokenConsumer {
                     tokens.append(FlatToken(type: .partial, content: marker))
                 }
             case .emphasis, .strongEmphasis:
-                // 提取emphasis的markers和内容
+                // Extract emphasis markers and content
                 let markerCount = element == .strongEmphasis ? 2 : 1
                 for _ in 0..<markerCount {
                     tokens.append(FlatToken(type: .partial, content: marker))
@@ -354,31 +348,30 @@ public class MarkdownEmphasisConsumer: CodeTokenConsumer {
             case .text:
                 tokens.append(FlatToken(type: .text, content: node.value))
             default:
-                // 对于其他类型的节点，保持不变
+                // For other types of nodes, keep unchanged
                 tokens.append(FlatToken(type: .other, content: node.value, node: node))
             }
         }
     }
     
-    /// 重新构建emphasis结构
+    /// Rebuild emphasis structure
     private func rebuildEmphasisStructure(_ parentNode: CodeNode, flatTokens: [FlatToken], marker: String) {
         var tokens = flatTokens
         
         while !tokens.isEmpty {
             if tokens[0].type == .partial && tokens[0].content == marker {
-                // 寻找匹配的closing markers
+                // Find matching closing markers
                 if let match = findBestEmphasisMatch(tokens, startIndex: 0, marker: marker) {
-                    print("找到最佳匹配: start=0, end=\(match.endIndex), count=\(match.count)")
                     
-                    // 创建emphasis节点
+                    // Create emphasis node
                     let contentTokens = Array(tokens[match.count..<match.endIndex])
                     let emphasisNode = createEmphasisFromTokens(contentTokens, matchCount: match.count, marker: marker)
                     parentNode.addChild(emphasisNode)
                     
-                    // 移除已处理的tokens
+                    // Remove processed tokens
                     tokens.removeSubrange(0...(match.endIndex + match.count - 1))
                 } else {
-                    // 没有匹配，作为partial保留
+                    // No match found, keep as partial
                     let partialNode = CodeNode(
                         type: MarkdownElement.partialEmphasis,
                         value: marker,
@@ -388,7 +381,7 @@ public class MarkdownEmphasisConsumer: CodeTokenConsumer {
                     tokens.removeFirst()
                 }
             } else {
-                // 非partial token，直接添加
+                // Non-partial token, add directly
                 if tokens[0].type == .text {
                     let textNode = CodeNode(
                         type: MarkdownElement.text,
@@ -404,20 +397,19 @@ public class MarkdownEmphasisConsumer: CodeTokenConsumer {
         }
     }
     
-    /// 执行本地重组
+    /// Perform local reorganization
     private func performLocalReorganization(_ parentNode: CodeNode, marker: String) {
-        // 多轮重组，直到没有更多的重组机会
+        // Multi-round reorganization until no more reorganization opportunities
         var hasChanges = true
-        let maxIterations = 5  // 防止无限循环
+        let maxIterations = 5  // Prevent infinite loops
         var iteration = 0
         
         while hasChanges && iteration < maxIterations {
             hasChanges = false
             iteration += 1
             
-            print("第\(iteration)轮重组")
             
-            // 收集所有partial emphasis和其他节点的信息
+            // Collect information about all partial emphasis and other nodes
             var nodeInfo: [(node: CodeNode, index: Int, isPartial: Bool, markerCount: Int)] = []
             
             for (index, child) in parentNode.children.enumerated() {
@@ -430,22 +422,21 @@ public class MarkdownEmphasisConsumer: CodeTokenConsumer {
                 }
             }
             
-            // 合并连续的partial nodes
+            // Group consecutive partial nodes
             let groupedInfo = groupConsecutivePartials(nodeInfo)
-            print("分组后: \(groupedInfo.count) 组")
             
-            // 尝试寻找最佳的emphasis配对
+            // Try to find best emphasis pairing
             if let bestReorganization = findBestEmphasisReorganization(groupedInfo, marker: marker) {
-                print("找到最佳重组方案，应用重组")
+                
                 applyEmphasisReorganization(parentNode, reorganization: bestReorganization)
                 hasChanges = true
             } else {
-                print("未找到可重组的emphasis结构")
+                
             }
         }
     }
     
-    /// 将连续的partial nodes分组
+    /// Group consecutive partial nodes
     private func groupConsecutivePartials(_ nodeInfo: [(node: CodeNode, index: Int, isPartial: Bool, markerCount: Int)]) -> [NodeGroup] {
         var groups: [NodeGroup] = []
         var currentGroup: NodeGroup? = nil
@@ -453,27 +444,27 @@ public class MarkdownEmphasisConsumer: CodeTokenConsumer {
         for info in nodeInfo {
             if info.isPartial {
                 if currentGroup == nil || currentGroup!.type != .partial {
-                    // 开始新的partial组
+                    // Start new partial group
                     currentGroup = NodeGroup(type: .partial, startIndex: info.index, endIndex: info.index, nodes: [info.node], markerCount: 1)
                 } else {
-                    // 扩展当前partial组
+                    // Extend current partial group
                     currentGroup!.endIndex = info.index
                     currentGroup!.nodes.append(info.node)
                     currentGroup!.markerCount += 1
                 }
             } else {
-                // 完成当前partial组
+                // Complete current partial group
                 if let group = currentGroup {
                     groups.append(group)
                     currentGroup = nil
                 }
                 
-                // 添加内容组
+                // Add content group
                 groups.append(NodeGroup(type: .content, startIndex: info.index, endIndex: info.index, nodes: [info.node], markerCount: 0))
             }
         }
         
-        // 完成最后的partial组
+        // Complete last partial group
         if let group = currentGroup {
             groups.append(group)
         }
@@ -481,31 +472,31 @@ public class MarkdownEmphasisConsumer: CodeTokenConsumer {
         return groups
     }
     
-    /// 寻找最佳的emphasis重组方案 - 优先选择更大的匹配
+    /// Find best emphasis reorganization plan - prioritize larger matches
     private func findBestEmphasisReorganization(_ groups: [NodeGroup], marker: String) -> EmphasisReorganization? {
-        // 找到所有的partial组
+        // Find all partial groups
         let partialGroups = groups.enumerated().compactMap { index, group in
             group.type == .partial ? (index: index, group: group) : nil
         }
         
         if partialGroups.count < 2 {
-            return nil // 需要至少2个partial组才能形成emphasis
+            return nil // Need at least 2 partial groups to form emphasis
         }
         
         var bestReorganization: EmphasisReorganization? = nil
         var bestScore = 0
         
-        // 尝试从最后一个partial组开始，向前寻找匹配
+        // Try starting from last partial group, searching forward
         for endIndex in stride(from: partialGroups.count - 1, through: 1, by: -1) {
             let endGroup = partialGroups[endIndex]
             
             for startIndex in stride(from: endIndex - 1, through: 0, by: -1) {
                 let startGroup = partialGroups[startIndex]
                 
-                // 检查是否可以匹配
+                // Check if can match
                 let matchCount = min(startGroup.group.markerCount, endGroup.group.markerCount)
                 if matchCount > 0 {
-                    // 收集两个partial组之间的内容
+                    // Collect content between two partial groups
                     let contentStart = startGroup.index + 1
                     let contentEnd = endGroup.index - 1
                     
@@ -514,10 +505,9 @@ public class MarkdownEmphasisConsumer: CodeTokenConsumer {
                         contentGroups = Array(groups[contentStart...contentEnd])
                     }
                     
-                    // 计算分数：优先选择更大的matchCount，然后考虑内容的复杂度
+                    // Calculate score: prioritize larger matchCount, then consider content complexity
                     let score = matchCount * 100 + contentGroups.count
                     
-                    print("评估匹配: start=\(startGroup.group.markerCount), end=\(endGroup.group.markerCount), match=\(matchCount), score=\(score)")
                     
                     if score > bestScore {
                         bestScore = score
@@ -533,58 +523,53 @@ public class MarkdownEmphasisConsumer: CodeTokenConsumer {
             }
         }
         
-        if let best = bestReorganization {
-            print("选择最佳匹配: matchCount=\(best.matchCount), score=\(bestScore)")
-        }
-        
         return bestReorganization
     }
     
-    /// 应用emphasis重组
+    /// Apply emphasis reorganization
     private func applyEmphasisReorganization(_ parentNode: CodeNode, reorganization: EmphasisReorganization) {
-        // 收集所有要重组的内容节点
+        // Collect all content nodes to reorganize
         var contentNodes: [CodeNode] = []
         for group in reorganization.contentGroups {
             contentNodes.append(contentsOf: group.nodes)
         }
         
-        print("重组内容节点数量: \(contentNodes.count)")
         
-        // 创建emphasis节点
+        // Create emphasis node
         let emphasisNode = createEmphasisNode(
             matchCount: reorganization.matchCount,
             contentNodes: contentNodes,
             range: "".startIndex..<"".endIndex
         )
         
-        // 计算要移除的所有索引
+        // Calculate all indices to remove
         var indicesToRemove: Set<Int> = Set()
         
-        // 添加起始组的索引
+        // Add start group indices
         for i in reorganization.startGroup.group.startIndex...reorganization.startGroup.group.endIndex {
             indicesToRemove.insert(i)
         }
         
-        // 添加内容组的索引
+        // Add content group indices
         for group in reorganization.contentGroups {
             for i in group.startIndex...group.endIndex {
                 indicesToRemove.insert(i)
             }
         }
         
-        // 添加结束组的索引
+        // Add end group indices
         for i in reorganization.endGroup.group.startIndex...reorganization.endGroup.group.endIndex {
             indicesToRemove.insert(i)
         }
         
-        // 从后往前移除节点（避免索引变化）
+        // Remove nodes from back to front (to avoid index changes)
         for index in indicesToRemove.sorted(by: >) {
             if index < parentNode.children.count {
                 parentNode.children.remove(at: index)
             }
         }
         
-        // 在原位置插入emphasis节点
+        // Insert emphasis node at original position
         let insertIndex = reorganization.startGroup.group.startIndex
         if insertIndex <= parentNode.children.count {
             parentNode.insertChild(emphasisNode, at: insertIndex)
@@ -592,13 +577,12 @@ public class MarkdownEmphasisConsumer: CodeTokenConsumer {
             parentNode.addChild(emphasisNode)
         }
         
-        // 处理剩余的partial markers
+        // Handle remaining partial markers
         let remainingStart = reorganization.startGroup.group.markerCount - reorganization.matchCount
         let remainingEnd = reorganization.endGroup.group.markerCount - reorganization.matchCount
         
-        print("剩余markers: start=\(remainingStart), end=\(remainingEnd)")
         
-        // 添加剩余的partial nodes
+        // Add remaining partial nodes
         for i in 0..<remainingStart {
             let partialNode = CodeNode(
                 type: MarkdownElement.partialEmphasis,
@@ -619,7 +603,7 @@ public class MarkdownEmphasisConsumer: CodeTokenConsumer {
         }
     }
     
-    /// 计算剩余tokens中指定marker的数量
+    /// Calculate remaining markers of specified type in tokens
     private func countRemainingMarkers(in tokens: [CodeToken], marker: String) -> Int {
         var count = 0
         for token in tokens {
@@ -632,7 +616,7 @@ public class MarkdownEmphasisConsumer: CodeTokenConsumer {
         return count
     }
     
-    /// 查找partial emphasis选项
+    /// Find partial emphasis options
     private func findPartialEmphasisOptions(in parentNode: CodeNode, marker: String) -> [(index: Int, consecutiveCount: Int)] {
         var options: [(index: Int, consecutiveCount: Int)] = []
         
@@ -644,7 +628,7 @@ public class MarkdownEmphasisConsumer: CodeTokenConsumer {
                element == .partialEmphasis,
                child.value == marker {
                 
-                // 计算从这个位置开始的连续partial数量
+                // Count consecutive partials starting from this position
                 var consecutiveCount = 0
                 var checkIndex = i
                 
@@ -657,7 +641,7 @@ public class MarkdownEmphasisConsumer: CodeTokenConsumer {
                 }
                 
                 options.append((index: i, consecutiveCount: consecutiveCount))
-                i = checkIndex  // 跳过已检查的连续partial
+                i = checkIndex  // Skip checked consecutive partials
             } else {
                 i += 1
             }
@@ -666,7 +650,7 @@ public class MarkdownEmphasisConsumer: CodeTokenConsumer {
         return options
     }
     
-    /// 执行正常的匹配流程
+    /// Execute normal matching process
     private func performNormalMatch(context: inout CodeContext, marker: String, count: Int) -> Bool {
         let parentNode = context.currentNode
         let matchOptions = findPartialEmphasisOptions(in: parentNode, marker: marker)
@@ -675,9 +659,8 @@ public class MarkdownEmphasisConsumer: CodeTokenConsumer {
             return false
         }
         
-        print("找到匹配选项: \(matchOptions)")
         
-        // 选择最远的完全匹配选项
+        // Choose the farthest complete match option
         let sortedOptions = matchOptions.sorted { $0.index < $1.index }
         
         for option in sortedOptions {
@@ -688,7 +671,7 @@ public class MarkdownEmphasisConsumer: CodeTokenConsumer {
                 let hasContent = contentStart < parentNode.children.count
                 
                 if hasContent {
-                    print("选择最远的完全匹配选项: index=\(option.index), count=\(option.consecutiveCount)")
+                    
                     return executeEmphasisMatch(
                         context: &context,
                         startIndex: option.index,
@@ -701,19 +684,19 @@ public class MarkdownEmphasisConsumer: CodeTokenConsumer {
             }
         }
         
-        print("没有找到合适的匹配")
+        
         return false
     }
     
-    /// 尝试最佳匹配策略
+    /// Try optimal matching strategy
     private func tryBestMatchStrategy(
         context: inout CodeContext,
         marker: String,
         count: Int,
         options: [(index: Int, consecutiveCount: Int)]
     ) -> Bool {
-        // 策略1：优先匹配能够完全匹配且距离最远的选项（形成最外层的结构）
-        // 按index排序，优先选择距离最远的匹配
+        // Strategy 1: Prioritize options that can fully match and are farthest (forming outermost structure)
+        // Sort by index, prioritize farthest matches
         let sortedOptions = options.sorted { $0.index < $1.index }
         
         for option in sortedOptions {
@@ -724,7 +707,7 @@ public class MarkdownEmphasisConsumer: CodeTokenConsumer {
                 let hasContent = contentStart < context.currentNode.children.count
                 
                 if hasContent {
-                    print("选择最远的完全匹配选项: index=\(option.index), count=\(option.consecutiveCount)")
+                    
                     return executeEmphasisMatch(
                         context: &context,
                         startIndex: option.index,
@@ -737,24 +720,24 @@ public class MarkdownEmphasisConsumer: CodeTokenConsumer {
             }
         }
         
-        // 策略2：如果没有完全匹配，检查是否应该等待更好的匹配
-        // 特殊逻辑：如果当前markers数量 >= 2，我们倾向于等待而不是匹配单个marker
+        // Strategy 2: If no complete match, check if we should wait for better matches
+        // Special logic: If current markers count >= 2, we tend to wait rather than match a single marker
         if count >= 2 {
-            // 检查是否有单个marker的选项
+            // Check if there are single marker options
             let hasMultipleMarkerOptions = options.contains { $0.consecutiveCount >= count }
             
             if !hasMultipleMarkerOptions {
-                // 如果没有足够的开始markers匹配，等待
-                print("等待更好匹配：需要\(count)个markers但没有足够的开始markers")
+                // If not enough start markers to match, wait for better match
+                
                 return false
             }
         }
         
-        print("没有找到合适的匹配策略")
+        
         return false
     }
     
-    /// 执行emphasis匹配
+    /// Execute emphasis matching
     private func executeEmphasisMatch(
         context: inout CodeContext,
         startIndex: Int,
@@ -765,7 +748,7 @@ public class MarkdownEmphasisConsumer: CodeTokenConsumer {
     ) -> Bool {
         let parentNode = context.currentNode
         
-        // 收集内容节点
+        // Collect content nodes
         let contentStart = startIndex + availableCount
         var contentNodes: [CodeNode] = []
         
@@ -773,34 +756,33 @@ public class MarkdownEmphasisConsumer: CodeTokenConsumer {
             contentNodes.append(parentNode.children[i])
         }
         
-        print("收集\(contentNodes.count)个内容节点用于emphasis")
         
-        // 移除内容节点（从后往前）
+        // Remove content nodes (from back to front)
         for i in (contentStart..<parentNode.children.count).reversed() {
             parentNode.children[i].removeFromParent()
         }
         
-        // 移除匹配的partial nodes（从后往前）
+        // Remove matched partial nodes (from back to front)
         let removeEnd = startIndex + matchCount
         for i in (startIndex..<removeEnd).reversed() {
             parentNode.children[i].removeFromParent()
         }
         
-        // 创建emphasis节点
+        // Create emphasis node
         let emphasisNode = createEmphasisNode(
             matchCount: matchCount,
             contentNodes: contentNodes,
             range: "".startIndex..<"".endIndex
         )
         
-        // 插入emphasis节点
+        // Insert emphasis node
         parentNode.insertChild(emphasisNode, at: startIndex)
         
-        // 处理剩余的markers
+        // Handle remaining markers
         let remainingStart = availableCount - matchCount
         let remainingEnd = endCount - matchCount
         
-        // 在emphasis前插入剩余的开始partial
+        // Insert remaining start partials before emphasis
         for i in 0..<remainingStart {
             let partialNode = CodeNode(
                 type: MarkdownElement.partialEmphasis,
@@ -810,7 +792,7 @@ public class MarkdownEmphasisConsumer: CodeTokenConsumer {
             parentNode.insertChild(partialNode, at: startIndex + i)
         }
         
-        // 在emphasis后插入剩余的结束partial
+        // Insert remaining end partials after emphasis
         let emphasisIndex = startIndex + remainingStart
         for i in 0..<remainingEnd {
             let partialNode = CodeNode(
@@ -824,11 +806,11 @@ public class MarkdownEmphasisConsumer: CodeTokenConsumer {
         return true
     }
     
-    /// 智能匹配策略：优先考虑能形成有效嵌套结构的匹配
+    /// Smart matching strategy: prioritize matches that can form effective nested structures
     private func trySmartMatch(context: inout CodeContext, marker: String, count: Int) -> Bool {
         let parentNode = context.currentNode
         
-        // 找到所有可能的匹配组合
+        // Find all possible matching combinations
         var partialRanges: [(start: Int, count: Int)] = []
         
         var i = 0
@@ -838,7 +820,7 @@ public class MarkdownEmphasisConsumer: CodeTokenConsumer {
                element == .partialEmphasis,
                child.value == marker {
                 
-                // 计算连续的partial数量
+                // Calculate consecutive partial count
                 var consecutiveCount = 0
                 var j = i
                 while j < parentNode.children.count {
@@ -860,13 +842,13 @@ public class MarkdownEmphasisConsumer: CodeTokenConsumer {
             }
         }
         
-        // 如果没有partial nodes，不能匹配
+        // If no partial nodes, cannot match
         guard !partialRanges.isEmpty else {
             return false
         }
         
-        // 尝试找到最佳匹配：优先匹配能够完全消耗markers的组合
-        for range in partialRanges.reversed() {  // 从后往前优先
+        // Try to find optimal match: prioritize combinations that can fully consume markers
+        for range in partialRanges.reversed() {  // From back to front priority
             let matchCount = min(range.count, count)
             if matchCount > 0 {
                 return executeMatch(
@@ -883,7 +865,7 @@ public class MarkdownEmphasisConsumer: CodeTokenConsumer {
         return false
     }
     
-    /// 执行匹配操作
+    /// Execute matching operation
     private func executeMatch(
         context: inout CodeContext,
         startIndex: Int,
@@ -894,7 +876,7 @@ public class MarkdownEmphasisConsumer: CodeTokenConsumer {
     ) -> Bool {
         let parentNode = context.currentNode
         
-        // 收集内容节点
+        // Collect content nodes
         let contentStart = startIndex + availableCount
         let contentEnd = parentNode.children.count
         
@@ -903,21 +885,21 @@ public class MarkdownEmphasisConsumer: CodeTokenConsumer {
             contentNodes.append(parentNode.children[j])
         }
         
-        // 创建emphasis节点
+        // Create emphasis node
         let emphasisNode = createEmphasisNode(
             matchCount: matchCount,
             contentNodes: contentNodes,
             range: parentNode.children[startIndex].range ?? "".startIndex..<"".endIndex
         )
         
-        // 移除内容节点（从后往前）
+        // Remove content nodes (from back to front)
         for j in (contentStart..<contentEnd).reversed() {
             if j < parentNode.children.count {
                 parentNode.children[j].removeFromParent()
             }
         }
         
-        // 移除匹配的partial nodes（从后往前）
+        // Remove matched partial nodes (from back to front)
         let removeEnd = startIndex + matchCount
         for j in (startIndex..<removeEnd).reversed() {
             if j < parentNode.children.count {
@@ -925,18 +907,18 @@ public class MarkdownEmphasisConsumer: CodeTokenConsumer {
             }
         }
         
-        // 在原位置插入emphasis节点
+        // Insert emphasis node at original position
         if startIndex <= parentNode.children.count {
             parentNode.insertChild(emphasisNode, at: startIndex)
         } else {
             parentNode.addChild(emphasisNode)
         }
         
-        // 处理剩余的markers
+        // Handle remaining markers
         let remainingStart = availableCount - matchCount
         let remainingEnd = endCount - matchCount
         
-        // 在emphasis前插入剩余的开始partial
+        // Insert remaining start partials before emphasis
         for j in 0..<remainingStart {
             let partialNode = CodeNode(
                 type: MarkdownElement.partialEmphasis,
@@ -946,7 +928,7 @@ public class MarkdownEmphasisConsumer: CodeTokenConsumer {
             parentNode.insertChild(partialNode, at: startIndex + j)
         }
         
-        // 在emphasis后插入剩余的结束partial
+        // Insert remaining end partials after emphasis
         let finalEmphasisIndex = startIndex + remainingStart
         for j in 0..<remainingEnd {
             let partialNode = CodeNode(
@@ -960,11 +942,11 @@ public class MarkdownEmphasisConsumer: CodeTokenConsumer {
         return true
     }
     
-    /// 尝试匹配现有的partial emphasis
+    /// Try to match existing partial emphasis
     private func tryMatchExistingPartials(context: inout CodeContext, marker: String, count: Int) -> Bool {
         let parentNode = context.currentNode
         
-        // 收集所有可能的匹配选项
+        // Collect all possible matching options
         var matchOptions: [(startIndex: Int, availableCount: Int)] = []
         
         var i = parentNode.children.count - 1
@@ -975,7 +957,7 @@ public class MarkdownEmphasisConsumer: CodeTokenConsumer {
                element == .partialEmphasis,
                child.value == marker {
                 
-                // 计算这个位置向前的连续partial数量
+                // Calculate consecutive partial count forward from this position
                 var existingCount = 0
                 var startIndex = i
                 
@@ -991,25 +973,25 @@ public class MarkdownEmphasisConsumer: CodeTokenConsumer {
                     }
                 }
                 
-                startIndex += 1  // 调整到实际开始位置
+                startIndex += 1  // Adjust to actual start position
                 matchOptions.append((startIndex: startIndex, availableCount: existingCount))
                 
-                // 跳过已经检查过的partial nodes
+                // Skip already checked partial nodes
                 i = startIndex - 1
             } else {
                 i -= 1
             }
         }
         
-        // 选择最佳匹配：选择最近的能够匹配的选项
+        // Choose best match: select nearest matchable option
         var bestMatch: (startIndex: Int, availableCount: Int, matchCount: Int)? = nil
         
-        // 从最近的选项开始查找（从后往前）
+        // Search from nearest option (from back to front)
         for option in matchOptions {
             let possibleMatch = min(option.availableCount, count)
             if possibleMatch > 0 {
                 bestMatch = (option.startIndex, option.availableCount, possibleMatch)
-                break  // 选择第一个（最近的）可匹配选项
+                break  // Choose first (nearest) matchable option
             }
         }
         
@@ -1017,11 +999,11 @@ public class MarkdownEmphasisConsumer: CodeTokenConsumer {
             return false
         }
         
-        // 执行匹配
+        // Execute match
         let startIndex = match.startIndex
         let matchCount = match.matchCount
         
-        // 收集内容节点
+        // Collect content nodes
         let contentStart = startIndex + match.availableCount
         let contentEnd = parentNode.children.count
         
@@ -1030,21 +1012,21 @@ public class MarkdownEmphasisConsumer: CodeTokenConsumer {
             contentNodes.append(parentNode.children[j])
         }
         
-        // 创建emphasis节点
+        // Create emphasis node
         let emphasisNode = createEmphasisNode(
             matchCount: matchCount,
             contentNodes: contentNodes,
             range: parentNode.children[startIndex].range ?? "".startIndex..<"".endIndex
         )
         
-        // 移除内容节点（从后往前）
+        // Remove content nodes (from back to front)
         for j in (contentStart..<contentEnd).reversed() {
             if j < parentNode.children.count {
                 parentNode.children[j].removeFromParent()
             }
         }
         
-        // 移除匹配的partial nodes（从后往前）
+        // Remove matched partial nodes (from back to front)
         let removeEnd = startIndex + matchCount
         for j in (startIndex..<removeEnd).reversed() {
             if j < parentNode.children.count {
@@ -1052,18 +1034,18 @@ public class MarkdownEmphasisConsumer: CodeTokenConsumer {
             }
         }
         
-        // 在原位置插入emphasis节点
+        // Insert emphasis node at original position
         if startIndex <= parentNode.children.count {
             parentNode.insertChild(emphasisNode, at: startIndex)
         } else {
             parentNode.addChild(emphasisNode)
         }
         
-        // 处理剩余的markers
+        // Handle remaining markers
         let remainingStart = match.availableCount - matchCount
         let remainingEnd = count - matchCount
         
-        // 在emphasis前插入剩余的开始partial
+        // Insert remaining start partials before emphasis
         for j in 0..<remainingStart {
             let partialNode = CodeNode(
                 type: MarkdownElement.partialEmphasis,
@@ -1073,7 +1055,7 @@ public class MarkdownEmphasisConsumer: CodeTokenConsumer {
             parentNode.insertChild(partialNode, at: startIndex + j)
         }
         
-        // 在emphasis后插入剩余的结束partial
+        // Insert remaining end partials after emphasis
         let finalEmphasisIndex = startIndex + remainingStart
         for j in 0..<remainingEnd {
             let partialNode = CodeNode(
@@ -1087,13 +1069,12 @@ public class MarkdownEmphasisConsumer: CodeTokenConsumer {
         return true
     }
     
-    /// 检查并解析可以确定语义的partial emphasis - 使用右优先匹配
+    /// Check and resolve semantic partial emphasis - right-priority matching
     private func resolvePartialEmphasisIfPossible(context: inout CodeContext, marker: String) {
         let parentNode = context.currentNode
         
-        print("resolvePartialEmphasisIfPossible: marker='\(marker)', children=\(parentNode.children.map { ($0.type as? MarkdownElement)?.description ?? "unknown" })")
         
-        // 从后往前查找partial emphasis，实现右优先匹配
+        // Search partial emphasis from back to front for right-priority matching
         var i = parentNode.children.count - 1
         while i >= 0 {
             let child = parentNode.children[i]
@@ -1102,15 +1083,14 @@ public class MarkdownEmphasisConsumer: CodeTokenConsumer {
                element == .partialEmphasis,
                child.value == marker {
                 
-                print("找到partial emphasis at index \(i)")
                 
-                // 找到一个partial emphasis，向前查找匹配的开始partial
+                // Found a partial emphasis, search backward for matching start partial
                 if let matchResult = findMatchingPartialEmphasisBackward(in: parentNode, endIndex: i, marker: marker) {
-                    print("找到匹配: \(matchResult)")
-                    // 执行替换
+                    
+                    // Execute replacement
                     replacePartialWithEmphasis(in: parentNode, matchResult: matchResult)
                     
-                    // 重新开始扫描，因为节点结构已改变
+                    // Restart scanning as node structure changed
                     i = parentNode.children.count - 1
                     continue
                 }
@@ -1120,10 +1100,10 @@ public class MarkdownEmphasisConsumer: CodeTokenConsumer {
         }
     }
     
-    /// 从结束位置向前查找匹配的partial emphasis
+    /// Search for matching partial emphasis backward from end position
     private func findMatchingPartialEmphasisBackward(in parentNode: CodeNode, endIndex: Int, marker: String) -> EmphasisMatchResult? {
         
-        // 计算结束位置的连续partial数量（向前计算）
+        // Calculate number of consecutive partials at end position (backward)
         var endCount = 0
         var currentIndex = endIndex
         
@@ -1139,10 +1119,10 @@ public class MarkdownEmphasisConsumer: CodeTokenConsumer {
             }
         }
         
-        let endStartIndex = currentIndex + 1  // 结束partial序列的开始位置
-        let contentEnd = endStartIndex        // 内容的结束位置
+        let endStartIndex = currentIndex + 1  // Start position of ending partial sequence
+        let contentEnd = endStartIndex        // End position for content
         
-        // 向前查找匹配的开始partial emphasis
+        // Search backward for matching start partial emphasis
         while currentIndex >= 0 {
             let child = parentNode.children[currentIndex]
             
@@ -1150,7 +1130,7 @@ public class MarkdownEmphasisConsumer: CodeTokenConsumer {
                element == .partialEmphasis,
                child.value == marker {
                 
-                // 计算这个位置向前的连续partial数量
+                // Calculate number of consecutive partials backward at this position
                 var startCount = 0
                 var tempIndex = currentIndex
                 
@@ -1169,7 +1149,7 @@ public class MarkdownEmphasisConsumer: CodeTokenConsumer {
                 let startIndex = tempIndex + 1
                 let contentStart = startIndex + startCount
                 
-                // 检查是否可以匹配
+                // Check if a match is possible
                 let matchCount = min(startCount, endCount)
                 if matchCount > 0 && contentStart < contentEnd {
                     return EmphasisMatchResult(
@@ -1193,22 +1173,22 @@ public class MarkdownEmphasisConsumer: CodeTokenConsumer {
         return nil
     }
     
-    /// 将匹配的partial emphasis替换为最终的emphasis节点
+    /// Replace matched partial emphasis with final emphasis node
     private func replacePartialWithEmphasis(in parentNode: CodeNode, matchResult: EmphasisMatchResult) {
-        // 收集内容节点
+        // Collect content nodes
         var contentNodes: [CodeNode] = []
         for i in matchResult.contentStart..<matchResult.contentEnd {
             contentNodes.append(parentNode.children[i])
         }
         
-        // 创建emphasis节点
+        // Create emphasis node
         let emphasisNode = createEmphasisNode(
             matchCount: matchResult.matchCount,
             contentNodes: contentNodes,
             range: parentNode.children[matchResult.startIndex].range ?? contentNodes.first?.range ?? "".startIndex..<"".endIndex
         )
         
-        // 移除结束partial nodes（从后往前）
+        // Remove end partial nodes (from back to front)
         let endRemoveStart = matchResult.endIndex
         let endRemoveEnd = matchResult.endIndex + matchResult.matchCount
         for i in (endRemoveStart..<endRemoveEnd).reversed() {
@@ -1217,14 +1197,14 @@ public class MarkdownEmphasisConsumer: CodeTokenConsumer {
             }
         }
         
-        // 移除内容nodes（从后往前）
+        // Remove content nodes (from back to front)
         for i in (matchResult.contentStart..<matchResult.contentEnd).reversed() {
             if i < parentNode.children.count {
                 parentNode.children[i].removeFromParent()
             }
         }
         
-        // 移除匹配的开始partial nodes（从后往前）
+        // Remove matched start partial nodes (from back to front)
         let startRemoveEnd = matchResult.startIndex + matchResult.matchCount
         for i in (matchResult.startIndex..<startRemoveEnd).reversed() {
             if i < parentNode.children.count {
@@ -1232,7 +1212,7 @@ public class MarkdownEmphasisConsumer: CodeTokenConsumer {
             }
         }
         
-        // 在原位置插入emphasis节点
+        // Insert emphasis node at original position
         let insertIndex = matchResult.startIndex
         if insertIndex <= parentNode.children.count {
             parentNode.insertChild(emphasisNode, at: insertIndex)
@@ -1240,11 +1220,11 @@ public class MarkdownEmphasisConsumer: CodeTokenConsumer {
             parentNode.addChild(emphasisNode)
         }
         
-        // 处理剩余的partial nodes
+        // Handle remaining partial nodes
         let remainingStart = matchResult.startCount - matchResult.matchCount
         let remainingEnd = matchResult.endCount - matchResult.matchCount
         
-        // 在emphasis前插入剩余的开始partial
+        // Insert remaining start partials before emphasis
         for i in 0..<remainingStart {
             let partialNode = CodeNode(
                 type: MarkdownElement.partialEmphasis,
@@ -1254,7 +1234,7 @@ public class MarkdownEmphasisConsumer: CodeTokenConsumer {
             parentNode.insertChild(partialNode, at: insertIndex + i)
         }
         
-        // 在emphasis后插入剩余的结束partial
+        // Insert remaining end partials after emphasis
         let finalEmphasisIndex = insertIndex + remainingStart
         for i in 0..<remainingEnd {
             let partialNode = CodeNode(
@@ -1266,14 +1246,14 @@ public class MarkdownEmphasisConsumer: CodeTokenConsumer {
         }
     }
     
-    /// 创建emphasis节点（内容仅通过children表示）
+    /// Create emphasis node (content represented only through children)
     private func createEmphasisNode(matchCount: Int, contentNodes: [CodeNode], range: Range<String.Index>) -> CodeNode {
         if matchCount >= 3 {
             // ***text*** -> strongEmphasis with nested emphasis
             let strongNode = CodeNode(type: MarkdownElement.strongEmphasis, value: "", range: range)
             let emphasisNode = CodeNode(type: MarkdownElement.emphasis, value: "", range: range)
             
-            // 将内容节点添加到emphasis节点
+            // Add content nodes to emphasis node
             for contentNode in contentNodes {
                 contentNode.removeFromParent()
                 emphasisNode.addChild(contentNode)
@@ -1286,7 +1266,7 @@ public class MarkdownEmphasisConsumer: CodeTokenConsumer {
             // **text** -> strongEmphasis
             let strongNode = CodeNode(type: MarkdownElement.strongEmphasis, value: "", range: range)
             
-            // 将内容节点添加到strong节点
+            // Add content nodes to strong node
             for contentNode in contentNodes {
                 contentNode.removeFromParent()
                 strongNode.addChild(contentNode)
@@ -1298,7 +1278,7 @@ public class MarkdownEmphasisConsumer: CodeTokenConsumer {
             // *text* -> emphasis
             let emphasisNode = CodeNode(type: MarkdownElement.emphasis, value: "", range: range)
             
-            // 将内容节点添加到emphasis节点
+            // Add content nodes to emphasis node
             for contentNode in contentNodes {
                 contentNode.removeFromParent()
                 emphasisNode.addChild(contentNode)
@@ -1308,21 +1288,21 @@ public class MarkdownEmphasisConsumer: CodeTokenConsumer {
         }
     }
     
-    /// 后处理partial emphasis，在解析完成后调用
+    /// Post-process partial emphasis, called after parsing is complete
     func postProcessPartialEmphasis(_ node: CodeNode) {
-        // 分析所有的partial emphasis并尝试匹配
+        // Analyze all partial emphasis and try to match
         resolveAllPartialEmphasis(node)
     }
     
-    /// 解析节点中所有的partial emphasis
+    /// Resolve all partial emphasis in the node
     private func resolveAllPartialEmphasis(_ node: CodeNode) {
         var changed = true
         
-        // 重复处理直到没有变化
+        // Repeat processing until no changes
         while changed {
             changed = false
             
-            // 查找可以匹配的emphasis对
+            // Find matchable emphasis pairs
             for marker in ["*", "_"] {
                 if findAndResolveEmphasisPair(node, marker: marker) {
                     changed = true
@@ -1332,62 +1312,62 @@ public class MarkdownEmphasisConsumer: CodeTokenConsumer {
         }
     }
     
-    /// 查找并解析一对emphasis markers
+    /// Find and resolve an emphasis marker pair
     private func findAndResolveEmphasisPair(_ node: CodeNode, marker: String) -> Bool {
         var openPositions: [Int] = []
         var closePosition: Int? = nil
         
-        // 从前往后扫描，查找开启markers，从后往前查找第一个可以匹配的
+        // Scan from front to back, find opening markers, find first matchable one from back to front
         for (i, child) in node.children.enumerated() {
             if let element = child.type as? MarkdownElement,
                element == .partialEmphasis,
                child.value == marker {
                 
-                // 检查这个位置后面是否有非partial的内容
+                // Check if there's non-partial content after this position
                 let hasContentAfter = i + 1 < node.children.count && 
                                     !(node.children[i + 1].type is MarkdownElement && 
                                       (node.children[i + 1].type as! MarkdownElement) == .partialEmphasis)
                 
                 if hasContentAfter && openPositions.isEmpty {
-                    // 这是一个潜在的开始marker
+                    // This is a potential opening marker
                     openPositions.append(i)
                 } else if !openPositions.isEmpty {
-                    // 这是一个潜在的结束marker
+                    // This is a potential closing marker
                     closePosition = i
                     break
                 }
             }
         }
         
-        // 如果找到了匹配对，创建emphasis
+        // If found matching pair, create emphasis
         if let closePos = closePosition, !openPositions.isEmpty {
             let openPos = openPositions.last!
             
-            // 收集内容节点
+            // Collect content nodes
             var contentNodes: [CodeNode] = []
             for i in (openPos + 1)..<closePos {
                 contentNodes.append(node.children[i])
             }
             
-            // 创建emphasis节点
+            // Create emphasis node
             let emphasisNode = CodeNode(
                 type: MarkdownElement.emphasis,
                 value: "",
                 range: node.children[openPos].range ?? "".startIndex..<"".endIndex
             )
             
-            // 移除原节点并重新组织
-            // 从后往前移除，避免索引混乱
+            // Remove original nodes and reorganize
+            // Remove from back to front to avoid index confusion
             for i in (openPos...closePos).reversed() {
                 node.children[i].removeFromParent()
             }
             
-            // 添加内容到emphasis节点
+            // Add content to emphasis node
             for contentNode in contentNodes {
                 emphasisNode.addChild(contentNode)
             }
             
-            // 在原位置插入emphasis节点
+            // Insert emphasis node at original position
             node.insertChild(emphasisNode, at: openPos)
             
             return true
@@ -1396,12 +1376,12 @@ public class MarkdownEmphasisConsumer: CodeTokenConsumer {
         return false
     }
     
-    /// 寻找最佳的emphasis匹配 - 优先选择更大的匹配
+    /// Find optimal emphasis match - prioritize larger matches
     private func findBestEmphasisMatch(_ tokens: [FlatToken], startIndex: Int, marker: String) -> EmphasisMatch? {
         var i = startIndex
         var startCount = 0
         
-        // 计算起始markers的数量
+        // Calculate number of starting markers
         while i < tokens.count && tokens[i].type == .partial && tokens[i].content == marker {
             startCount += 1
             i += 1
@@ -1411,14 +1391,14 @@ public class MarkdownEmphasisConsumer: CodeTokenConsumer {
             return nil
         }
         
-        // 收集所有可能的匹配
+        // Collect all possible matches
         var possibleMatches: [EmphasisMatch] = []
         let contentStart = i
         var searchIndex = contentStart
         
         while searchIndex < tokens.count {
             if tokens[searchIndex].type == .partial && tokens[searchIndex].content == marker {
-                // 计算结束markers的数量
+                // Calculate number of ending markers
                 var endCount = 0
                 var tempIndex = searchIndex
                 
@@ -1427,7 +1407,7 @@ public class MarkdownEmphasisConsumer: CodeTokenConsumer {
                     tempIndex += 1
                 }
                 
-                // 计算可能的匹配
+                // Calculate possible matches
                 for matchCount in 1...min(startCount, endCount) {
                     possibleMatches.append(EmphasisMatch(endIndex: searchIndex, count: matchCount))
                 }
@@ -1442,21 +1422,20 @@ public class MarkdownEmphasisConsumer: CodeTokenConsumer {
             return nil
         }
         
-        // 选择最佳匹配：优先选择最大的matchCount
+        // Choose best match: prioritize largest matchCount
         let bestMatch = possibleMatches.max { match1, match2 in
             if match1.count != match2.count {
-                return match1.count < match2.count  // 优先选择更大的count
+                return match1.count < match2.count  // Prioritize larger count
             }
-            // 如果count相同，选择距离更远的（包含更多内容）
+            // If count is same, choose farther distance (containing more content)
             return match1.endIndex < match2.endIndex
         }
         
-        print("评估了\(possibleMatches.count)个可能的匹配，选择: count=\(bestMatch?.count ?? 0)")
         
         return bestMatch
     }
     
-    /// 从tokens创建emphasis节点
+    /// Create emphasis node from tokens
     private func createEmphasisFromTokens(_ tokens: [FlatToken], matchCount: Int, marker: String) -> CodeNode {
         let emphasisType: MarkdownElement = matchCount >= 2 ? .strongEmphasis : .emphasis
         let emphasisNode = CodeNode(
@@ -1468,14 +1447,14 @@ public class MarkdownEmphasisConsumer: CodeTokenConsumer {
         var i = 0
         while i < tokens.count {
             if tokens[i].type == .partial && tokens[i].content == marker {
-                // 递归处理嵌套emphasis
+                // Recursively handle nested emphasis
                 if let nestedMatch = findBestEmphasisMatch(tokens, startIndex: i, marker: marker) {
                     let contentTokens = Array(tokens[(i + nestedMatch.count)..<nestedMatch.endIndex])
                     let nestedNode = createEmphasisFromTokens(contentTokens, matchCount: nestedMatch.count, marker: marker)
                     emphasisNode.addChild(nestedNode)
                     i = nestedMatch.endIndex + nestedMatch.count
                 } else {
-                    // 作为partial保留
+                    // Keep as partial
                     let partialNode = CodeNode(
                         type: MarkdownElement.partialEmphasis,
                         value: marker,
@@ -1504,19 +1483,19 @@ public class MarkdownEmphasisConsumer: CodeTokenConsumer {
     }
 }
 
-/// 表示emphasis匹配结果的结构
+/// Structure representing emphasis match result
 private struct EmphasisMatchResult {
-    let startIndex: Int      // 开始partial nodes的位置
-    let startCount: Int      // 开始partial nodes的数量
-    let contentStart: Int    // 内容开始位置
-    let contentEnd: Int      // 内容结束位置
-    let endIndex: Int        // 结束partial nodes的位置
-    let endCount: Int        // 结束partial nodes的数量
-    let matchCount: Int      // 实际匹配的标记数量
-    let marker: String       // 标记字符
+    let startIndex: Int      // Position of start partial nodes
+    let startCount: Int      // Number of start partial nodes
+    let contentStart: Int    // Content start position
+    let contentEnd: Int      // Content end position
+    let endIndex: Int        // Position of end partial nodes
+    let endCount: Int        // Number of end partial nodes
+    let matchCount: Int      // Actual matched marker count
+    let marker: String       // Marker character
 }
 
-/// 处理内联代码的Consumer
+/// Consumer for handling inline code
 public class MarkdownInlineCodeConsumer: CodeTokenConsumer {
     
     public init() {}
@@ -1537,7 +1516,7 @@ public class MarkdownInlineCodeConsumer: CodeTokenConsumer {
         var codeText = ""
         var foundClosing = false
         
-        // 查找闭合的反引号
+        // Find closing backtick
         while let currentToken = context.tokens.first as? MarkdownToken {
             if currentToken.kind == .eof {
                 break
@@ -1558,10 +1537,177 @@ public class MarkdownInlineCodeConsumer: CodeTokenConsumer {
             context.currentNode.addChild(codeNode)
             return true
         } else {
-            // 没找到闭合标记，作为普通文本处理
+            // No closing marker found, treat as regular text
             let textNode = CodeNode(type: MarkdownElement.text, value: "`" + codeText, range: token.range)
             context.currentNode.addChild(textNode)
             return true
+        }
+    }
+}
+
+/// Consumer for handling footnote references
+public class MarkdownFootnoteReferenceConsumer: CodeTokenConsumer {
+    
+    public init() {}
+    
+    public func consume(context: inout CodeContext, token: any CodeToken) -> Bool {
+        guard let mdToken = token as? MarkdownToken else { return false }
+        
+        // Check if it's a footnote reference start: [^identifier]
+        if mdToken.kind == .leftBracket {
+            // Check if next token is ^
+            guard context.tokens.count >= 2,
+                  let caretToken = context.tokens[1] as? MarkdownToken,
+                  caretToken.kind == .caret else {
+                return false
+            }
+            
+            // Collect footnote identifier
+            var tokenIndex = 2
+            var identifier = ""
+            while tokenIndex < context.tokens.count {
+                guard let token = context.tokens[tokenIndex] as? MarkdownToken else { break }
+                if token.kind == .rightBracket {
+                    tokenIndex += 1
+                    break
+                }
+                identifier += token.text
+                tokenIndex += 1
+            }
+            
+            // If no right bracket found, not a valid footnote reference
+            guard tokenIndex <= context.tokens.count && !identifier.isEmpty else {
+                return false
+            }
+            
+            // Remove processed tokens
+            for _ in 0..<tokenIndex {
+                context.tokens.removeFirst()
+            }
+            
+            let footnoteRef = CodeNode(type: MarkdownElement.footnoteReference, value: identifier, range: mdToken.range)
+            context.currentNode.addChild(footnoteRef)
+            return true
+        }
+        
+        return false
+    }
+}
+
+/// Consumer for handling citation references
+public class MarkdownCitationReferenceConsumer: CodeTokenConsumer {
+    
+    public init() {}
+    
+    public func consume(context: inout CodeContext, token: any CodeToken) -> Bool {
+        guard let mdToken = token as? MarkdownToken else { return false }
+        
+        // Check if it's a citation reference start: [@identifier]
+        if mdToken.kind == .leftBracket {
+            // Check if next token is @
+            guard context.tokens.count >= 2,
+                  let atToken = context.tokens[1] as? MarkdownToken,
+                  atToken.kind == .atSign else {
+                return false
+            }
+            
+            // Collect citation identifier
+            var tokenIndex = 2
+            var identifier = ""
+            while tokenIndex < context.tokens.count {
+                guard let token = context.tokens[tokenIndex] as? MarkdownToken else { break }
+                if token.kind == .rightBracket {
+                    tokenIndex += 1
+                    break
+                }
+                identifier += token.text
+                tokenIndex += 1
+            }
+            
+            // If no right bracket found, not a valid citation reference
+            guard tokenIndex <= context.tokens.count && !identifier.isEmpty else {
+                return false
+            }
+            
+            // Remove processed tokens
+            for _ in 0..<tokenIndex {
+                context.tokens.removeFirst()
+            }
+            
+            let citationRef = CodeNode(type: MarkdownElement.citationReference, value: identifier, range: mdToken.range)
+            context.currentNode.addChild(citationRef)
+            return true
+        }
+        
+        return false
+    }
+}
+
+/// Consumer for handling footnote and citation backtrack reorganization
+/// This Consumer checks and reorganizes possible footnote and citation structures after parsing is complete
+public class MarkdownFootnoteAndCitationReorganizer: CodeTokenConsumer {
+    
+    public init() {}
+    
+    public func consume(context: inout CodeContext, token: any CodeToken) -> Bool {
+        // This consumer mainly performs backtrack reorganization at the end of parsing
+        // Check if there are footnote or citation structures that need reorganization
+        
+        // If current token is EOF, perform backtrack reorganization
+        guard let mdToken = token as? MarkdownToken else { return false }
+        
+        if mdToken.kind == .eof {
+            reorganizeFootnotesAndCitations(context: &context)
+            return false // Don't consume EOF token
+        }
+        
+        return false
+    }
+    
+    /// Backtrack reorganization of footnote and citation structures
+    private func reorganizeFootnotesAndCitations(context: inout CodeContext) {
+        // Traverse the entire AST to find possible footnote and citation patterns
+        traverseAndReorganize(context.currentNode)
+    }
+    
+    /// Traverse nodes and reorganize footnotes and citations
+    private func traverseAndReorganize(_ node: CodeNode) {
+        // Handle child nodes first
+        for child in node.children {
+            traverseAndReorganize(child)
+        }
+        
+        // Then process the current node
+        reorganizeNodeChildren(node)
+    }
+    
+    /// Reorganize node children, looking for footnote and citation patterns
+    private func reorganizeNodeChildren(_ node: CodeNode) {
+        var i = 0
+        while i < node.children.count {
+            let child = node.children[i]
+            
+            // Check if it's a potential footnote or citation pattern
+            if let element = child.type as? MarkdownElement {
+                if element == .partialLink {
+                    // Check if it's a footnote reference pattern [^identifier]
+                    if child.value.hasPrefix("^") {
+                        let identifier = String(child.value.dropFirst()) // Remove ^
+                        let footnoteRef = CodeNode(type: MarkdownElement.footnoteReference, value: identifier, range: child.range)
+                        node.replaceChild(at: i, with: footnoteRef)
+                        
+                    }
+                    // Check if it's a citation reference pattern [@identifier]
+                    else if child.value.hasPrefix("@") {
+                        let identifier = String(child.value.dropFirst()) // Remove @
+                        let citationRef = CodeNode(type: MarkdownElement.citationReference, value: identifier, range: child.range)
+                        node.replaceChild(at: i, with: citationRef)
+                        
+                    }
+                }
+            }
+            
+            i += 1
         }
     }
 }

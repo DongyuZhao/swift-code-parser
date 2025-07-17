@@ -1,208 +1,208 @@
 import Foundation
 
-/// Markdown解析示例和用法
+/// Markdown parsing examples and usage
 public class MarkdownParsingExamples {
     
-    /// 基本Markdown解析示例
+    /// Basic Markdown parsing example
     public static func basicExample() {
         let markdown = """
-        # 标题
+        # Title
         
-        这是一个**粗体**文本和*斜体*文本的段落。
+        This is a paragraph with **bold** text and *italic* text.
         
-        ## 代码示例
+        ## Code Example
         
         ```swift
         let code = "Hello, World!"
         print(code)
         ```
         
-        - 列表项1
-        - 列表项2
-        - 列表项3
+        - List item 1
+        - List item 2
+        - List item 3
         
-        > 这是一个引用块
-        > 包含多行内容
+        > This is a blockquote
+        > containing multiple lines
         
-        [链接文本](https://example.com "标题")
+        [Link text](https://example.com "Title")
         
-        ![图片alt](image.jpg "图片标题")
+        ![Image alt](image.jpg "Image title")
         """
         
         let parser = SwiftParser()
         let result = parser.parseMarkdown(markdown)
         
-        print("解析结果:")
-        print("- 是否有错误: \(result.hasErrors)")
-        print("- 错误数量: \(result.errors.count)")
-        print("- 根节点类型: \(result.root.type)")
-        print("- 子节点数量: \(result.root.children.count)")
+        print("Parse result:")
+        print("- Has errors: \(result.hasErrors)")
+        print("- Error count: \(result.errors.count)")
+        print("- Root node type: \(result.root.type)")
+        print("- Child node count: \(result.root.children.count)")
         
-        // 遍历所有节点
+        // Traverse all nodes
         result.root.traverseDepthFirst { node in
             if let mdElement = node.type as? MarkdownElement {
-                print("节点: \(mdElement.description) - 值: '\(node.value)'")
+                print("Node: \(mdElement.description) - Value: '\(node.value)'")
             }
         }
     }
     
-    /// 查找特定类型节点的示例
+    /// Example of finding specific node types
     public static func findSpecificNodesExample() {
         let markdown = """
-        # 主标题
+        # Main Title
         
-        ## 子标题
+        ## Subtitle
         
-        ### 小标题
+        ### Small Title
         
-        这是段落文本。
+        This is paragraph text.
         
         ```python
         print("Hello")
         ```
         
-        - 项目1
-        - 项目2
+        - Item 1
+        - Item 2
         """
         
         let parser = SwiftParser()
         let result = parser.parseMarkdown(markdown)
         
-        // 查找所有标题
+        // Find all headers
         let headers = result.markdownNodes(ofType: .header1) + 
                      result.markdownNodes(ofType: .header2) + 
                      result.markdownNodes(ofType: .header3)
         
-        print("找到 \(headers.count) 个标题:")
+        print("Found \(headers.count) headers:")
         for header in headers {
             print("- \(header.value)")
         }
         
-        // 查找所有代码块
+        // Find all code blocks
         let codeBlocks = result.markdownNodes(ofType: .fencedCodeBlock)
-        print("找到 \(codeBlocks.count) 个代码块:")
+        print("Found \(codeBlocks.count) code blocks:")
         for codeBlock in codeBlocks {
-            print("- 语言: \(codeBlock.children.first?.value ?? "未指定")")
-            print("- 内容: \(codeBlock.value)")
+            print("- Language: \(codeBlock.children.first?.value ?? "unspecified")")
+            print("- Content: \(codeBlock.value)")
         }
         
-        // 查找所有列表
+        // Find all lists
         let lists = result.markdownNodes(ofType: .unorderedList)
-        print("找到 \(lists.count) 个无序列表:")
+        print("Found \(lists.count) unordered lists:")
         for list in lists {
-            print("- 包含 \(list.children.count) 个项目")
+            print("- Contains \(list.children.count) items")
         }
     }
     
-    /// 表格解析示例（GFM扩展）
+    /// Table parsing example (GFM extension)
     public static func tableExample() {
         let markdown = """
-        | 姓名 | 年龄 | 城市 |
-        |------|------|------|
-        | 张三 | 25   | 北京 |
-        | 李四 | 30   | 上海 |
-        | 王五 | 35   | 广州 |
+        | Name | Age | City |
+        |------|-----|------|
+        | John | 25  | Beijing |
+        | Jane | 30  | Shanghai |
+        | Bob  | 35  | Guangzhou |
         """
         
         let parser = SwiftParser()
         let result = parser.parseMarkdown(markdown)
         
         let tables = result.markdownNodes(ofType: .table)
-        print("找到 \(tables.count) 个表格:")
+        print("Found \(tables.count) tables:")
         
         for table in tables {
-            print("表格包含 \(table.children.count) 行:")
+            print("Table contains \(table.children.count) rows:")
             for (rowIndex, row) in table.children.enumerated() {
                 if let tableRow = row.type as? MarkdownElement, tableRow == .tableRow {
-                    print("  行 \(rowIndex + 1): \(row.children.count) 列")
+                    print("  Row \(rowIndex + 1): \(row.children.count) columns")
                     for (colIndex, cell) in row.children.enumerated() {
-                        print("    列 \(colIndex + 1): '\(cell.value)'")
+                        print("    Column \(colIndex + 1): '\(cell.value)'")
                     }
                 }
             }
         }
     }
     
-    /// 链接解析示例
+    /// Link parsing example
     public static func linkExample() {
         let markdown = """
-        这里有几种不同类型的链接:
+        Here are several different types of links:
         
-        1. 内联链接: [Google](https://google.com "搜索引擎")
-        2. 引用链接: [GitHub][github]
-        3. 简化引用: [GitHub][]
-        4. 自动链接: <https://example.com>
-        5. 图片: ![Logo](logo.png "公司Logo")
+        1. Inline link: [Google](https://google.com "Search Engine")
+        2. Reference link: [GitHub][github]
+        3. Simplified reference: [GitHub][]
+        4. Autolink: <https://example.com>
+        5. Image: ![Logo](logo.png "Company Logo")
         
-        [github]: https://github.com "代码托管平台"
+        [github]: https://github.com "Code Hosting Platform"
         [GitHub]: https://github.com
         """
         
         let parser = SwiftParser()
         let result = parser.parseMarkdown(markdown)
         
-        // 查找所有链接
+        // Find all links
         let links = result.markdownNodes(ofType: .link)
-        print("找到 \(links.count) 个链接:")
+        print("Found \(links.count) links:")
         for link in links {
-            print("- 文本: '\(link.value)'")
+            print("- Text: '\(link.value)'")
             if let urlNode = link.children.first {
                 print("  URL: '\(urlNode.value)'")
             }
             if link.children.count > 1 {
-                print("  标题: '\(link.children[1].value)'")
+                print("  Title: '\(link.children[1].value)'")
             }
         }
         
-        // 查找所有图片
+        // Find all images
         let images = result.markdownNodes(ofType: .image)
-        print("找到 \(images.count) 个图片:")
+        print("Found \(images.count) images:")
         for image in images {
-            print("- Alt文本: '\(image.value)'")
+            print("- Alt text: '\(image.value)'")
             if let urlNode = image.children.first {
                 print("  URL: '\(urlNode.value)'")
             }
         }
         
-        // 查找所有自动链接
+        // Find all autolinks
         let autolinks = result.markdownNodes(ofType: .autolink)
-        print("找到 \(autolinks.count) 个自动链接:")
+        print("Found \(autolinks.count) autolinks:")
         for autolink in autolinks {
             print("- URL: '\(autolink.value)'")
         }
         
-        // 查找链接引用定义
+        // Find link reference definitions
         let linkRefs = result.markdownNodes(ofType: .linkReferenceDefinition)
-        print("找到 \(linkRefs.count) 个链接引用定义:")
+        print("Found \(linkRefs.count) link reference definitions:")
         for linkRef in linkRefs {
-            print("- 标签: '\(linkRef.value)'")
+            print("- Label: '\(linkRef.value)'")
             if let urlNode = linkRef.children.first {
                 print("  URL: '\(urlNode.value)'")
             }
         }
     }
     
-    /// 强调和代码示例
+    /// Emphasis and code example
     public static func emphasisAndCodeExample() {
         let markdown = """
-        这里有各种强调和代码:
+        Here are various emphasis and code examples:
         
-        *斜体文本* 和 _另一种斜体_
+        *Italic text* and _another italic_
         
-        **粗体文本** 和 __另一种粗体__
+        **Bold text** and __another bold__
         
-        ~~删除线文本~~
+        ~~Strikethrough text~~
         
-        `内联代码` 和一些 `其他代码`
+        `Inline code` and some `other code`
         
         ```swift
-        // 这是一个代码块
+        // This is a code block
         func hello() {
             print("Hello, World!")
         }
         ```
         
-            // 这是缩进代码块
+            // This is an indented code block
             let x = 42
             print(x)
         """
@@ -210,63 +210,63 @@ public class MarkdownParsingExamples {
         let parser = SwiftParser()
         let result = parser.parseMarkdown(markdown)
         
-        // 查找强调
+        // Find emphasis
         let emphasis = result.markdownNodes(ofType: .emphasis)
-        print("找到 \(emphasis.count) 个斜体:")
+        print("Found \(emphasis.count) italic texts:")
         for em in emphasis {
             print("- '\(em.value)'")
         }
         
         let strongEmphasis = result.markdownNodes(ofType: .strongEmphasis)
-        print("找到 \(strongEmphasis.count) 个粗体:")
+        print("Found \(strongEmphasis.count) bold texts:")
         for strong in strongEmphasis {
             print("- '\(strong.value)'")
         }
         
         let strikethrough = result.markdownNodes(ofType: .strikethrough)
-        print("找到 \(strikethrough.count) 个删除线:")
+        print("Found \(strikethrough.count) strikethrough texts:")
         for strike in strikethrough {
             print("- '\(strike.value)'")
         }
         
-        // 查找代码
+        // Find code
         let inlineCode = result.markdownNodes(ofType: .inlineCode)
-        print("找到 \(inlineCode.count) 个内联代码:")
+        print("Found \(inlineCode.count) inline codes:")
         for code in inlineCode {
             print("- '\(code.value)'")
         }
         
         let fencedCode = result.markdownNodes(ofType: .fencedCodeBlock)
-        print("找到 \(fencedCode.count) 个围栏代码块:")
+        print("Found \(fencedCode.count) fenced code blocks:")
         for code in fencedCode {
             if let lang = code.children.first {
-                print("- 语言: '\(lang.value)'")
+                print("- Language: '\(lang.value)'")
             }
-            print("- 内容: '\(code.value)'")
+            print("- Content: '\(code.value)'")
         }
         
         let indentedCode = result.markdownNodes(ofType: .codeBlock)
-        print("找到 \(indentedCode.count) 个缩进代码块:")
+        print("Found \(indentedCode.count) indented code blocks:")
         for code in indentedCode {
-            print("- 内容: '\(code.value)'")
+            print("- Content: '\(code.value)'")
         }
     }
     
-    /// 运行所有示例
+    /// Run all examples
     public static func runAllExamples() {
-        print("=== 基本解析示例 ===")
+        print("=== Basic Parsing Example ===")
         basicExample()
         
-        print("\n=== 查找特定节点示例 ===")
+        print("\n=== Find Specific Nodes Example ===")
         findSpecificNodesExample()
         
-        print("\n=== 表格解析示例 ===")
+        print("\n=== Table Parsing Example ===")
         tableExample()
         
-        print("\n=== 链接解析示例 ===")
+        print("\n=== Link Parsing Example ===")
         linkExample()
         
-        print("\n=== 强调和代码示例 ===")
+        print("\n=== Emphasis and Code Example ===")
         emphasisAndCodeExample()
     }
 }

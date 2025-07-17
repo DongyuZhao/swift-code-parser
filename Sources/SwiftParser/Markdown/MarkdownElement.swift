@@ -21,6 +21,8 @@ public enum MarkdownElement: CodeElement, CaseIterable {
     case tableRow
     case tableCell
     case linkReferenceDefinition
+    case footnoteDefinition
+    case citation
     
     // Inline elements
     case text
@@ -34,6 +36,8 @@ public enum MarkdownElement: CodeElement, CaseIterable {
     case lineBreak
     case softBreak
     case strikethrough
+    case footnoteReference
+    case citationReference
     
     // Partial nodes for prefix ambiguity
     case partialHeader
@@ -52,7 +56,8 @@ public enum MarkdownElement: CodeElement, CaseIterable {
         case .document, .paragraph, .header1, .header2, .header3, .header4, .header5, .header6,
              .codeBlock, .fencedCodeBlock, .blockquote, .unorderedList, .orderedList, .listItem,
              .taskList, .taskListItem, .nestedList,
-             .horizontalRule, .htmlBlock, .table, .tableRow, .tableCell, .linkReferenceDefinition:
+             .horizontalRule, .htmlBlock, .table, .tableRow, .tableCell, .linkReferenceDefinition,
+             .footnoteDefinition, .citation:
             return true
         default:
             return false
@@ -62,7 +67,7 @@ public enum MarkdownElement: CodeElement, CaseIterable {
     public var isInlineLevel: Bool {
         switch self {
         case .text, .emphasis, .strongEmphasis, .inlineCode, .link, .image, .autolink,
-             .htmlInline, .lineBreak, .softBreak, .strikethrough:
+             .htmlInline, .lineBreak, .softBreak, .strikethrough, .footnoteReference, .citationReference:
             return true
         default:
             return false
@@ -105,6 +110,8 @@ public enum MarkdownElement: CodeElement, CaseIterable {
         case .tableRow: return "tableRow"
         case .tableCell: return "tableCell"
         case .linkReferenceDefinition: return "linkReferenceDefinition"
+        case .footnoteDefinition: return "footnoteDefinition"
+        case .citation: return "citation"
         case .text: return "text"
         case .emphasis: return "emphasis"
         case .strongEmphasis: return "strongEmphasis"
@@ -116,6 +123,8 @@ public enum MarkdownElement: CodeElement, CaseIterable {
         case .lineBreak: return "lineBreak"
         case .softBreak: return "softBreak"
         case .strikethrough: return "strikethrough"
+        case .footnoteReference: return "footnoteReference"
+        case .citationReference: return "citationReference"
         case .partialHeader: return "partialHeader"
         case .partialCodeBlock: return "partialCodeBlock"
         case .partialEmphasis: return "partialEmphasis"

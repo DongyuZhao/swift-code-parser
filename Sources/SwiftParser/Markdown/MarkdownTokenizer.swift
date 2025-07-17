@@ -219,6 +219,14 @@ public class MarkdownTokenizer: CodeTokenizer {
                 tokenKind = .dot
                 tokenText = String(char)
                 
+            case "^":
+                tokenKind = .caret
+                tokenText = String(char)
+                
+            case "@":
+                tokenKind = .atSign
+                tokenText = String(char)
+                
             default:
                 // Consume regular text until the next special character
                 (tokenText, endIndex) = consumeText(from: line, startingAt: currentIndex)

@@ -1,6 +1,6 @@
 import Foundation
 
-/// 处理链接的Consumer
+/// Consumer for handling links
 public class MarkdownLinkConsumer: CodeTokenConsumer {
     
     public init() {}
@@ -9,6 +9,14 @@ public class MarkdownLinkConsumer: CodeTokenConsumer {
         guard let mdToken = token as? MarkdownToken else { return false }
         
         if mdToken.kind == .leftBracket {
+            // Check if it's a footnote or citation pattern, and skip if so
+            if context.tokens.count >= 2 {
+                if let nextToken = context.tokens[1] as? MarkdownToken {
+                    if nextToken.kind == .caret || nextToken.kind == .atSign {
+                        return false // Let the footnote or citation consumer handle it
+                    }
+                }
+            }
             return consumeLink(context: &context, token: mdToken)
         }
         
@@ -16,15 +24,15 @@ public class MarkdownLinkConsumer: CodeTokenConsumer {
     }
     
     private func consumeLink(context: inout CodeContext, token: MarkdownToken) -> Bool {
-        // 创建部分链接节点用于处理前缀歧义
+        // Create a partial link node to handle prefix ambiguity
         let partialLinkNode = CodeNode(type: MarkdownElement.partialLink, value: "", range: token.range)
         
-        context.tokens.removeFirst() // 移除[
+        context.tokens.removeFirst() // Remove [
         
         var linkText = ""
         var foundClosingBracket = false
         
-        // 收集链接文本直到找到]
+        // Collect link text until a ] is found
         while let currentToken = context.tokens.first as? MarkdownToken {
             if currentToken.kind == .eof || currentToken.kind == .newline {
                 break
@@ -41,32 +49,32 @@ public class MarkdownLinkConsumer: CodeTokenConsumer {
         }
         
         if !foundClosingBracket {
-            // 没找到闭合括号，作为普通文本处理
+            // No closing bracket found, treat as plain text
             let textNode = CodeNode(type: MarkdownElement.text, value: "[" + linkText, range: token.range)
             context.currentNode.addChild(textNode)
             return true
         }
         
-        // 检查是否有(url)部分
+        // Check for a (url) part
         if let nextToken = context.tokens.first as? MarkdownToken,
            nextToken.kind == .leftParen {
             return consumeInlineLink(context: &context, linkText: linkText, startToken: token, partialNode: partialLinkNode)
         }
         
-        // 检查是否是引用链接[text][ref]或[text][]
+        // Check for a reference link [text][ref] or [text][]
         if let nextToken = context.tokens.first as? MarkdownToken,
            nextToken.kind == .leftBracket {
             return consumeReferenceLink(context: &context, linkText: linkText, startToken: token, partialNode: partialLinkNode)
         }
         
-        // 可能是简化引用链接[text]，将其作为部分节点处理
+        // Could be a simplified reference link [text], treat it as a partial node
         partialLinkNode.value = linkText
         context.currentNode.addChild(partialLinkNode)
         return true
     }
     
     private func consumeInlineLink(context: inout CodeContext, linkText: String, startToken: MarkdownToken, partialNode: CodeNode) -> Bool {
-        context.tokens.removeFirst() // 移除(
+        context.tokens.removeFirst() // Remove (
         
         var url = ""
         var title = ""
@@ -88,7 +96,7 @@ public class MarkdownLinkConsumer: CodeTokenConsumer {
             let char = currentToken.text.first
             
             if !inTitle && (char == "\"" || char == "'" || char == "(") {
-                // 开始标题
+                // Start of title
                 inTitle = true
                 titleQuote = char == "(" ? ")" : char!
                 context.tokens.removeFirst()
@@ -96,7 +104,7 @@ public class MarkdownLinkConsumer: CodeTokenConsumer {
             }
             
             if inTitle && char == titleQuote {
-                // 结束标题
+                // End of title
                 inTitle = false
                 context.tokens.removeFirst()
                 continue
@@ -114,7 +122,7 @@ public class MarkdownLinkConsumer: CodeTokenConsumer {
         if foundClosingParen {
             let linkNode = CodeNode(type: MarkdownElement.link, value: linkText, range: startToken.range)
             
-            // 添加URL和标题作为属性或子节点
+            // Add URL and title as attributes or child nodes
             if !url.isEmpty {
                 let urlNode = CodeNode(type: MarkdownElement.text, value: url.trimmingCharacters(in: .whitespaces))
                 linkNode.addChild(urlNode)
@@ -127,7 +135,7 @@ public class MarkdownLinkConsumer: CodeTokenConsumer {
             context.currentNode.addChild(linkNode)
             return true
         } else {
-            // 没找到闭合括号，作为普通文本处理
+            // No closing parenthesis found, treat as plain text
             let textNode = CodeNode(type: MarkdownElement.text, value: "[" + linkText + "](" + url + title, range: startToken.range)
             context.currentNode.addChild(textNode)
             return true
@@ -135,12 +143,12 @@ public class MarkdownLinkConsumer: CodeTokenConsumer {
     }
     
     private func consumeReferenceLink(context: inout CodeContext, linkText: String, startToken: MarkdownToken, partialNode: CodeNode) -> Bool {
-        context.tokens.removeFirst() // 移除第二个[
+        context.tokens.removeFirst() // Remove the second [
         
         var refLabel = ""
         var foundClosingBracket = false
         
-        // 收集引用标签
+        // Collect the reference label
         while let currentToken = context.tokens.first as? MarkdownToken {
             if currentToken.kind == .eof || currentToken.kind == .newline {
                 break
@@ -159,7 +167,7 @@ public class MarkdownLinkConsumer: CodeTokenConsumer {
         if foundClosingBracket {
             let linkNode = CodeNode(type: MarkdownElement.link, value: linkText, range: startToken.range)
             
-            // 如果引用标签为空，使用链接文本作为引用
+            // If the reference label is empty, use the link text as the reference
             let actualRef = refLabel.isEmpty ? linkText : refLabel
             let refNode = CodeNode(type: MarkdownElement.text, value: actualRef)
             linkNode.addChild(refNode)
@@ -167,7 +175,7 @@ public class MarkdownLinkConsumer: CodeTokenConsumer {
             context.currentNode.addChild(linkNode)
             return true
         } else {
-            // 没找到闭合括号，作为普通文本处理
+            // No closing bracket found, treat as plain text
             let textNode = CodeNode(type: MarkdownElement.text, value: "[" + linkText + "][" + refLabel, range: startToken.range)
             context.currentNode.addChild(textNode)
             return true
@@ -175,7 +183,7 @@ public class MarkdownLinkConsumer: CodeTokenConsumer {
     }
 }
 
-/// 处理图片的Consumer
+/// Consumer for handling images
 public class MarkdownImageConsumer: CodeTokenConsumer {
     
     public init() {}
@@ -184,7 +192,7 @@ public class MarkdownImageConsumer: CodeTokenConsumer {
         guard let mdToken = token as? MarkdownToken else { return false }
         
         if mdToken.kind == .exclamation {
-            // 检查下一个token是否是[
+            // Check if the next token is [
             if context.tokens.count > 1,
                let nextToken = context.tokens[1] as? MarkdownToken,
                nextToken.kind == .leftBracket {
@@ -196,13 +204,13 @@ public class MarkdownImageConsumer: CodeTokenConsumer {
     }
     
     private func consumeImage(context: inout CodeContext, token: MarkdownToken) -> Bool {
-        context.tokens.removeFirst() // 移除!
-        context.tokens.removeFirst() // 移除[
+        context.tokens.removeFirst() // Remove !
+        context.tokens.removeFirst() // Remove [
         
         var altText = ""
         var foundClosingBracket = false
         
-        // 收集alt文本直到找到]
+        // Collect alt text until ] is found
         while let currentToken = context.tokens.first as? MarkdownToken {
             if currentToken.kind == .eof || currentToken.kind == .newline {
                 break
@@ -219,32 +227,32 @@ public class MarkdownImageConsumer: CodeTokenConsumer {
         }
         
         if !foundClosingBracket {
-            // 没找到闭合括号，作为普通文本处理
+            // No closing bracket found, treat as plain text
             let textNode = CodeNode(type: MarkdownElement.text, value: "![" + altText, range: token.range)
             context.currentNode.addChild(textNode)
             return true
         }
         
-        // 检查是否有(url)部分
+        // Check for a (url) part
         if let nextToken = context.tokens.first as? MarkdownToken,
            nextToken.kind == .leftParen {
             return consumeInlineImage(context: &context, altText: altText, startToken: token)
         }
         
-        // 检查是否是引用图片![alt][ref]或![alt][]
+        // Check for a reference image ![alt][ref] or ![alt][]
         if let nextToken = context.tokens.first as? MarkdownToken,
            nextToken.kind == .leftBracket {
             return consumeReferenceImage(context: &context, altText: altText, startToken: token)
         }
         
-        // 简化引用图片![alt]，创建部分节点
+        // Simplified reference image ![alt], create a partial node
         let partialImageNode = CodeNode(type: MarkdownElement.partialImage, value: altText, range: token.range)
         context.currentNode.addChild(partialImageNode)
         return true
     }
     
     private func consumeInlineImage(context: inout CodeContext, altText: String, startToken: MarkdownToken) -> Bool {
-        context.tokens.removeFirst() // 移除(
+        context.tokens.removeFirst() // Remove (
         
         var url = ""
         var title = ""
@@ -290,7 +298,7 @@ public class MarkdownImageConsumer: CodeTokenConsumer {
         if foundClosingParen {
             let imageNode = CodeNode(type: MarkdownElement.image, value: altText, range: startToken.range)
             
-            // 添加URL和标题
+            // Add URL and title
             if !url.isEmpty {
                 let urlNode = CodeNode(type: MarkdownElement.text, value: url.trimmingCharacters(in: .whitespaces))
                 imageNode.addChild(urlNode)
@@ -310,7 +318,7 @@ public class MarkdownImageConsumer: CodeTokenConsumer {
     }
     
     private func consumeReferenceImage(context: inout CodeContext, altText: String, startToken: MarkdownToken) -> Bool {
-        context.tokens.removeFirst() // 移除第二个[
+        context.tokens.removeFirst() // Remove the second [
         
         var refLabel = ""
         var foundClosingBracket = false
@@ -347,7 +355,7 @@ public class MarkdownImageConsumer: CodeTokenConsumer {
     }
 }
 
-/// 处理自动链接的Consumer
+/// Consumer for handling autolinks
 public class MarkdownAutolinkConsumer: CodeTokenConsumer {
     
     public init() {}
@@ -363,13 +371,13 @@ public class MarkdownAutolinkConsumer: CodeTokenConsumer {
     }
     
     private func consumeAutolink(context: inout CodeContext, token: MarkdownToken) -> Bool {
-        context.tokens.removeFirst() // 移除<
+        context.tokens.removeFirst() // Remove <
         
         var linkContent = ""
         var foundClosing = false
         var isValidAutolink = false
         
-        // 收集内容直到>
+        // Collect content until >
         while let currentToken = context.tokens.first as? MarkdownToken {
             if currentToken.kind == .eof || currentToken.kind == .newline {
                 break
@@ -381,7 +389,7 @@ public class MarkdownAutolinkConsumer: CodeTokenConsumer {
                 break
             }
             
-            // 检查是否包含空白（自动链接不能包含空白）
+            // Check for whitespace (autolinks cannot contain whitespace)
             if currentToken.kind == .whitespace {
                 break
             }
@@ -391,7 +399,7 @@ public class MarkdownAutolinkConsumer: CodeTokenConsumer {
         }
         
         if foundClosing {
-            // 检查是否是有效的URL或email
+            // Check if it's a valid URL or email
             if isValidURL(linkContent) || isValidEmail(linkContent) {
                 isValidAutolink = true
             }
@@ -402,7 +410,7 @@ public class MarkdownAutolinkConsumer: CodeTokenConsumer {
             context.currentNode.addChild(autolinkNode)
             return true
         } else {
-            // 不是有效的自动链接，作为普通文本处理
+            // Not a valid autolink, treat as plain text
             let textNode = CodeNode(type: MarkdownElement.text, value: "<" + linkContent + (foundClosing ? ">" : ""), range: token.range)
             context.currentNode.addChild(textNode)
             return true
@@ -410,18 +418,18 @@ public class MarkdownAutolinkConsumer: CodeTokenConsumer {
     }
     
     private func isValidURL(_ string: String) -> Bool {
-        // 简化的URL验证
+        // Simplified URL validation
         let urlPrefixes = ["http://", "https://", "ftp://", "ftps://"]
         return urlPrefixes.contains { string.lowercased().hasPrefix($0) }
     }
     
     private func isValidEmail(_ string: String) -> Bool {
-        // 简化的email验证
+        // Simplified email validation
         return string.contains("@") && string.contains(".") && !string.hasPrefix("@") && !string.hasSuffix("@")
     }
 }
 
-/// 处理HTML内联元素的Consumer
+/// Consumer for handling inline HTML elements
 public class MarkdownHTMLInlineConsumer: CodeTokenConsumer {
     
     public init() {}
@@ -440,7 +448,7 @@ public class MarkdownHTMLInlineConsumer: CodeTokenConsumer {
     }
 }
 
-/// 处理换行的Consumer
+/// Consumer for handling line breaks
 public class MarkdownLineBreakConsumer: CodeTokenConsumer {
     
     public init() {}
@@ -451,37 +459,37 @@ public class MarkdownLineBreakConsumer: CodeTokenConsumer {
         if mdToken.kind == .newline {
             context.tokens.removeFirst()
             
-            // 检查是否是硬换行（前面有两个空格）
+            // Check for a hard line break (preceded by two spaces)
             var hasHardBreak = false
             if context.currentNode.children.count > 0 {
                 let lastChild = context.currentNode.children.last!
                 if lastChild.value.hasSuffix("  ") {
                     hasHardBreak = true
-                    // 移除尾部空格
+                    // Remove trailing spaces
                     lastChild.value = String(lastChild.value.dropLast(2))
                 }
             }
             
             if hasHardBreak {
-                // 硬换行：创建lineBreak节点
+                // Hard line break: create a lineBreak node
                 let breakNode = CodeNode(type: MarkdownElement.lineBreak, value: "\n", range: mdToken.range)
                 context.currentNode.addChild(breakNode)
                 return true
             } else {
-                // 软换行：检查下一行是否为空或开始新的块级元素
+                // Soft line break: check if the next line is empty or starts a new block-level element
                 if let nextToken = context.tokens.first as? MarkdownToken {
                     if nextToken.kind == .newline {
-                        // 空行，不处理（让其他consumer处理）
+                        // Blank line, do not handle (let other consumers handle it)
                         return false
                     } else if isBlockElementStart(nextToken) {
-                        // 下一行是块级元素，不处理
+                        // Next line is a block-level element, do not handle
                         return false
                     } else {
-                        // 段落内的软换行，不创建节点，让段落consumer处理
+                        // Soft line break within a paragraph, do not create a node, let the paragraph consumer handle it
                         return false
                     }
                 } else {
-                    // 文件结尾，不处理
+                    // End of file, do not handle
                     return false
                 }
             }
