@@ -187,20 +187,11 @@ final class SwiftParserTests: XCTestCase {
         let parser = SwiftParser()
         
         // Test the simplest case with debug output
-        print("\n=== Basic emphasis test ===")
         let simpleMarkdown = "*test*"
-        let simpleResult = parser.parseMarkdown(simpleMarkdown)
-        
-        print("Input: \(simpleMarkdown)")
-        print("Result:")
-        printNodeTree(simpleResult.root, indent: "")
+        _ = parser.parseMarkdown(simpleMarkdown)
         
         let markdown = "*italic* **bold** ***bold italic***"
         let result = parser.parseMarkdown(markdown)
-        
-        print("\nInput: \(markdown)")
-        print("Result:")
-        printNodeTree(result.root, indent: "")
         
         XCTAssertFalse(result.hasErrors)
         
@@ -215,39 +206,21 @@ final class SwiftParserTests: XCTestCase {
         let parser = SwiftParser()
         
         // Start with a simple case
-        print("\n=== Simple case ===")
         let simpleTest = "*test*"
-        let simpleResult = parser.parseMarkdown(simpleTest)
-        print("Input: \(simpleTest)")
-        print("Result:")
-        printNodeTree(simpleResult.root, indent: "")
+        _ = parser.parseMarkdown(simpleTest)
         
         // Test triple markers
-        print("\n=== Triple marker test ===")
         let tripleTest = "***test***"
         
         // Inspect tokenization result
         let tokenizer = MarkdownTokenizer()
-        let tokens = tokenizer.tokenize(tripleTest)
-        print("Tokenization result:")
-        for (i, token) in tokens.enumerated() {
-            if let mdToken = token as? MarkdownToken {
-                print("  [\(i)]: \(mdToken.kind) = '\(mdToken.text)'")
-            }
-        }
+        _ = tokenizer.tokenize(tripleTest)
         
         let tripleResult = parser.parseMarkdown(tripleTest)
-        print("Input: \(tripleTest)")
-        print("Result:")
-        printNodeTree(tripleResult.root, indent: "")
         
         // Verify triple marker result
         let strongNodes = tripleResult.markdownNodes(ofType: .strongEmphasis)
-        if strongNodes.count > 0 {
-            print("Found \(strongNodes.count) strongEmphasis nodes")
-        } else {
-            print("No strongEmphasis nodes found")
-        }
+        _ = strongNodes.count > 0
         
         // Test nested emphasis structures
         let testCases = [
@@ -267,12 +240,6 @@ final class SwiftParserTests: XCTestCase {
             XCTAssertFalse(result.hasErrors, "\(description): should parse without errors")
             XCTAssertGreaterThan(result.root.children.count, 0, "\(description): should produce content")
             
-            // Print result for debugging
-            print("\nTest case: \(description)")
-            print("Input: \(markdown)")
-            print("Result:")
-            printNodeTree(result.root, indent: "")
-            
             // Special validation for triple markers
             if markdown == "***triple***" {
                 let strongEmphasisNodes = result.markdownNodes(ofType: .strongEmphasis)
@@ -285,19 +252,6 @@ final class SwiftParserTests: XCTestCase {
                     XCTAssertGreaterThan(emphasisNodes.count, 0, "strongEmphasis should contain nested emphasis")
                 }
             }
-        }
-    }
-    
-    // Helper: print node tree
-    private func printNodeTree(_ node: CodeNode, indent: String) {
-        if let element = node.type as? MarkdownElement {
-            print("\(indent)\(element.description): '\(node.value)'")
-        } else {
-            print("\(indent)Unknown: '\(node.value)'")
-        }
-        
-        for child in node.children {
-            printNodeTree(child, indent: indent + "  ")
         }
     }
     
@@ -392,27 +346,153 @@ final class SwiftParserTests: XCTestCase {
         let parser = SwiftParser()
         let testCase = "**bold*italic*bold**"
         
-        print("\n=== Debug specific case ===")
-        print("Input: \(testCase)")
-        
         // Check tokenization result
         let tokenizer = MarkdownTokenizer()
-        let tokens = tokenizer.tokenize(testCase)
-        print("Tokenization result:")
-        for (i, token) in tokens.enumerated() {
-            if let mdToken = token as? MarkdownToken {
-                print("  [\(i)]: \(mdToken.kind) = '\(mdToken.text)'")
-            }
-        }
+        _ = tokenizer.tokenize(testCase)
         
         let result = parser.parseMarkdown(testCase)
-        print("Result:")
-        printNodeTree(result.root, indent: "")
         
         let strongEmphasis = result.markdownNodes(ofType: .strongEmphasis)
-        print("Found \(strongEmphasis.count) strongEmphasis nodes")
         
         // Should have one strongEmphasis node with correct content
         XCTAssertEqual(strongEmphasis.count, 1, "Should have one strongEmphasis node")
+    }
+    
+    // MARK: - Footnote and Citation Tests
+    
+    func testMarkdownFootnotes() {
+        let language = MarkdownLanguage()
+        
+        // Test footnote definition
+        let footnoteDefinition = "[^1]: This is a footnote."
+        let result1 = language.parse(footnoteDefinition)
+        
+        let footnoteNodes = result1.node.findAll { node in
+            if let element = node.type as? MarkdownElement {
+                return element == .footnoteDefinition
+            }
+            return false
+        }
+        
+        XCTAssertEqual(footnoteNodes.count, 1, "Should have one footnote definition")
+        XCTAssertEqual(footnoteNodes.first?.value, "1", "Footnote identifier should be '1'")
+        
+        // Test footnote reference
+        let footnoteReference = "This is text with a footnote[^1]."
+        let result2 = language.parse(footnoteReference)
+        
+        let footnoteRefNodes = result2.node.findAll { node in
+            if let element = node.type as? MarkdownElement {
+                return element == .footnoteReference
+            }
+            return false
+        }
+        
+        XCTAssertEqual(footnoteRefNodes.count, 1, "Should have one footnote reference")
+        XCTAssertEqual(footnoteRefNodes.first?.value, "1", "Footnote reference should be '1'")
+        
+        // Test complete footnote document
+        let completeFootnote = """
+        This is a paragraph with a footnote[^1] and another[^note].
+        
+        [^1]: This is the first footnote.
+        [^note]: This is the second footnote.
+        """
+        
+        let result3 = language.parse(completeFootnote)
+        
+        let allFootnoteRefs = result3.node.findAll { node in
+            if let element = node.type as? MarkdownElement {
+                return element == .footnoteReference
+            }
+            return false
+        }
+        
+        let allFootnoteDefs = result3.node.findAll { node in
+            if let element = node.type as? MarkdownElement {
+                return element == .footnoteDefinition
+            }
+            return false
+        }
+        
+        XCTAssertEqual(allFootnoteRefs.count, 2, "Should have two footnote references")
+        XCTAssertEqual(allFootnoteDefs.count, 2, "Should have two footnote definitions")
+    }
+    
+    func testMarkdownCitations() {
+        let language = MarkdownLanguage()
+        
+        // Test citation definition
+        let citationDefinition = "[@smith2023]: Smith, J. (2023). Example Paper."
+        let result1 = language.parse(citationDefinition)
+        
+        let citationNodes = result1.node.findAll { node in
+            if let element = node.type as? MarkdownElement {
+                return element == .citation
+            }
+            return false
+        }
+        
+        XCTAssertEqual(citationNodes.count, 1, "Should have one citation definition")
+        XCTAssertEqual(citationNodes.first?.value, "smith2023", "Citation identifier should be 'smith2023'")
+        
+        // Test citation reference
+        let citationReference = "According to recent research[@smith2023]."
+        let result2 = language.parse(citationReference)
+        
+        let citationRefNodes = result2.node.findAll { node in
+            if let element = node.type as? MarkdownElement {
+                return element == .citationReference
+            }
+            return false
+        }
+        
+        XCTAssertEqual(citationRefNodes.count, 1, "Should have one citation reference")
+        XCTAssertEqual(citationRefNodes.first?.value, "smith2023", "Citation reference should be 'smith2023'")
+        
+        // Test complete citation document
+        let completeCitation = """
+        This research follows established practices[@smith2023] and [@jones2022].
+        
+        [@smith2023]: Smith, J. (2023). Example Paper. Journal of Examples.
+        [@jones2022]: Jones, A. (2022). Another Paper. Research Quarterly.
+        """
+        
+        let result3 = language.parse(completeCitation)
+        
+        let allCitationRefs = result3.node.findAll { node in
+            if let element = node.type as? MarkdownElement {
+                return element == .citationReference
+            }
+            return false
+        }
+        
+        let allCitationDefs = result3.node.findAll { node in
+            if let element = node.type as? MarkdownElement {
+                return element == .citation
+            }
+            return false
+        }
+        
+        XCTAssertEqual(allCitationRefs.count, 2, "Should have two citation references")
+        XCTAssertEqual(allCitationDefs.count, 2, "Should have two citation definitions")
+    }
+    
+    func testFootnoteDebug() {
+        let tokenizer = MarkdownTokenizer()
+        let language = MarkdownLanguage()
+        
+        // Test footnote reference
+        let footnoteRefText = "Text[^1]more"
+        _ = tokenizer.tokenize(footnoteRefText)
+        _ = language.parse(footnoteRefText)
+        
+        // Manually test the footnote reference consumer
+        let consumer = MarkdownFootnoteReferenceConsumer()
+        let testTokens = tokenizer.tokenize("[^1]")
+        let testNode = CodeNode(type: MarkdownElement.document, value: "")
+        var testContext = CodeContext(tokens: testTokens, currentNode: testNode, errors: [])
+        
+        _ = consumer.consume(context: &testContext, token: testTokens[0])
     }
 }

@@ -21,10 +21,14 @@ public class MarkdownLanguage: CodeLanguage {
             MarkdownListConsumer(),
             MarkdownHorizontalRuleConsumer(),
             MarkdownTableConsumer(),
+            MarkdownFootnoteDefinitionConsumer(),
+            MarkdownCitationDefinitionConsumer(),
             MarkdownLinkReferenceConsumer(),
             
             // 2. High priority inline elements
             MarkdownInlineCodeConsumer(),
+            MarkdownFootnoteReferenceConsumer(),
+            MarkdownCitationReferenceConsumer(),
             MarkdownLinkConsumer(),
             MarkdownImageConsumer(),
             MarkdownAutolinkConsumer(),
@@ -39,6 +43,7 @@ public class MarkdownLanguage: CodeLanguage {
             MarkdownTextConsumer(),
             
             // 4. Fallback handling - lowest priority
+            MarkdownFootnoteAndCitationReorganizer(),
             MarkdownFallbackConsumer()
         ]
     }
@@ -70,9 +75,13 @@ public class MarkdownConsumerFactory {
             MarkdownListConsumer(),
             MarkdownHorizontalRuleConsumer(),
             MarkdownTableConsumer(),
+            MarkdownFootnoteDefinitionConsumer(),
+            MarkdownCitationDefinitionConsumer(),
             MarkdownLinkReferenceConsumer(),
             
             // Inline elements
+            MarkdownFootnoteReferenceConsumer(),
+            MarkdownCitationReferenceConsumer(),
             MarkdownLinkConsumer(),
             MarkdownImageConsumer(),
             MarkdownAutolinkConsumer(),
@@ -85,6 +94,7 @@ public class MarkdownConsumerFactory {
             MarkdownLineBreakConsumer(),
             MarkdownParagraphConsumer(),
             MarkdownTextConsumer(),
+            MarkdownFootnoteAndCitationReorganizer(),
             MarkdownFallbackConsumer()
         ]
     }

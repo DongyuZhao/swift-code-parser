@@ -1,6 +1,6 @@
 import Foundation
 
-/// 处理换行和空行的Consumer
+/// Consumer for handling newlines and blank lines
 public class MarkdownNewlineConsumer: CodeTokenConsumer {
     
     public init() {}
@@ -11,15 +11,15 @@ public class MarkdownNewlineConsumer: CodeTokenConsumer {
         if mdToken.kind == .newline {
             context.tokens.removeFirst()
             
-            // 检查是否是双换行（空行）
+            // Check if it's a double newline (blank line)
             if let nextToken = context.tokens.first as? MarkdownToken,
                nextToken.kind == .newline {
-                // 这是空行，消费它但不创建节点
+                // It's a blank line; consume it without creating a node
                 context.tokens.removeFirst()
                 return true
             }
             
-            // 单个换行符，通常不需要创建节点
+            // Single newline, usually no node is needed
             return true
         }
         
@@ -27,7 +27,7 @@ public class MarkdownNewlineConsumer: CodeTokenConsumer {
     }
 }
 
-/// 处理普通文本的Consumer（fallback）
+/// Consumer for handling plain text (fallback)
 public class MarkdownTextConsumer: CodeTokenConsumer {
     
     public init() {}
@@ -35,7 +35,7 @@ public class MarkdownTextConsumer: CodeTokenConsumer {
     public func consume(context: inout CodeContext, token: any CodeToken) -> Bool {
         guard let mdToken = token as? MarkdownToken else { return false }
         
-        // 如果token没有被其他consumer处理，作为普通文本处理
+        // If the token is not processed by other consumers, treat it as plain text
         if mdToken.kind == .text || mdToken.kind == .whitespace {
             let textNode = CodeNode(type: MarkdownElement.text, value: mdToken.text, range: mdToken.range)
             context.currentNode.addChild(textNode)
@@ -47,7 +47,7 @@ public class MarkdownTextConsumer: CodeTokenConsumer {
     }
 }
 
-/// 处理表格的Consumer（GFM扩展）
+/// Consumer for handling tables (GFM extension)
 public class MarkdownTableConsumer: CodeTokenConsumer {
     
     public init() {}
@@ -55,7 +55,7 @@ public class MarkdownTableConsumer: CodeTokenConsumer {
     public func consume(context: inout CodeContext, token: any CodeToken) -> Bool {
         guard let mdToken = token as? MarkdownToken else { return false }
         
-        // 检查是否可能是表格开始（包含|字符的行）
+        // Check if it might be the start of a table (a line containing the | character)
         if mdToken.kind == .pipe || (mdToken.kind == .text && mdToken.isAtLineStart) {
             return tryConsumeTable(context: &context, token: mdToken)
         }
@@ -64,12 +64,12 @@ public class MarkdownTableConsumer: CodeTokenConsumer {
     }
     
     private func tryConsumeTable(context: inout CodeContext, token: MarkdownToken) -> Bool {
-        // 先预览当前行是否包含管道符号
+        // First, preview whether the current line contains a pipe symbol
         var currentIndex = 0
         var hasPipe = false
         var lineTokens: [MarkdownToken] = []
         
-        // 收集当前行的所有tokens
+        // Collect all tokens of the current line
         while currentIndex < context.tokens.count {
             guard let currentToken = context.tokens[currentIndex] as? MarkdownToken else { break }
             
@@ -88,8 +88,8 @@ public class MarkdownTableConsumer: CodeTokenConsumer {
             return false
         }
         
-        // 检查下一行是否是分隔符行
-        var separatorIndex = currentIndex + 1 // 跳过换行符
+        // Check if the next line is a separator line
+        var separatorIndex = currentIndex + 1 // Skip the newline character
         var isSeparatorLine = false
         var separatorTokens: [MarkdownToken] = []
         
@@ -104,14 +104,14 @@ public class MarkdownTableConsumer: CodeTokenConsumer {
             separatorIndex += 1
         }
         
-        // 检查分隔符行是否符合表格格式
+        // Check if the separator line conforms to the table format
         isSeparatorLine = isValidTableSeparator(separatorTokens)
         
         if !isSeparatorLine {
             return false
         }
         
-        // 开始构建表格
+        // Start building the table
         return consumeTable(context: &context, firstRowTokens: lineTokens, separatorTokens: separatorTokens, startToken: token)
     }
     
@@ -137,26 +137,26 @@ public class MarkdownTableConsumer: CodeTokenConsumer {
         let tableNode = CodeNode(type: MarkdownElement.table, value: "", range: startToken.range)
         context.currentNode.addChild(tableNode)
         
-        // 处理表头行
+        // Process the header row
         let headerRow = parseTableRow(firstRowTokens)
         if let headerRowNode = headerRow {
             tableNode.addChild(headerRowNode)
         }
         
-        // 移除已处理的tokens（第一行和分隔符行）
+        // Remove processed tokens (first row and separator row)
         for _ in 0..<(firstRowTokens.count + 1 + separatorTokens.count + 1) {
             if !context.tokens.isEmpty {
                 context.tokens.removeFirst()
             }
         }
         
-        // 继续处理表格数据行
+        // Continue processing table data rows
         while let currentToken = context.tokens.first as? MarkdownToken {
             if currentToken.kind == .eof {
                 break
             }
             
-            // 收集当前行
+            // Collect the current row
             var rowTokens: [MarkdownToken] = []
             var hasPipeInRow = false
             
@@ -173,9 +173,9 @@ public class MarkdownTableConsumer: CodeTokenConsumer {
                 context.tokens.removeFirst()
             }
             
-            // 如果行不包含管道符，表格结束
+            // If the row does not contain a pipe, the table ends
             if !hasPipeInRow && !rowTokens.isEmpty {
-                // 将tokens放回去
+                // Put the tokens back
                 let reversedTokens = Array(rowTokens.reversed())
                 for token in reversedTokens {
                     context.tokens.insert(token, at: 0)
@@ -188,7 +188,7 @@ public class MarkdownTableConsumer: CodeTokenConsumer {
                     tableNode.addChild(dataRow)
                 }
             } else if rowTokens.isEmpty {
-                // 空行，表格结束
+                // Blank line, table ends
                 break
             }
         }
@@ -205,7 +205,7 @@ public class MarkdownTableConsumer: CodeTokenConsumer {
         for token in tokens {
             if token.kind == .pipe {
                 if inCell {
-                    // 结束当前单元格
+                    // End the current cell
                     let cellNode = CodeNode(type: MarkdownElement.tableCell, value: cellContent.trimmingCharacters(in: .whitespaces))
                     rowNode.addChild(cellNode)
                     cellContent = ""
@@ -218,7 +218,7 @@ public class MarkdownTableConsumer: CodeTokenConsumer {
             }
         }
         
-        // 处理最后一个单元格
+        // Process the last cell
         if inCell && !cellContent.isEmpty {
             let cellNode = CodeNode(type: MarkdownElement.tableCell, value: cellContent.trimmingCharacters(in: .whitespaces))
             rowNode.addChild(cellNode)
@@ -228,7 +228,7 @@ public class MarkdownTableConsumer: CodeTokenConsumer {
     }
 }
 
-/// 处理删除线的Consumer（GFM扩展）
+/// Consumer for handling strikethrough (GFM extension)
 public class MarkdownStrikethroughConsumer: CodeTokenConsumer {
     
     public init() {}
@@ -236,9 +236,9 @@ public class MarkdownStrikethroughConsumer: CodeTokenConsumer {
     public func consume(context: inout CodeContext, token: any CodeToken) -> Bool {
         guard let mdToken = token as? MarkdownToken else { return false }
         
-        // 检查是否是~~的开始
+        // Check if it's the start of ~~
         if mdToken.kind == .text && mdToken.text == "~" {
-            // 检查下一个token是否也是~
+            // Check if the next token is also ~
             if context.tokens.count > 1,
                let nextToken = context.tokens[1] as? MarkdownToken,
                nextToken.kind == .text && nextToken.text == "~" {
@@ -250,25 +250,25 @@ public class MarkdownStrikethroughConsumer: CodeTokenConsumer {
     }
     
     private func consumeStrikethrough(context: inout CodeContext, token: MarkdownToken) -> Bool {
-        context.tokens.removeFirst() // 移除第一个~
-        context.tokens.removeFirst() // 移除第二个~
+        context.tokens.removeFirst() // Remove the first ~
+        context.tokens.removeFirst() // Remove the second ~
         
         var strikethroughText = ""
         var foundClosing = false
         
-        // 查找闭合的~~
+        // Find the closing ~~
         while let currentToken = context.tokens.first as? MarkdownToken {
             if currentToken.kind == .eof || currentToken.kind == .newline {
                 break
             }
             
             if currentToken.kind == .text && currentToken.text == "~" {
-                // 检查下一个token是否也是~
+                // Check if the next token is also ~
                 if context.tokens.count > 1,
                    let nextToken = context.tokens[1] as? MarkdownToken,
                    nextToken.kind == .text && nextToken.text == "~" {
-                    context.tokens.removeFirst() // 移除第一个~
-                    context.tokens.removeFirst() // 移除第二个~
+                    context.tokens.removeFirst() // Remove the first ~
+                    context.tokens.removeFirst() // Remove the second ~
                     foundClosing = true
                     break
                 }
@@ -283,7 +283,7 @@ public class MarkdownStrikethroughConsumer: CodeTokenConsumer {
             context.currentNode.addChild(strikeNode)
             return true
         } else {
-            // 没找到闭合标记，作为普通文本处理
+            // If no closing tag is found, treat it as plain text
             let textNode = CodeNode(type: MarkdownElement.text, value: "~~" + strikethroughText, range: token.range)
             context.currentNode.addChild(textNode)
             return true
@@ -291,7 +291,7 @@ public class MarkdownStrikethroughConsumer: CodeTokenConsumer {
     }
 }
 
-/// 处理链接引用定义的Consumer
+/// Consumer for handling link reference definitions
 public class MarkdownLinkReferenceConsumer: CodeTokenConsumer {
     
     public init() {}
@@ -299,7 +299,7 @@ public class MarkdownLinkReferenceConsumer: CodeTokenConsumer {
     public func consume(context: inout CodeContext, token: any CodeToken) -> Bool {
         guard let mdToken = token as? MarkdownToken else { return false }
         
-        // 检查是否是行首的[开始的链接引用定义
+        // Check if it's a link reference definition starting with [ at the beginning of a line
         if mdToken.kind == .leftBracket && mdToken.isAtLineStart {
             return tryConsumeLinkReference(context: &context, token: mdToken)
         }
@@ -311,7 +311,7 @@ public class MarkdownLinkReferenceConsumer: CodeTokenConsumer {
         var tempTokens: [MarkdownToken] = []
         var currentIndex = 0
         
-        // 收集当前行的tokens进行检查
+        // Collect tokens of the current line for checking
         while currentIndex < context.tokens.count {
             guard let currentToken = context.tokens[currentIndex] as? MarkdownToken else { break }
             
@@ -323,7 +323,7 @@ public class MarkdownLinkReferenceConsumer: CodeTokenConsumer {
             currentIndex += 1
         }
         
-        // 检查是否符合链接引用定义格式: [label]: url "title"
+        // Check if it conforms to the link reference definition format: [label]: url "title"
         var labelEndIndex = -1
         var hasColon = false
         
@@ -340,7 +340,7 @@ public class MarkdownLinkReferenceConsumer: CodeTokenConsumer {
             return false
         }
         
-        // 解析链接引用定义
+        // Parse the link reference definition
         return consumeLinkReference(context: &context, tokens: tempTokens, startToken: token)
     }
     
@@ -355,14 +355,14 @@ public class MarkdownLinkReferenceConsumer: CodeTokenConsumer {
         
         for token in tokens {
             switch phase {
-            case 0: // 解析标签
+            case 0: // Parse label
                 if token.kind == .rightBracket {
                     phase = 1
                 } else if token.kind != .leftBracket {
                     label += token.text
                 }
                 
-            case 1: // 解析URL
+            case 1: // Parse URL
                 if token.kind == .colon {
                     continue
                 } else if token.kind == .whitespace && url.isEmpty {
@@ -380,7 +380,7 @@ public class MarkdownLinkReferenceConsumer: CodeTokenConsumer {
                     phase = 2
                 }
                 
-            case 2: // 解析标题
+            case 2: // Parse title
                 if inQuotes {
                     if token.text.last == quoteChar {
                         inQuotes = false
@@ -396,7 +396,7 @@ public class MarkdownLinkReferenceConsumer: CodeTokenConsumer {
             }
         }
         
-        // 移除已处理的tokens
+        // Remove processed tokens
         for _ in 0..<(tokens.count + 1) { // +1 for newline
             if !context.tokens.isEmpty {
                 context.tokens.removeFirst()
@@ -420,13 +420,13 @@ public class MarkdownLinkReferenceConsumer: CodeTokenConsumer {
     }
 }
 
-/// 默认Consumer，处理未匹配的tokens
+/// Default consumer, handles unmatched tokens
 public class MarkdownFallbackConsumer: CodeTokenConsumer {
     
     public init() {}
     
     public func consume(context: inout CodeContext, token: any CodeToken) -> Bool {
-        // 处理任何未被其他consumer处理的token
+        // Process any token not handled by other consumers
         if let mdToken = token as? MarkdownToken {
             let textNode = CodeNode(type: MarkdownElement.text, value: mdToken.text, range: mdToken.range)
             context.currentNode.addChild(textNode)

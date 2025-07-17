@@ -41,6 +41,10 @@ public enum MarkdownTokenKind: String, CaseIterable {
     case rightParen2    // )
     case exclamation    // !
     
+    // Footnote and citation related
+    case caret          // ^
+    case atSign         // @
+    
     // HTML related
     case leftAngle      // <
     case rightAngle     // >
