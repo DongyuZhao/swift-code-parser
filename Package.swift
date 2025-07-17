@@ -28,5 +28,5 @@ let package = Package(
             dependencies: ["SwiftParser"]
         ),
     ],
-    swiftLanguageVersions: [.v6]
+    swiftLanguageModes: [.v6]
 )
