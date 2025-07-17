@@ -11,16 +11,16 @@ public struct SwiftParser {
         return ParsedSource(content: source, root: result.node, errors: result.context.errors)
     }
     
-    /// 便捷方法：解析Markdown文本
+    /// Convenience method: parse Markdown text
     public func parseMarkdown(_ markdown: String) -> ParsedSource {
         let language = MarkdownLanguage()
         return parse(markdown, language: language)
     }
     
-    /// 便捷方法：解析CommonMark规范的Markdown文本（不包括GFM扩展）
+    /// Convenience method: parse CommonMark Markdown (without GFM extensions)
     public func parseCommonMark(_ markdown: String) -> ParsedSource {
         let language = MarkdownLanguage()
-        // 可以在这里自定义consumer配置
+        // Custom consumer configuration can be added here
         return parse(markdown, language: language)
     }
 }
@@ -37,19 +37,19 @@ public struct ParsedSource {
         self.errors = errors
     }
     
-    /// 检查是否有解析错误
+    /// Check if there were parse errors
     public var hasErrors: Bool {
         return !errors.isEmpty
     }
     
-    /// 获取所有指定类型的节点
+    /// Get all nodes of the given element type
     public func nodes(ofType elementType: any CodeElement.Type) -> [CodeNode] {
         return root.findAll { node in
             type(of: node.type) == elementType
         }
     }
     
-    /// 获取所有Markdown元素节点
+    /// Get all Markdown element nodes
     public func markdownNodes(ofType elementType: MarkdownElement) -> [CodeNode] {
         return root.findAll { node in
             if let mdElement = node.type as? MarkdownElement {

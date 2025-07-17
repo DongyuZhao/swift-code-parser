@@ -1,6 +1,6 @@
 import Foundation
 
-/// Markdown分词器，符合CommonMark规范
+/// Markdown tokenizer compliant with the CommonMark specification
 public class MarkdownTokenizer: CodeTokenizer {
     
     public init() {}
@@ -13,7 +13,7 @@ public class MarkdownTokenizer: CodeTokenizer {
             let lineTokens = tokenizeLine(line, lineNumber: lineIndex + 1)
             tokens.append(contentsOf: lineTokens)
             
-            // 添加换行符token（除了最后一行）
+            // Add newline tokens (except the last line)
             if lineIndex < lines.count - 1 {
                 let newlineRange = line.endIndex..<line.endIndex
                 tokens.append(MarkdownToken(kind: .newline, text: "\n", range: newlineRange,
@@ -21,7 +21,7 @@ public class MarkdownTokenizer: CodeTokenizer {
             }
         }
         
-        // 添加EOF token
+        // Append EOF token
         let eofRange = input.endIndex..<input.endIndex
         tokens.append(MarkdownToken(kind: .eof, text: "", range: eofRange))
         
@@ -33,7 +33,7 @@ public class MarkdownTokenizer: CodeTokenizer {
         var currentIndex = line.startIndex
         var columnNumber = 1
         
-        // 检测行首缩进
+        // Detect leading indentation
         let indentLevel = getIndentLevel(line)
         let _ = indentLevel >= 4 // isIndentedCodeBlock - reserved for future use
         
@@ -53,7 +53,7 @@ public class MarkdownTokenizer: CodeTokenizer {
                 tokenKind = .whitespace
                 
             case "#":
-                // 检查是否是标题标记（行首或前面只有空白或其他#号）
+                // Check if this is a header marker (line start or only whitespace/hash before)
                 let hasOnlyHashOrWhitespaceBefore = currentIndex == line.startIndex || 
                     line[line.startIndex..<currentIndex].allSatisfy { char in
                         char.isWhitespace || char == "#"
@@ -68,7 +68,7 @@ public class MarkdownTokenizer: CodeTokenizer {
                 }
                 
             case "*":
-                // 水平线必须在行首或前面只有空白
+                // Horizontal rule must be at line start or preceded only by whitespace
                 let isHorizontalRuleCandidate = isAtLineStart || 
                     line[line.startIndex..<currentIndex].allSatisfy { $0.isWhitespace }
                 
@@ -220,7 +220,7 @@ public class MarkdownTokenizer: CodeTokenizer {
                 tokenText = String(char)
                 
             default:
-                // 消费普通文本直到下一个特殊字符
+                // Consume regular text until the next special character
                 (tokenText, endIndex) = consumeText(from: line, startingAt: currentIndex)
                 tokenKind = .text
             }
@@ -238,7 +238,7 @@ public class MarkdownTokenizer: CodeTokenizer {
         return tokens
     }
     
-    // MARK: - 辅助方法
+    // MARK: - Helper methods
     
     private func getIndentLevel(_ line: String) -> Int {
         var count = 0
@@ -297,7 +297,7 @@ public class MarkdownTokenizer: CodeTokenizer {
     }
     
     private func isListMarker(_ line: String, at index: String.Index) -> Bool {
-        // 简化的列表标记检测
+        // Simplified list marker detection
         return index == line.startIndex || line[line.startIndex..<index].allSatisfy { $0.isWhitespace }
     }
     
@@ -313,7 +313,7 @@ public class MarkdownTokenizer: CodeTokenizer {
     }
     
     private func isEmphasisMarker(_ line: String, at index: String.Index) -> Bool {
-        // 简化的强调标记检测
+        // Simplified emphasis marker detection
         return true
     }
     
@@ -325,7 +325,7 @@ public class MarkdownTokenizer: CodeTokenizer {
         let charCount = remainingLine.filter { $0 == char }.count
         let nonWhitespaceCharCount = remainingLine.filter { !$0.isWhitespace && $0 != char }.count
         
-        // 水平线要求：至少3个相同字符，且除了空白之外不能有其他字符
+        // Horizontal rule requires at least three identical characters and nothing else except whitespace
         return charCount >= 3 && nonWhitespaceCharCount == 0
     }
     
@@ -369,7 +369,7 @@ public class MarkdownTokenizer: CodeTokenizer {
         if let endIndex = substring.firstIndex(of: ">") {
             let content = String(substring[substring.index(after: substring.startIndex)..<endIndex])
             
-            // 检查是否是URL或email自动链接
+            // Check if this is a URL or email autolink
             return content.contains("://") || content.contains("@")
         }
         

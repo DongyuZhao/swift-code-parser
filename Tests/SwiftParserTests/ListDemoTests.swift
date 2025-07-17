@@ -4,34 +4,34 @@ import XCTest
 
 class ListDemoTests: XCTestCase {
     func testListDemo() {
-        print("=== Swift Markdown Parser 高级列表演示 ===\n")
+        print("=== Swift Markdown Parser advanced list demo ===\n")
         
-        // 演示无序列表
+        // Demonstrate unordered list
         let unorderedList = """
-        - 无序列表项1
-        - 无序列表项2
-        - 无序列表项3
+        - unordered item 1
+        - unordered item 2
+        - unordered item 3
         """
         
-        // 演示有序列表 - 自动编号
+        // Demonstrate ordered list - automatic numbering
         let orderedList = """
-        1. 第一项
-        1. 第二项
-        1. 第三项
+        1. first
+        1. second
+        1. third
         """
         
-        // 演示任务列表
+        // Demonstrate task list
         let taskList = """
-        - [ ] 未完成任务
-        - [x] 已完成任务
-        - [ ] 另一个未完成任务
+        - [ ] unfinished task
+        - [x] finished task
+        - [ ] another unfinished task
         """
         
         func demonstrateList(title: String, markdown: String) {
             print("=== \(title) ===")
-            print("输入:")
+            print("Input:")
             print(markdown)
-            print("\n解析结果:")
+            print("\nParse result:")
             
             let language = MarkdownLanguage()
             let parser = CodeParser(language: language)
@@ -50,12 +50,12 @@ class ListDemoTests: XCTestCase {
             print("\n" + String(repeating: "-", count: 50) + "\n")
         }
         
-        // 演示各种列表类型
-        demonstrateList(title: "无序列表", markdown: unorderedList)
-        demonstrateList(title: "有序列表 (自动编号)", markdown: orderedList)
-        demonstrateList(title: "任务列表", markdown: taskList)
+        // Demonstrate all list types
+        demonstrateList(title: "Unordered list", markdown: unorderedList)
+        demonstrateList(title: "Ordered list (auto numbering)", markdown: orderedList)
+        demonstrateList(title: "Task list", markdown: taskList)
         
-        print("✅ 所有列表功能演示完成！")
-        print("✅ 支持无序列表、有序列表自动编号、任务列表")
+        print("✅ All list features demonstrated!")
+        print("✅ Supports unordered lists, ordered lists, and task lists")
     }
 }

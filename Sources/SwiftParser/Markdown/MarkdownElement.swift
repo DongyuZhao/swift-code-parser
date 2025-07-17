@@ -1,8 +1,8 @@
 import Foundation
 
-/// Markdown元素类型定义，符合CommonMark规范
+/// Markdown element definitions following the CommonMark specification
 public enum MarkdownElement: CodeElement, CaseIterable {
-    // 块级元素 (Block Elements)
+    // Block-level elements
     case document
     case paragraph
     case header1, header2, header3, header4, header5, header6
@@ -22,7 +22,7 @@ public enum MarkdownElement: CodeElement, CaseIterable {
     case tableCell
     case linkReferenceDefinition
     
-    // 内联元素 (Inline Elements)
+    // Inline elements
     case text
     case emphasis
     case strongEmphasis
@@ -35,7 +35,7 @@ public enum MarkdownElement: CodeElement, CaseIterable {
     case softBreak
     case strikethrough
     
-    // 中间状态节点 (Partial Nodes for prefix ambiguity)
+    // Partial nodes for prefix ambiguity
     case partialHeader
     case partialCodeBlock
     case partialEmphasis
