@@ -1,255 +1,337 @@
 import Foundation
 
-/// Markdown language implementation following the CommonMark specification
+// MARK: - Markdown Language Implementation
 public class MarkdownLanguage: CodeLanguage {
+    public typealias Node = MarkdownNodeElement
+    public typealias Token = MarkdownTokenElement
     
-    public let tokenizer: CodeTokenizer
-    public let consumers: [CodeTokenConsumer]
-    public let rootElement: any CodeElement
+    // MARK: - Language Components
+    public let tokenizer: any CodeTokenizer<MarkdownTokenElement>
+    public let consumers: [any CodeTokenConsumer<MarkdownNodeElement, MarkdownTokenElement>]
     
-    public init() {
-        self.tokenizer = MarkdownTokenizer()
-        self.rootElement = MarkdownElement.document
-        
-        // Consumers are ordered by priority
-        // Block-level elements have higher priority as they typically start a line
-        self.consumers = [
-            // 1. Block-level elements - highest priority
-            MarkdownHeaderConsumer(),
-            MarkdownCodeBlockConsumer(),
-            MarkdownBlockquoteConsumer(),
-            MarkdownListConsumer(),
-            MarkdownHorizontalRuleConsumer(),
-            MarkdownTableConsumer(),
-            MarkdownFootnoteDefinitionConsumer(),
-            MarkdownCitationDefinitionConsumer(),
-            MarkdownLinkReferenceConsumer(),
-            
-            // 2. High priority inline elements
-            MarkdownInlineCodeConsumer(),
-            MarkdownFootnoteReferenceConsumer(),
-            MarkdownCitationReferenceConsumer(),
-            MarkdownLinkConsumer(),
-            MarkdownImageConsumer(),
-            MarkdownAutolinkConsumer(),
-            MarkdownEmphasisConsumer(),
-            MarkdownStrikethroughConsumer(),
-            MarkdownHTMLInlineConsumer(),
-            
-            // 3. Line breaks and text handling - lower priority
-            MarkdownNewlineConsumer(),
-            MarkdownLineBreakConsumer(),
-            MarkdownParagraphConsumer(),
-            MarkdownTextConsumer(),
-            
-            // 4. Fallback handling - lowest priority
-            MarkdownFootnoteAndCitationReorganizer(),
-            MarkdownFallbackConsumer()
+    // MARK: - Initialization
+    public init(
+        tokenizer: any CodeTokenizer<MarkdownTokenElement> = MarkdownTokenizer(),
+        consumers: [any CodeTokenConsumer<MarkdownNodeElement, MarkdownTokenElement>] = [
+            // Block-level consumers
+            HeadingConsumer(),
+            NewlineConsumer(),
+            // Inline consumers
+            BlockquoteConsumer(),
+            InlineCodeConsumer(),
+            InlineFormulaConsumer(),
+            AutolinkConsumer(),
+            URLConsumer(),
+            HTMLInlineConsumer(),
+            // Text fallback
+            TextConsumer(),
+            // End-of-file
+            EOFConsumer()
         ]
+    ) {
+        self.tokenizer = tokenizer
+        self.consumers = consumers
     }
     
-    /// Create the default document root node
-    public func createDocumentNode() -> CodeNode {
-        return CodeNode(type: MarkdownElement.document, value: "")
+    // MARK: - Language Protocol Implementation
+    public func root(of content: String) -> CodeNode<MarkdownNodeElement> {
+        return DocumentNode()
     }
-    
-    /// Parse Markdown text
-    public func parse(_ text: String) -> (node: CodeNode, errors: [CodeError]) {
-        let parser = CodeParser(language: self)
-        let rootNode = createDocumentNode()
-        let result = parser.parse(text, rootNode: rootNode)
-        return (result.node, result.context.errors)
+
+    public func state(of content: String) -> (any CodeContextState<Node, Token>)? {
+        return MarkdownContextState()
     }
 }
 
-/// Factory class used to create and manage different consumers
-public class MarkdownConsumerFactory {
-    
-    /// Create all standard Markdown consumers
-    public static func createStandardConsumers() -> [CodeTokenConsumer] {
-        return [
-            // Block-level elements
-            MarkdownHeaderConsumer(),
-            MarkdownCodeBlockConsumer(),
-            MarkdownBlockquoteConsumer(),
-            MarkdownListConsumer(),
-            MarkdownHorizontalRuleConsumer(),
-            MarkdownTableConsumer(),
-            MarkdownFootnoteDefinitionConsumer(),
-            MarkdownCitationDefinitionConsumer(),
-            MarkdownLinkReferenceConsumer(),
-            
-            // Inline elements
-            MarkdownFootnoteReferenceConsumer(),
-            MarkdownCitationReferenceConsumer(),
-            MarkdownLinkConsumer(),
-            MarkdownImageConsumer(),
-            MarkdownAutolinkConsumer(),
-            MarkdownEmphasisConsumer(),
-            MarkdownInlineCodeConsumer(),
-            MarkdownStrikethroughConsumer(),
-            MarkdownHTMLInlineConsumer(),
-            
-            // Text handling
-            MarkdownLineBreakConsumer(),
-            MarkdownParagraphConsumer(),
-            MarkdownTextConsumer(),
-            MarkdownFootnoteAndCitationReorganizer(),
-            MarkdownFallbackConsumer()
-        ]
+// MARK: - Language Configuration
+extension MarkdownLanguage {
+    /// Configuration options for the Markdown language
+    public struct Configuration: Sendable {
+        /// Enable CommonMark features
+        public var commonMark: Bool = true
+        
+        /// Enable GitHub Flavored Markdown extensions
+        public var gfm: Bool = false
+        
+        /// Enable math support (LaTeX/TeX)
+        public var math: Bool = false
+        
+        /// Enable tables
+        public var tables: Bool = false
+        
+        /// Enable strikethrough
+        public var strikethrough: Bool = false
+        
+        /// Enable task lists
+        public var taskLists: Bool = false
+        
+        /// Enable footnotes
+        public var footnotes: Bool = false
+        
+        /// Enable definition lists
+        public var definitionLists: Bool = false
+        
+        /// Enable abbreviations
+        public var abbreviations: Bool = false
+        
+        /// Enable HTML blocks and inline HTML
+        public var html: Bool = true
+        
+        /// Enable autolinks
+        public var autolinks: Bool = true
+        
+        /// Enable emoji shortcodes
+        public var emoji: Bool = false
+        
+        /// Enable mentions (@username)
+        public var mentions: Bool = false
+        
+        /// Enable hashtags (#tag)
+        public var hashtags: Bool = false
+        
+        /// Enable wiki links ([[link]])
+        public var wikiLinks: Bool = false
+        
+        /// Enable keyboard keys (<kbd>key</kbd>)
+        public var keyboardKeys: Bool = false
+        
+        /// Enable frontmatter parsing
+        public var frontmatter: Bool = false
+        
+        /// Enable YAML frontmatter
+        public var yamlFrontmatter: Bool = false
+        
+        /// Enable TOML frontmatter
+        public var tomlFrontmatter: Bool = false
+        
+        /// Enable JSON frontmatter
+        public var jsonFrontmatter: Bool = false
+        
+        /// Enable custom admonitions/callouts
+        public var admonitions: Bool = false
+        
+        /// Enable spoilers
+        public var spoilers: Bool = false
+        
+        /// Enable details/summary blocks
+        public var details: Bool = false
+        
+        /// Enable syntax highlighting for code blocks
+        public var syntaxHighlighting: Bool = false
+        
+        /// Enable line numbers in code blocks
+        public var lineNumbers: Bool = false
+        
+        /// Enable smart punctuation (curly quotes, em dashes, etc.)
+        public var smartPunctuation: Bool = false
+        
+        /// Enable typographic replacements
+        public var typographicReplacements: Bool = false
+        
+        /// Enable hard line breaks
+        public var hardLineBreaks: Bool = false
+        
+        /// Enable soft line breaks
+        public var softLineBreaks: Bool = true
+        
+        /// Enable link reference definitions
+        public var linkReferences: Bool = true
+        
+        /// Enable image reference definitions
+        public var imageReferences: Bool = true
+        
+        /// Enable table of contents generation
+        public var tableOfContents: Bool = false
+        
+        /// Enable heading anchor generation
+        public var headingAnchors: Bool = false
+        
+        /// Enable unsafe HTML (allows all HTML tags)
+        public var unsafeHTML: Bool = false
+        
+        /// Enable raw HTML blocks
+        public var rawHTML: Bool = true
+        
+        /// Enable custom containers
+        public var customContainers: Bool = false
+        
+        /// Enable plugins
+        public var plugins: Bool = false
+        
+        /// Default configuration with CommonMark features
+        public static let `default` = Configuration()
+        
+        /// CommonMark-compliant configuration
+        public static let commonMark = Configuration(
+            commonMark: true,
+            gfm: false,
+            math: false,
+            tables: false,
+            strikethrough: false,
+            taskLists: false,
+            footnotes: false,
+            definitionLists: false,
+            abbreviations: false,
+            emoji: false,
+            mentions: false,
+            hashtags: false,
+            wikiLinks: false,
+            keyboardKeys: false,
+            frontmatter: false,
+            admonitions: false,
+            spoilers: false,
+            details: false
+        )
+        
+        /// GitHub Flavored Markdown configuration
+        public static let gfm = Configuration(
+            commonMark: true,
+            gfm: true,
+            math: false,
+            tables: true,
+            strikethrough: true,
+            taskLists: true,
+            footnotes: false,
+            definitionLists: false,
+            abbreviations: false,
+            emoji: true,
+            mentions: true,
+            hashtags: true,
+            wikiLinks: false,
+            keyboardKeys: false,
+            frontmatter: false,
+            admonitions: false,
+            spoilers: false,
+            details: false
+        )
+        
+        /// Full-featured configuration
+        public static let full = Configuration(
+            commonMark: true,
+            gfm: true,
+            math: true,
+            tables: true,
+            strikethrough: true,
+            taskLists: true,
+            footnotes: true,
+            definitionLists: true,
+            abbreviations: true,
+            emoji: true,
+            mentions: true,
+            hashtags: true,
+            wikiLinks: true,
+            keyboardKeys: true,
+            frontmatter: true,
+            yamlFrontmatter: true,
+            tomlFrontmatter: true,
+            jsonFrontmatter: true,
+            admonitions: true,
+            spoilers: true,
+            details: true,
+            syntaxHighlighting: true,
+            lineNumbers: true,
+            smartPunctuation: true,
+            typographicReplacements: true,
+            tableOfContents: true,
+            headingAnchors: true,
+            customContainers: true,
+            plugins: true
+        )
     }
     
-    /// Create consumers containing only basic CommonMark support (no GFM extensions)
-    public static func createCommonMarkConsumers() -> [CodeTokenConsumer] {
-        return [
-            // Core block-level elements
-            MarkdownHeaderConsumer(),
-            MarkdownCodeBlockConsumer(),
-            MarkdownBlockquoteConsumer(),
-            MarkdownListConsumer(),
-            MarkdownHorizontalRuleConsumer(),
-            MarkdownLinkReferenceConsumer(),
-            
-            // Core inline elements
-            MarkdownLinkConsumer(),
-            MarkdownImageConsumer(),
-            MarkdownAutolinkConsumer(),
-            MarkdownEmphasisConsumer(),
-            MarkdownInlineCodeConsumer(),
-            MarkdownHTMLInlineConsumer(),
-            
-            // Text handling
-            MarkdownLineBreakConsumer(),
-            MarkdownParagraphConsumer(),
-            MarkdownTextConsumer(),
-            MarkdownFallbackConsumer()
-        ]
-    }
-    
-    /// Create consumers for GitHub Flavored Markdown (GFM) extensions
-    public static func createGFMExtensions() -> [CodeTokenConsumer] {
-        return [
-            MarkdownTableConsumer(),
-            MarkdownStrikethroughConsumer()
-        ]
-    }
-    
-    /// Create a custom consumer configuration
-    public static func createCustomConsumers(
-        includeHeaders: Bool = true,
-        includeCodeBlocks: Bool = true,
-        includeBlockquotes: Bool = true,
-        includeLists: Bool = true,
-        includeLinks: Bool = true,
-        includeImages: Bool = true,
-        includeEmphasis: Bool = true,
-        includeTables: Bool = false,
-        includeStrikethrough: Bool = false
-    ) -> [CodeTokenConsumer] {
+    /// Create a language instance with specific configuration
+    public static func configured(_ config: Configuration) -> MarkdownLanguage {
+        let tokenizer = MarkdownTokenizer()
+        let consumers: [any CodeTokenConsumer<MarkdownNodeElement, MarkdownTokenElement>] = []
         
-        var consumers: [CodeTokenConsumer] = []
+        // TODO: Add consumers based on configuration when implemented
+        // if config.commonMark {
+        //     consumers.append(CommonMarkConsumer())
+        // }
+        // if config.gfm {
+        //     consumers.append(GFMConsumer())
+        // }
+        // if config.math {
+        //     consumers.append(MathConsumer())
+        // }
+        // ... etc
         
-        // Block-level elements
-        if includeHeaders {
-            consumers.append(MarkdownHeaderConsumer())
-        }
-        if includeCodeBlocks {
-            consumers.append(MarkdownCodeBlockConsumer())
-        }
-        if includeBlockquotes {
-            consumers.append(MarkdownBlockquoteConsumer())
-        }
-        if includeLists {
-            consumers.append(MarkdownListConsumer())
-        }
-        if includeTables {
-            consumers.append(MarkdownTableConsumer())
-        }
-        
-        consumers.append(MarkdownHorizontalRuleConsumer())
-        consumers.append(MarkdownLinkReferenceConsumer())
-        
-        // Inline elements
-        if includeLinks {
-            consumers.append(MarkdownLinkConsumer())
-        }
-        if includeImages {
-            consumers.append(MarkdownImageConsumer())
-        }
-        if includeEmphasis {
-            consumers.append(MarkdownEmphasisConsumer())
-        }
-        if includeStrikethrough {
-            consumers.append(MarkdownStrikethroughConsumer())
-        }
-        
-        consumers.append(MarkdownAutolinkConsumer())
-        consumers.append(MarkdownInlineCodeConsumer())
-        consumers.append(MarkdownHTMLInlineConsumer())
-        
-        // Basic handling
-        consumers.append(MarkdownLineBreakConsumer())
-        consumers.append(MarkdownParagraphConsumer())
-        consumers.append(MarkdownTextConsumer())
-        consumers.append(MarkdownFallbackConsumer())
-        
-        return consumers
+        return MarkdownLanguage(tokenizer: tokenizer, consumers: consumers)
     }
 }
 
-/// Partial node resolver used to handle prefix ambiguities
-public class MarkdownPartialNodeResolver {
-    
-    /// Resolve a partial link node
-    public static func resolvePartialLink(_ partialNode: CodeNode, in context: CodeContext) -> CodeNode? {
-        guard partialNode.type as? MarkdownElement == .partialLink else { return nil }
-        
-        // More complex link parsing could be implemented here,
-        // such as looking up link reference definitions.
-        // Simple implementation: convert the partial link to plain text
-        return CodeNode(type: MarkdownElement.text, value: "[" + partialNode.value + "]")
+// MARK: - Language Capabilities
+extension MarkdownLanguage {
+    /// Check if the language supports a specific feature
+    public func supports(_ feature: MarkdownFeature) -> Bool {
+        // TODO: Implement feature checking based on configured consumers
+        return false
     }
     
-    /// Resolve a partial image node
-    public static func resolvePartialImage(_ partialNode: CodeNode, in context: CodeContext) -> CodeNode? {
-        guard partialNode.type as? MarkdownElement == .partialImage else { return nil }
-        
-        // Simple implementation: convert the partial image to plain text
-        return CodeNode(type: MarkdownElement.text, value: "![" + partialNode.value + "]")
+    /// Get all supported features
+    public var supportedFeatures: Set<MarkdownFeature> {
+        // TODO: Implement feature detection based on configured consumers
+        return Set()
     }
     
-    /// Resolve a partial emphasis node
-    public static func resolvePartialEmphasis(_ partialNode: CodeNode, in context: CodeContext) -> CodeNode? {
-        guard partialNode.type as? MarkdownElement == .partialEmphasis else { return nil }
-        
-        // Simple implementation: convert the partial emphasis to plain text
-        return CodeNode(type: MarkdownElement.text, value: "*" + partialNode.value + "*")
+    /// Get the language version/specification
+    public var version: String {
+        return "1.0.0"
     }
     
-    /// Resolve all partial nodes
-    public static func resolveAllPartialNodes(in rootNode: CodeNode, context: CodeContext) {
-        rootNode.traverseDepthFirst { node in
-            guard let element = node.type as? MarkdownElement, element.isPartial else { return }
-            
-            var resolvedNode: CodeNode?
-            
-            switch element {
-            case .partialLink:
-                resolvedNode = resolvePartialLink(node, in: context)
-            case .partialImage:
-                resolvedNode = resolvePartialImage(node, in: context)
-            case .partialEmphasis:
-                resolvedNode = resolvePartialEmphasis(node, in: context)
-            default:
-                break
-            }
-            
-            if let resolved = resolvedNode, let parent = node.parent {
-                // Replace the partial node
-                if let index = parent.children.firstIndex(where: { $0 === node }) {
-                    parent.replaceChild(at: index, with: resolved)
-                }
-            }
-        }
+    /// Get the specification this language implements
+    public var specification: String {
+        return "CommonMark 0.30"
     }
+}
+
+// MARK: - Markdown Features Enumeration
+public enum MarkdownFeature: String, CaseIterable {
+    // CommonMark Core
+    case paragraphs = "paragraphs"
+    case headings = "headings"
+    case thematicBreaks = "thematic_breaks"
+    case blockquotes = "blockquotes"
+    case lists = "lists"
+    case codeBlocks = "code_blocks"
+    case htmlBlocks = "html_blocks"
+    case emphasis = "emphasis"
+    case strongEmphasis = "strong_emphasis"
+    case inlineCode = "inline_code"
+    case links = "links"
+    case images = "images"
+    case autolinks = "autolinks"
+    case htmlInline = "html_inline"
+    case hardBreaks = "hard_breaks"
+    case softBreaks = "soft_breaks"
+    
+    // GFM Extensions
+    case tables = "tables"
+    case strikethrough = "strikethrough"
+    case taskLists = "task_lists"
+    case disallowedRawHTML = "disallowed_raw_html"
+    
+    // Math Extensions
+    case mathInline = "math_inline"
+    case mathBlocks = "math_blocks"
+    
+    // Extended Features
+    case footnotes = "footnotes"
+    case definitionLists = "definition_lists"
+    case abbreviations = "abbreviations"
+    case emoji = "emoji"
+    case mentions = "mentions"
+    case hashtags = "hashtags"
+    case wikiLinks = "wiki_links"
+    case keyboardKeys = "keyboard_keys"
+    case frontmatter = "frontmatter"
+    case admonitions = "admonitions"
+    case spoilers = "spoilers"
+    case details = "details"
+    case syntaxHighlighting = "syntax_highlighting"
+    case smartPunctuation = "smart_punctuation"
+    case typographicReplacements = "typographic_replacements"
+    case tableOfContents = "table_of_contents"
+    case headingAnchors = "heading_anchors"
+    case customContainers = "custom_containers"
 }

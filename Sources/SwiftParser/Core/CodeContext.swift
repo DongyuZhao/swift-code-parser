@@ -1,13 +1,17 @@
 import Foundation
 
-public struct CodeContext {
-    public var tokens: [any CodeToken]
-    public var currentNode: CodeNode
-    public var errors: [CodeError]
+public protocol CodeContextState<Node, Token> where Node: CodeNodeElement, Token: CodeTokenElement {
+    associatedtype Node: CodeNodeElement
+    associatedtype Token: CodeTokenElement
+}
 
-    public init(tokens: [any CodeToken], currentNode: CodeNode, errors: [CodeError]) {
-        self.tokens = tokens
-        self.currentNode = currentNode
-        self.errors = errors
+public class CodeContext<Node, Token> where Node: CodeNodeElement, Token: CodeTokenElement {
+    public var current: CodeNode<Node>
+    public var errors: [CodeError] = []
+    public var state:  (any CodeContextState<Node, Token>)?
+
+    public init(current: CodeNode<Node>, state: (any CodeContextState<Node, Token>)? = nil) {
+        self.current = current
+        self.state = state
     }
 }
