@@ -17,8 +17,9 @@ final class MarkdownNestedEmphasisTests: XCTestCase {
         let (node, ctx) = parser.parse(input, root: root)
         XCTAssertTrue(ctx.errors.isEmpty)
         XCTAssertEqual(node.children.count, 1)
-        guard let emph = node.children.first as? EmphasisNode else {
-            return XCTFail("Expected EmphasisNode")
+        guard let para = node.children.first as? ParagraphNode,
+              let emph = para.children.first as? EmphasisNode else {
+            return XCTFail("Expected EmphasisNode inside Paragraph")
         }
         XCTAssertEqual(emph.children.count, 3)
         XCTAssertTrue(emph.children[0] is TextNode)
@@ -32,8 +33,9 @@ final class MarkdownNestedEmphasisTests: XCTestCase {
         let (node, ctx) = parser.parse(input, root: root)
         XCTAssertTrue(ctx.errors.isEmpty)
         XCTAssertEqual(node.children.count, 1)
-        guard let strong = node.children.first as? StrongNode else {
-            return XCTFail("Expected StrongNode")
+        guard let para = node.children.first as? ParagraphNode,
+              let strong = para.children.first as? StrongNode else {
+            return XCTFail("Expected StrongNode inside Paragraph")
         }
         XCTAssertEqual(strong.children.count, 3)
         XCTAssertTrue(strong.children[0] is TextNode)

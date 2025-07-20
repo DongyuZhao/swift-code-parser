@@ -27,8 +27,6 @@ public final class CodeParser<Node, Token> where Node: CodeNodeElement, Token: C
                 let error = CodeError("Unrecognized token: \(token.element)", range: token.range)
                 context.errors.append(error)
                 context.consuming += 1 // Skip the unrecognized token
-            } else {
-                break // Exit the loop if a consumer successfully processed tokens
             }
         }
 

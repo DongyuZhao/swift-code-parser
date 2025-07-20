@@ -26,6 +26,9 @@ struct MarkdownInlineParser {
             case .inlineCode:
                 nodes.append(InlineCodeNode(code: trimBackticks(token.text)))
                 context.consuming += 1
+            case .formula:
+                nodes.append(FormulaNode(expression: trimFormula(token.text)))
+                context.consuming += 1
             case .htmlTag, .htmlBlock, .htmlUnclosedBlock, .htmlEntity:
                 nodes.append(HTMLNode(content: token.text))
                 context.consuming += 1
@@ -43,6 +46,11 @@ struct MarkdownInlineParser {
                     nodes.append(TextNode(content: token.text))
                     context.consuming += 1
                 }
+            case .autolink, .url:
+                let url = trimAutolink(token.text)
+                let link = LinkNode(url: url, title: url)
+                nodes.append(link)
+                context.consuming += 1
             default:
                 nodes.append(TextNode(content: token.text))
                 context.consuming += 1
@@ -188,5 +196,19 @@ struct MarkdownInlineParser {
         while t.hasPrefix("`") { t.removeFirst() }
         while t.hasSuffix("`") { t.removeLast() }
         return t
+    }
+
+    private static func trimFormula(_ text: String) -> String {
+        var t = text
+        if t.hasPrefix("$") { t.removeFirst() }
+        if t.hasSuffix("$") { t.removeLast() }
+        return t
+    }
+
+    private static func trimAutolink(_ text: String) -> String {
+        if text.hasPrefix("<") && text.hasSuffix(">") {
+            return String(text.dropFirst().dropLast())
+        }
+        return text
     }
 }
