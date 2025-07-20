@@ -12,7 +12,12 @@ public class MarkdownLanguage: CodeLanguage {
     // MARK: - Initialization
     public init(
         tokenizer: any CodeTokenizer<MarkdownTokenElement> = MarkdownTokenizer(),
-        consumers: [any CodeNodeBuilder<MarkdownNodeElement, MarkdownTokenElement>] = []
+        consumers: [any CodeNodeBuilder<MarkdownNodeElement, MarkdownTokenElement>] = [
+            MarkdownReferenceDefinitionBuilder(),
+            MarkdownHeadingBuilder(),
+            MarkdownParagraphBuilder(),
+            MarkdownNewlineBuilder()
+        ]
     ) {
         self.tokenizer = tokenizer
         self.builders = consumers
