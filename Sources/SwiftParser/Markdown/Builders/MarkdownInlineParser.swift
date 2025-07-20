@@ -1,75 +1,83 @@
 import Foundation
 
 struct MarkdownInlineParser {
-    static func parseInline(_ context: inout CodeContext<MarkdownNodeElement, MarkdownTokenElement>, stopAt: Set<MarkdownTokenElement> = [.newline, .eof]) -> [MarkdownNodeBase] {
+    static func parseInline(
+        _ context: inout CodeContext<MarkdownNodeElement, MarkdownTokenElement>,
+        stopAt: Set<MarkdownTokenElement> = [.newline, .eof]
+    ) -> [MarkdownNodeBase] {
         var nodes: [MarkdownNodeBase] = []
+        var delimiters: [Delimiter] = []
+
         while context.consuming < context.tokens.count {
             guard let token = context.tokens[context.consuming] as? MarkdownToken else { break }
             if stopAt.contains(token.element) { break }
 
-            if let emphasis = parseEmphasis(&context) {
-                nodes.append(emphasis)
-                continue
-            }
-            if token.element == .inlineCode {
+            switch token.element {
+            case .asterisk, .underscore:
+                let marker = token.element
+                var count = 0
+                while context.consuming < context.tokens.count,
+                      let t = context.tokens[context.consuming] as? MarkdownToken,
+                      t.element == marker {
+                    count += 1
+                    context.consuming += 1
+                }
+                handleDelimiter(marker: marker, count: count, nodes: &nodes, stack: &delimiters)
+            case .inlineCode:
                 nodes.append(InlineCodeNode(code: trimBackticks(token.text)))
                 context.consuming += 1
-                continue
-            }
-            if token.element == .htmlTag || token.element == .htmlBlock || token.element == .htmlUnclosedBlock || token.element == .htmlEntity {
+            case .htmlTag, .htmlBlock, .htmlUnclosedBlock, .htmlEntity:
                 nodes.append(HTMLNode(content: token.text))
                 context.consuming += 1
-                continue
-            }
-            if token.element == .exclamation {
+            case .exclamation:
                 if let image = parseImage(&context) {
                     nodes.append(image)
-                    continue
+                } else {
+                    nodes.append(TextNode(content: token.text))
+                    context.consuming += 1
                 }
-            }
-            if token.element == .leftBracket {
+            case .leftBracket:
                 if let link = parseLinkOrFootnote(&context) {
                     nodes.append(link)
-                    continue
+                } else {
+                    nodes.append(TextNode(content: token.text))
+                    context.consuming += 1
                 }
+            default:
+                nodes.append(TextNode(content: token.text))
+                context.consuming += 1
             }
-
-            // Default text handling
-            nodes.append(TextNode(content: token.text))
-            context.consuming += 1
         }
+
         return nodes
     }
 
-    private static func parseEmphasis(_ context: inout CodeContext<MarkdownNodeElement, MarkdownTokenElement>) -> MarkdownNodeBase? {
-        guard context.consuming < context.tokens.count,
-              let token = context.tokens[context.consuming] as? MarkdownToken,
-              token.element == .asterisk || token.element == .underscore else { return nil }
-        let delim = token.element
-        var count = 1
-        if context.consuming + 1 < context.tokens.count,
-           let next = context.tokens[context.consuming + 1] as? MarkdownToken,
-           next.element == delim {
-            count = 2
+
+    private struct Delimiter {
+        var marker: MarkdownTokenElement
+        var count: Int
+        var index: Int
+    }
+
+    private static func handleDelimiter(
+        marker: MarkdownTokenElement,
+        count: Int,
+        nodes: inout [MarkdownNodeBase],
+        stack: inout [Delimiter]
+    ) {
+        if let openIdx = stack.lastIndex(where: { $0.marker == marker && $0.count == count }) {
+            let open = stack.remove(at: openIdx)
+            let start = open.index + 1
+            let content = Array(nodes[start..<nodes.count])
+            nodes.removeSubrange(open.index..<nodes.count)
+            let node: MarkdownNodeBase = (count >= 2) ? StrongNode(content: "") : EmphasisNode(content: "")
+            for child in content { node.append(child) }
+            nodes.append(node)
+        } else {
+            let text = String(repeating: marker.rawValue, count: count)
+            nodes.append(TextNode(content: text))
+            stack.append(Delimiter(marker: marker, count: count, index: nodes.count - 1))
         }
-        let startIndex = context.consuming
-        context.consuming += count
-        let children = parseInline(&context, stopAt: [delim])
-        var closeCount = 0
-        while closeCount < count,
-              context.consuming < context.tokens.count,
-              let close = context.tokens[context.consuming] as? MarkdownToken,
-              close.element == delim {
-            closeCount += 1
-            context.consuming += 1
-        }
-        guard closeCount == count else {
-            context.consuming = startIndex
-            return nil
-        }
-        let node: MarkdownNodeBase = (count == 2) ? StrongNode(content: "") : EmphasisNode(content: "")
-        for child in children { node.append(child) }
-        return node
     }
 
     private static func parseLinkOrFootnote(_ context: inout CodeContext<MarkdownNodeElement, MarkdownTokenElement>) -> MarkdownNodeBase? {

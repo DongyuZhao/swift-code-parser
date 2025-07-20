@@ -1,0 +1,43 @@
+import XCTest
+@testable import SwiftParser
+
+final class MarkdownNestedEmphasisTests: XCTestCase {
+    private var parser: CodeParser<MarkdownNodeElement, MarkdownTokenElement>!
+    private var language: MarkdownLanguage!
+
+    override func setUp() {
+        super.setUp()
+        language = MarkdownLanguage()
+        parser = CodeParser(language: language)
+    }
+
+    func testEmphasisWithLinkAndCode() {
+        let input = "*see [link](url) `code`*"
+        let root = language.root(of: input)
+        let (node, ctx) = parser.parse(input, root: root)
+        XCTAssertTrue(ctx.errors.isEmpty)
+        XCTAssertEqual(node.children.count, 1)
+        guard let emph = node.children.first as? EmphasisNode else {
+            return XCTFail("Expected EmphasisNode")
+        }
+        XCTAssertEqual(emph.children.count, 3)
+        XCTAssertTrue(emph.children[0] is TextNode)
+        XCTAssertTrue(emph.children[1] is LinkNode)
+        XCTAssertTrue(emph.children[2] is InlineCodeNode)
+    }
+
+    func testStrongWithImageAndHTML() {
+        let input = "**image ![alt](img.png) <b>bold</b>**"
+        let root = language.root(of: input)
+        let (node, ctx) = parser.parse(input, root: root)
+        XCTAssertTrue(ctx.errors.isEmpty)
+        XCTAssertEqual(node.children.count, 1)
+        guard let strong = node.children.first as? StrongNode else {
+            return XCTFail("Expected StrongNode")
+        }
+        XCTAssertEqual(strong.children.count, 3)
+        XCTAssertTrue(strong.children[0] is TextNode)
+        XCTAssertTrue(strong.children[1] is ImageNode)
+        XCTAssertTrue(strong.children[2] is HTMLNode)
+    }
+}
