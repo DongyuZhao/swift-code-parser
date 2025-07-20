@@ -10,19 +10,25 @@ public final class CodeParser<Node, Token> where Node: CodeNodeElement, Token: C
     public func parse(_ input: String, root: CodeNode<Node>) -> (node: CodeNode<Node>, context: CodeContext<Node, Token>) {
         let normalized = normalize(input)
         let tokens = language.tokenizer.tokenize(normalized)
-        var context = CodeContext(current: root, state: language.state(of: normalized))
+        var context = CodeContext(current: root, tokens: tokens, state: language.state(of: normalized))
 
-        for token in tokens {
+        while context.consuming < context.tokens.count {
             var matched = false
-            for consumer in language.consumers {
-                if consumer.consume(token: token, context: &context) {
+            for builder in language.builders {
+                if builder.build(from: &context) {
                     matched = true
                     break
                 }
             }
 
             if !matched {
-                context.errors.append(CodeError("Unrecognized token \(token.element)", range: token.range))
+                // If no consumer matched, we have an unrecognized token
+                let token = context.tokens[context.consuming]
+                let error = CodeError("Unrecognized token: \(token.element)", range: token.range)
+                context.errors.append(error)
+                context.consuming += 1 // Skip the unrecognized token
+            } else {
+                break // Exit the loop if a consumer successfully processed tokens
             }
         }
 

@@ -7,31 +7,15 @@ public class MarkdownLanguage: CodeLanguage {
     
     // MARK: - Language Components
     public let tokenizer: any CodeTokenizer<MarkdownTokenElement>
-    public let consumers: [any CodeTokenConsumer<MarkdownNodeElement, MarkdownTokenElement>]
+    public let builders: [any CodeNodeBuilder<MarkdownNodeElement, MarkdownTokenElement>]
     
     // MARK: - Initialization
     public init(
         tokenizer: any CodeTokenizer<MarkdownTokenElement> = MarkdownTokenizer(),
-        consumers: [any CodeTokenConsumer<MarkdownNodeElement, MarkdownTokenElement>] = [
-            // Block-level consumers
-            HeadingConsumer(),
-            NewlineConsumer(),
-            // Inline consumers
-            BlockquoteConsumer(),
-            InlineCodeConsumer(),
-            InlineFormulaConsumer(),
-            MarkdownEmphasisConsumer(),
-            AutolinkConsumer(),
-            URLConsumer(),
-            HTMLInlineConsumer(),
-            // Text fallback
-            TextConsumer(),
-            // End-of-file
-            EOFConsumer()
-        ]
+        consumers: [any CodeNodeBuilder<MarkdownNodeElement, MarkdownTokenElement>] = []
     ) {
         self.tokenizer = tokenizer
-        self.consumers = consumers
+        self.builders = consumers
     }
     
     // MARK: - Language Protocol Implementation
@@ -243,7 +227,7 @@ extension MarkdownLanguage {
     /// Create a language instance with specific configuration
     public static func configured(_ config: Configuration) -> MarkdownLanguage {
         let tokenizer = MarkdownTokenizer()
-        let consumers: [any CodeTokenConsumer<MarkdownNodeElement, MarkdownTokenElement>] = []
+        let consumers: [any CodeNodeBuilder<MarkdownNodeElement, MarkdownTokenElement>] = []
         
         // TODO: Add consumers based on configuration when implemented
         // if config.commonMark {
