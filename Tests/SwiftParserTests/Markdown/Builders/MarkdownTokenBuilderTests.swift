@@ -1,7 +1,7 @@
 import XCTest
 @testable import SwiftParser
 
-final class MarkdownTokenConsumerTests: XCTestCase {
+final class MarkdownTokenBuilderTests: XCTestCase {
     private var parser: CodeParser<MarkdownNodeElement, MarkdownTokenElement>!
     private var language: MarkdownLanguage!
 
@@ -11,7 +11,7 @@ final class MarkdownTokenConsumerTests: XCTestCase {
         parser = CodeParser(language: language)
     }
 
-    func testHeadingConsumerAppendsHeaderNodeWithText() {
+    func testHeadingBuilderAppendsHeaderNodeWithText() {
         let input = "# Hello"
         let root = language.root(of: input)
         let (node, context) = parser.parse(input, root: root)
@@ -35,7 +35,7 @@ final class MarkdownTokenConsumerTests: XCTestCase {
         XCTAssertTrue(context.errors.isEmpty)
     }
 
-    func testTextConsumerAppendsTextNodeToRoot() {
+    func testTextBuilderAppendsTextNodeToRoot() {
         let input = "Hello World"
         let root = language.root(of: input)
         let (node, context) = parser.parse(input, root: root)
@@ -55,7 +55,7 @@ final class MarkdownTokenConsumerTests: XCTestCase {
         XCTAssertTrue(context.errors.isEmpty)
     }
 
-    func testNewlineConsumerResetsContextToParent() {
+    func testNewlineBuilderResetsContextToParent() {
         let input = "# Title\nSubtitle"
         let root = language.root(of: input)
         let (node, context) = parser.parse(input, root: root)

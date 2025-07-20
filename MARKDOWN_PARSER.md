@@ -269,9 +269,8 @@ swift test
 swift test --verbose
 
 # Run specific test cases
-swift test --filter SwiftParserTests.testMarkdownBasicParsing
-swift test --filter SwiftParserTests.testMarkdownFootnotes
-swift test --filter SwiftParserTests.testMarkdownCitations
+swift test --filter MarkdownInlineBuilderTests/testItalicBuilderParsesItalicText
+swift test --filter MarkdownReferenceFootnoteTests/testFootnoteDefinitionAndReference
 ```
 
 ### Test Coverage
@@ -429,8 +428,21 @@ swift-parser/
 │           └── MarkdownTokens.swift          # Token definitions
 └── Tests/
     └── SwiftParserTests/
-        ├── SwiftParserTests.swift   # Main test suite
-        └── ListDemoTests.swift      # List-specific tests
+        ├── Core/
+        │   └── CodeNodeStructureTests.swift
+        └── Markdown/
+            ├── Builders/
+            │   ├── MarkdownAllFeaturesBuilderTests.swift
+            │   ├── MarkdownBlockElementTests.swift
+            │   ├── MarkdownInlineBuilderTests.swift
+            │   ├── MarkdownNestedEmphasisTests.swift
+            │   ├── MarkdownReferenceFootnoteTests.swift
+            │   └── MarkdownTokenBuilderTests.swift
+            └── Tokenizer/
+                ├── MarkdownTokenizerBasicTests.swift
+                ├── MarkdownTokenizerComplexTests.swift
+                ├── MarkdownTokenizerFormulaTests.swift
+                └── MarkdownTokenizerHTMLTests.swift
 ```
 
 ## Building and Installation
