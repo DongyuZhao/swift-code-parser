@@ -19,6 +19,8 @@ public class MarkdownLanguage: CodeLanguage {
             MarkdownFencedCodeBuilder(),
             MarkdownFormulaBlockBuilder(),
             MarkdownHTMLBlockBuilder(),
+            MarkdownDefinitionListBuilder(),
+            MarkdownAdmonitionBuilder(),
             MarkdownTableBuilder(),
             MarkdownListBuilder(),
             MarkdownBlockquoteBuilder(),

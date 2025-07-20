@@ -6,6 +6,7 @@ public class MarkdownContextState: CodeContextState {
 
     /// Stack for nested list processing
     public var listStack: [ListNode] = []
+    public var currentDefinitionList: DefinitionListNode?
 
     public init() {}
 }

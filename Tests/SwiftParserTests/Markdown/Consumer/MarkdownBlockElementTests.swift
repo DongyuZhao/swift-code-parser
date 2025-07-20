@@ -56,4 +56,24 @@ final class MarkdownBlockElementTests: XCTestCase {
         XCTAssertTrue(context.errors.isEmpty)
         XCTAssertTrue(node.children.first is FormulaBlockNode)
     }
+
+    func testDefinitionList() {
+        let input = "Term\n: Definition"
+        let root = language.root(of: input)
+        let (node, context) = parser.parse(input, root: root)
+        XCTAssertTrue(context.errors.isEmpty)
+        XCTAssertEqual(node.children.count, 1)
+        let list = node.children.first as? DefinitionListNode
+        XCTAssertNotNil(list)
+        XCTAssertEqual(list?.children().count, 1)
+    }
+
+    func testAdmonitionBlock() {
+        let input = "::: note\nhello\n:::" 
+        let root = language.root(of: input)
+        let (node, context) = parser.parse(input, root: root)
+        XCTAssertTrue(context.errors.isEmpty)
+        XCTAssertEqual(node.children.count, 1)
+        XCTAssertTrue(node.children.first is AdmonitionNode)
+    }
 }

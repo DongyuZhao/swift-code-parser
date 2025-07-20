@@ -17,6 +17,12 @@ public enum MarkdownNodeElement: String, CaseIterable, CodeNodeElement {
     case codeBlock = "code_block"
     case htmlBlock = "html_block"
     case imageBlock = "image_block"
+    case definitionList = "definition_list"
+    case definitionItem = "definition_item"
+    case definitionTerm = "definition_term"
+    case definitionDescription = "definition_description"
+    case admonition = "admonition"
+    case customContainer = "custom_container"
     
     // MARK: - Inline Elements (CommonMark)
     case text = "text"
