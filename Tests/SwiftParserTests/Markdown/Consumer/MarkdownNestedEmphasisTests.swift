@@ -21,10 +21,11 @@ final class MarkdownNestedEmphasisTests: XCTestCase {
               let emph = para.children.first as? EmphasisNode else {
             return XCTFail("Expected EmphasisNode inside Paragraph")
         }
-        XCTAssertEqual(emph.children.count, 3)
+        XCTAssertEqual(emph.children.count, 4)
         XCTAssertTrue(emph.children[0] is TextNode)
         XCTAssertTrue(emph.children[1] is LinkNode)
-        XCTAssertTrue(emph.children[2] is InlineCodeNode)
+        XCTAssertTrue(emph.children[2] is TextNode)
+        XCTAssertTrue(emph.children[3] is InlineCodeNode)
     }
 
     func testStrongWithImageAndHTML() {
@@ -37,9 +38,10 @@ final class MarkdownNestedEmphasisTests: XCTestCase {
               let strong = para.children.first as? StrongNode else {
             return XCTFail("Expected StrongNode inside Paragraph")
         }
-        XCTAssertEqual(strong.children.count, 3)
+        XCTAssertEqual(strong.children.count, 4)
         XCTAssertTrue(strong.children[0] is TextNode)
         XCTAssertTrue(strong.children[1] is ImageNode)
-        XCTAssertTrue(strong.children[2] is HTMLNode)
+        XCTAssertTrue(strong.children[2] is TextNode)
+        XCTAssertTrue(strong.children[3] is HTMLNode)
     }
 }

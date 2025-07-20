@@ -15,7 +15,8 @@ public class MarkdownBlockquoteBuilder: CodeNodeBuilder {
            space.element == .space {
             context.consuming += 1
         }
-        let children = MarkdownInlineParser.parseInline(&context, stopAt: [.newline])
+        // Parse inline content until a newline or EOF inside the blockquote
+        let children = MarkdownInlineParser.parseInline(&context)
         let node = BlockquoteNode()
         for child in children { node.append(child) }
         context.current.append(node)

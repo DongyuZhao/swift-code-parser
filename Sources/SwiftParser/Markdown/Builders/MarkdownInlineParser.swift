@@ -52,7 +52,20 @@ struct MarkdownInlineParser {
                 nodes.append(link)
                 context.consuming += 1
             default:
-                nodes.append(TextNode(content: token.text))
+                let shouldMerge: Bool
+                if let lastIndex = nodes.indices.last,
+                   let _ = nodes[lastIndex] as? TextNode,
+                   !delimiters.contains(where: { $0.index == lastIndex }) {
+                    shouldMerge = true
+                } else {
+                    shouldMerge = false
+                }
+
+                if shouldMerge, let last = nodes.last as? TextNode {
+                    last.content += token.text
+                } else {
+                    nodes.append(TextNode(content: token.text))
+                }
                 context.consuming += 1
             }
         }
@@ -73,18 +86,33 @@ struct MarkdownInlineParser {
         nodes: inout [MarkdownNodeBase],
         stack: inout [Delimiter]
     ) {
-        if let openIdx = stack.lastIndex(where: { $0.marker == marker && $0.count == count }) {
+        var remaining = count
+
+        while remaining > 0, let openIdx = stack.lastIndex(where: { $0.marker == marker }) {
             let open = stack.remove(at: openIdx)
+            let closeCount = min(open.count, remaining)
+
             let start = open.index + 1
+            let removedCount = nodes.count - open.index
             let content = Array(nodes[start..<nodes.count])
             nodes.removeSubrange(open.index..<nodes.count)
-            let node: MarkdownNodeBase = (count >= 2) ? StrongNode(content: "") : EmphasisNode(content: "")
+            for i in 0..<stack.count {
+                if stack[i].index >= open.index {
+                    stack[i].index -= removedCount - 1
+                }
+            }
+
+            let node: MarkdownNodeBase = (closeCount >= 2) ? StrongNode(content: "") : EmphasisNode(content: "")
             for child in content { node.append(child) }
             nodes.append(node)
-        } else {
-            let text = String(repeating: marker.rawValue, count: count)
+
+            remaining -= closeCount
+        }
+
+        if remaining > 0 {
+            let text = String(repeating: marker.rawValue, count: remaining)
             nodes.append(TextNode(content: text))
-            stack.append(Delimiter(marker: marker, count: count, index: nodes.count - 1))
+            stack.append(Delimiter(marker: marker, count: remaining, index: nodes.count - 1))
         }
     }
 
