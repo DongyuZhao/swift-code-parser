@@ -13,6 +13,12 @@ public final class CodeParser<Node, Token> where Node: CodeNodeElement, Token: C
         var context = CodeContext(current: root, tokens: tokens, state: language.state(of: normalized))
 
         while context.consuming < context.tokens.count {
+            // Stop at EOF without recording an error
+            if let token = context.tokens[context.consuming] as? MarkdownToken,
+               token.element == .eof {
+                break
+            }
+
             var matched = false
             for builder in language.builders {
                 if builder.build(from: &context) {
@@ -22,13 +28,11 @@ public final class CodeParser<Node, Token> where Node: CodeNodeElement, Token: C
             }
 
             if !matched {
-                // If no consumer matched, we have an unrecognized token
+                // If no builder matched, record an error and skip the token
                 let token = context.tokens[context.consuming]
                 let error = CodeError("Unrecognized token: \(token.element)", range: token.range)
                 context.errors.append(error)
-                context.consuming += 1 // Skip the unrecognized token
-            } else {
-                break // Exit the loop if a consumer successfully processed tokens
+                context.consuming += 1
             }
         }
 

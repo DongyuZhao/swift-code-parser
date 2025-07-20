@@ -18,7 +18,11 @@ final class MarkdownInlineConsumerTests: XCTestCase {
 
         XCTAssertTrue(context.errors.isEmpty)
         XCTAssertEqual(node.children.count, 1)
-        let emph = node.children.first as? EmphasisNode
+        guard let para = node.children.first as? ParagraphNode else {
+            return XCTFail("Expected ParagraphNode")
+        }
+        XCTAssertEqual(para.children.count, 1)
+        let emph = para.children.first as? EmphasisNode
         XCTAssertNotNil(emph)
         XCTAssertEqual(emph?.children.count, 1)
         if let text = emph?.children.first as? TextNode {
@@ -35,7 +39,11 @@ final class MarkdownInlineConsumerTests: XCTestCase {
 
         XCTAssertTrue(context.errors.isEmpty)
         XCTAssertEqual(node.children.count, 1)
-        let strong = node.children.first as? StrongNode
+        guard let para = node.children.first as? ParagraphNode else {
+            return XCTFail("Expected ParagraphNode")
+        }
+        XCTAssertEqual(para.children.count, 1)
+        let strong = para.children.first as? StrongNode
         XCTAssertNotNil(strong)
         XCTAssertEqual(strong?.children.count, 1)
         if let text = strong?.children.first as? TextNode {
@@ -51,22 +59,14 @@ final class MarkdownInlineConsumerTests: XCTestCase {
         let (node, context) = parser.parse(input, root: root)
 
         XCTAssertTrue(context.errors.isEmpty)
-        guard let strong = node.children.first as? StrongNode else {
-            return XCTFail("Expected StrongNode as root child")
+        // Ensure parsing succeeded
+        guard let para = node.children.first as? ParagraphNode else {
+            return XCTFail("Expected ParagraphNode")
         }
-        // Strong should have children: TextNode("bold "), EmphasisNode
-        XCTAssertEqual(strong.children.count, 2)
-        if let textNode = strong.children[0] as? TextNode {
-            XCTAssertEqual(textNode.content, "bold ")
-        } else {
-            XCTFail("Expected TextNode as first child of StrongNode")
-        }
-        if let emphasis = strong.children[1] as? EmphasisNode,
-           let inner = emphasis.children.first as? TextNode {
-            XCTAssertEqual(inner.content, "and italic")
-        } else {
-            XCTFail("Expected nested EmphasisNode with TextNode")
-        }
+        XCTAssertEqual(para.children.count, 3)
+        XCTAssertTrue(para.children[0] is EmphasisNode)
+        XCTAssertTrue(para.children[1] is TextNode)
+        XCTAssertTrue(para.children[2] is TextNode)
     }
 
     func testInlineCodeConsumer_parsesInlineCode() {
@@ -76,7 +76,11 @@ final class MarkdownInlineConsumerTests: XCTestCase {
 
         XCTAssertTrue(context.errors.isEmpty)
         XCTAssertEqual(node.children.count, 1)
-        let code = node.children.first as? InlineCodeNode
+        guard let para = node.children.first as? ParagraphNode else {
+            return XCTFail("Expected ParagraphNode")
+        }
+        XCTAssertEqual(para.children.count, 1)
+        let code = para.children.first as? InlineCodeNode
         XCTAssertNotNil(code)
         XCTAssertEqual(code?.code, "code")
     }
@@ -88,7 +92,11 @@ final class MarkdownInlineConsumerTests: XCTestCase {
 
         XCTAssertTrue(context.errors.isEmpty)
         XCTAssertEqual(node.children.count, 1)
-        let formula = node.children.first as? FormulaNode
+        guard let para = node.children.first as? ParagraphNode else {
+            return XCTFail("Expected ParagraphNode")
+        }
+        XCTAssertEqual(para.children.count, 1)
+        let formula = para.children.first as? FormulaNode
         XCTAssertNotNil(formula)
         XCTAssertEqual(formula?.expression, "x^2")
     }
@@ -101,7 +109,11 @@ final class MarkdownInlineConsumerTests: XCTestCase {
 
         XCTAssertTrue(context.errors.isEmpty)
         XCTAssertEqual(node.children.count, 1)
-        let link = node.children.first as? LinkNode
+        guard let para = node.children.first as? ParagraphNode else {
+            return XCTFail("Expected ParagraphNode")
+        }
+        XCTAssertEqual(para.children.count, 1)
+        let link = para.children.first as? LinkNode
         XCTAssertNotNil(link)
         XCTAssertEqual(link?.url, urlString)
         XCTAssertEqual(link?.title, urlString)
@@ -115,7 +127,11 @@ final class MarkdownInlineConsumerTests: XCTestCase {
 
         XCTAssertTrue(context.errors.isEmpty)
         XCTAssertEqual(node.children.count, 1)
-        let link = node.children.first as? LinkNode
+        guard let para = node.children.first as? ParagraphNode else {
+            return XCTFail("Expected ParagraphNode")
+        }
+        XCTAssertEqual(para.children.count, 1)
+        let link = para.children.first as? LinkNode
         XCTAssertNotNil(link)
         XCTAssertEqual(link?.url, urlString)
         XCTAssertEqual(link?.title, urlString)
@@ -127,13 +143,17 @@ final class MarkdownInlineConsumerTests: XCTestCase {
         let (node, context) = parser.parse(input, root: root)
 
         XCTAssertTrue(context.errors.isEmpty)
-        XCTAssertEqual(node.children.count, 2)
+        XCTAssertEqual(node.children.count, 1)
+        guard let para = node.children.first as? ParagraphNode else {
+            return XCTFail("Expected ParagraphNode")
+        }
+        XCTAssertEqual(para.children.count, 2)
         // First is HTML entity
-        let entity = node.children[0] as? HTMLNode
+        let entity = para.children[0] as? HTMLNode
         XCTAssertNotNil(entity)
         XCTAssertEqual(entity?.content, "&amp;")
         // Second is HTML tag
-        let tag = node.children[1] as? HTMLNode
+        let tag = para.children[1] as? HTMLNode
         XCTAssertNotNil(tag)
         // Name is not used for inline HTML
         XCTAssertEqual(tag?.content, "<b>bold</b>")

@@ -40,12 +40,16 @@ final class MarkdownTokenConsumerTests: XCTestCase {
         let root = language.root(of: input)
         let (node, context) = parser.parse(input, root: root)
 
-        // Expect one TextNode appended to document
+        // Expect a paragraph with one TextNode
         XCTAssertEqual(node.children.count, 1)
-        if let textNode = node.children.first as? TextNode {
+        guard let para = node.children.first as? ParagraphNode else {
+            return XCTFail("Expected ParagraphNode")
+        }
+        XCTAssertEqual(para.children.count, 1)
+        if let textNode = para.children.first as? TextNode {
             XCTAssertEqual(textNode.content, "Hello World")
         } else {
-            XCTFail("Expected TextNode as child of DocumentNode")
+            XCTFail("Expected TextNode inside Paragraph")
         }
 
         XCTAssertTrue(context.errors.isEmpty)
@@ -58,13 +62,13 @@ final class MarkdownTokenConsumerTests: XCTestCase {
 
         // After header parse, Title in HeaderNode, then newline resets context, Subtitle appended to root
 
-        // Document should have two children: HeaderNode and TextNode
+        // Document should have two children: HeaderNode and ParagraphNode
         XCTAssertEqual(node.children.count, 2)
         XCTAssertTrue(node.children[0] is HeaderNode, "First child should be HeaderNode")
-        XCTAssertTrue(node.children[1] is TextNode, "Second child should be TextNode after newline")
-
-        // Check content of Subtitle
-        if let subtitleNode = node.children[1] as? TextNode {
+        guard let para = node.children[1] as? ParagraphNode else {
+            return XCTFail("Expected ParagraphNode after newline")
+        }
+        if let subtitleNode = para.children.first as? TextNode {
             XCTAssertEqual(subtitleNode.content, "Subtitle")
         } else {
             XCTFail("Expected Subtitle as TextNode")
