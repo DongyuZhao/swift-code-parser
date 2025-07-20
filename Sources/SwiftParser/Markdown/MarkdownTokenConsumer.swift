@@ -40,7 +40,12 @@ public struct TextConsumer: CodeTokenConsumer {
         switch token.element {
         case .text:
             let content = token.text
-            if let last = context.current.children.last as? TextNode {
+            let mdState = context.state as? MarkdownContextState
+            if mdState?.justOpenedDelimiter == true {
+                mdState?.justOpenedDelimiter = false
+                let textNode = TextNode(content: content)
+                context.current.append(textNode)
+            } else if let last = context.current.children.last as? TextNode {
                 last.content += content
             } else {
                 let textNode = TextNode(content: content)
