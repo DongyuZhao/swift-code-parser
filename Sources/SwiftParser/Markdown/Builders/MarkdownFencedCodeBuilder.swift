@@ -10,7 +10,8 @@ public class MarkdownFencedCodeBuilder: CodeNodeBuilder {
               isStartOfLine(context) else { return false }
         context.consuming += 1
         let code = trimFence(token.text)
-        let node = CodeBlockNode(source: code, language: nil)
+        let language = extractLanguage(token.text)
+        let node = CodeBlockNode(source: code, language: language)
         context.current.append(node)
         if context.consuming < context.tokens.count,
            let nl = context.tokens[context.consuming] as? MarkdownToken,
@@ -28,6 +29,18 @@ public class MarkdownFencedCodeBuilder: CodeNodeBuilder {
             lines.removeLast()
         }
         return lines.joined(separator: "\n")
+    }
+
+    private func extractLanguage(_ text: String) -> String? {
+        guard let firstLine = text.split(separator: "\n", maxSplits: 1).first else {
+            return nil
+        }
+        var cleaned = firstLine.trimmingCharacters(in: .whitespaces)
+        while cleaned.starts(with: "`") {
+            cleaned.removeFirst()
+        }
+        let lang = cleaned.trimmingCharacters(in: .whitespaces)
+        return lang.isEmpty ? nil : lang
     }
 
     private func isStartOfLine(_ context: CodeContext<MarkdownNodeElement, MarkdownTokenElement>) -> Bool {

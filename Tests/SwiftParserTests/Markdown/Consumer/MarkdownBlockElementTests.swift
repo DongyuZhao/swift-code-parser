@@ -17,7 +17,11 @@ final class MarkdownBlockElementTests: XCTestCase {
         let (node, context) = parser.parse(input, root: root)
         XCTAssertTrue(context.errors.isEmpty)
         XCTAssertEqual(node.children.count, 1)
-        XCTAssertTrue(node.children.first is CodeBlockNode)
+        if let code = node.children.first as? CodeBlockNode {
+            XCTAssertEqual(code.language, "swift")
+        } else {
+            XCTFail("Expected CodeBlockNode")
+        }
     }
 
     func testHorizontalRule() {
