@@ -658,7 +658,6 @@ When reporting bugs, include:
 ## Future Roadmap
 
 ### Planned Features
-- ✅ **Math Support**: LaTeX-style math expressions (`$inline$`, `$$block$$`)
 - [ ] **Definition Lists**: Support for definition list syntax
 - [ ] **Admonitions**: Support for warning/info/note blocks
 - [ ] **Mermaid Diagrams**: Inline diagram support
