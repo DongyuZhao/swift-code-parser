@@ -1,6 +1,6 @@
 # Markdown Parser
 
-This document provides an overview of the Markdown parser built on top of the SwiftParser core. The parser follows the CommonMark specification and supports various consumers to generate different node types while handling prefix ambiguities.
+This document provides an overview of the Markdown parser built on top of the SwiftParser core. The parser follows the CommonMark specification and uses configurable builders to generate different node types while handling prefix ambiguities.
 
 ## Features
 
@@ -44,8 +44,8 @@ This document provides an overview of the Markdown parser built on top of the Sw
 
 ### Advanced Capabilities
 - ✅ Partial node handling for prefix ambiguities
-- ✅ Multi-consumer architecture
-- ✅ Configurable consumer combinations
+- ✅ Multi-builder architecture
+- ✅ Configurable builder combinations
 - ✅ Error handling and reporting
 - ✅ AST traversal and queries
 - ✅ Backtracking reorganization for emphasis parsing
@@ -60,7 +60,8 @@ This document provides an overview of the Markdown parser built on top of the Sw
 ```swift
 import SwiftParser
 
-let parser = SwiftParser()
+let language = MarkdownLanguage()
+let parser = SwiftParser<MarkdownNodeElement, MarkdownTokenElement>()
 let markdown = """
 # Heading
 
@@ -89,7 +90,7 @@ This paragraph contains a footnote[^1] and a citation[@smith2023].
 [@smith2023]: Smith, J. (2023). Example Paper. Journal of Examples.
 """
 
-let result = parser.parseMarkdown(markdown)
+let result = parser.parse(markdown, language: language)
 
 // Inspect the result
 if result.hasErrors {
@@ -106,69 +107,52 @@ if result.hasErrors {
 
 ```swift
 // Find all headers
-let headers = result.markdownNodes(ofType: .header1) +
-              result.markdownNodes(ofType: .header2) +
-              result.markdownNodes(ofType: .header3) +
-              result.markdownNodes(ofType: .header4) +
-              result.markdownNodes(ofType: .header5) +
-              result.markdownNodes(ofType: .header6)
-
-for header in headers {
-    print("Header: \(header.value)")
+let headers = result.root.nodes { $0.element == .heading }
+for case let header as HeaderNode in headers {
+    print("Header level: \(header.level)")
 }
 
 // Find all links
-let links = result.markdownNodes(ofType: .link)
-for link in links {
-    print("Link text: \(link.value)")
-    if let url = link.children.first?.value {
-        print("URL: \(url)")
-    }
+let links = result.root.nodes { $0.element == .link }
+for case let link as LinkNode in links {
+    print("URL: \(link.url)")
 }
 
 // Find all code blocks
-let codeBlocks = result.markdownNodes(ofType: .fencedCodeBlock)
-for codeBlock in codeBlocks {
-    if let language = codeBlock.children.first?.value {
-        print("Language: \(language)")
-    }
-    print("Code: \(codeBlock.value)")
+let codeBlocks = result.root.nodes { $0.element == .codeBlock }
+for case let block as CodeBlockNode in codeBlocks {
+    print("Language: \(block.language ?? \"none\")")
+    print("Code: \(block.source)")
 }
 
 // Find lists
-let unorderedLists = result.markdownNodes(ofType: .unorderedList)
-let orderedLists = result.markdownNodes(ofType: .orderedList)
-let taskLists = result.markdownNodes(ofType: .taskList)
+let unorderedLists = result.root.nodes { $0.element == .unorderedList }
+let orderedLists = result.root.nodes { $0.element == .orderedList }
+let taskLists = result.root.nodes { $0.element == .taskList }
 
 print("Unordered lists: \(unorderedLists.count)")
 print("Ordered lists: \(orderedLists.count)")
 print("Task lists: \(taskLists.count)")
 
 // Find footnotes and citations
-let footnoteDefinitions = result.markdownNodes(ofType: .footnoteDefinition)
-let footnoteReferences = result.markdownNodes(ofType: .footnoteReference)
-let citationDefinitions = result.markdownNodes(ofType: .citation)
-let citationReferences = result.markdownNodes(ofType: .citationReference)
+let footnoteDefinitions = result.root.nodes { $0.element == .footnote }
+let citationDefinitions = result.root.nodes { $0.element == .citation }
+let citationReferences = result.root.nodes { $0.element == .citationReference }
 
-print("Footnote definitions: \(footnoteDefinitions.count)")
-print("Footnote references: \(footnoteReferences.count)")
-print("Citation definitions: \(citationDefinitions.count)")
-print("Citation references: \(citationReferences.count)")
+print("Footnotes: \(footnoteDefinitions.count)")
+print("Citations: \(citationDefinitions.count)")
+print("Citation refs: \(citationReferences.count)")
 
 // Process footnotes
-for footnote in footnoteDefinitions {
-    print("Footnote ID: \(footnote.value)")
-    if let content = footnote.children.first?.value {
-        print("Content: \(content)")
-    }
+for case let footnote as FootnoteNode in footnoteDefinitions {
+    print("Footnote ID: \(footnote.identifier)")
+    print("Content: \(footnote.content)")
 }
 
 // Process citations
-for citation in citationDefinitions {
-    print("Citation ID: \(citation.value)")
-    if let content = citation.children.first?.value {
-        print("Content: \(content)")
-    }
+for case let citation as CitationNode in citationDefinitions {
+    print("Citation ID: \(citation.identifier)")
+    print("Content: \(citation.content)")
 }
 ```
 
@@ -176,14 +160,12 @@ for citation in citationDefinitions {
 
 ```swift
 // Depth-first traversal
-result.root.traverseDepthFirst { node in
-    if let mdElement = node.type as? MarkdownElement {
-        print("Type: \(mdElement.description), value: \(node.value)")
-    }
+result.root.dfs { node in
+    print(node.element.rawValue)
 }
 
 // Breadth-first traversal
-result.root.traverseBreadthFirst { node in
+result.root.bfs { node in
     // Handle each node
 }
 
@@ -193,8 +175,8 @@ let firstParagraph = result.root.first { node in
 }
 
 // Find all list items
-let allListItems = result.root.findAll { node in
-    let element = node.type as? MarkdownElement
+let allListItems = result.root.nodes { node in
+    let element = node.element
     return element == .listItem || element == .taskListItem
 }
 ```
@@ -206,7 +188,7 @@ let allListItems = result.root.findAll { node in
 ```swift
 import SwiftParser
 
-// Create a custom language with specific consumer combinations
+// Create a custom language with specific builder combinations
 let language = MarkdownLanguage()
 let parser = CodeParser(language: language)
 
@@ -233,48 +215,41 @@ if !errors.isEmpty {
 
 ```swift
 // Create nodes programmatically
-let documentNode = CodeNode(type: MarkdownElement.document, value: "")
-let headerNode = CodeNode(type: MarkdownElement.header1, value: "Title")
-let paragraphNode = CodeNode(type: MarkdownElement.paragraph, value: "Content")
+let documentNode = CodeNode<MarkdownNodeElement>(element: .document)
+let headerNode = CodeNode<MarkdownNodeElement>(element: .heading)
+let paragraphNode = CodeNode<MarkdownNodeElement>(element: .paragraph)
 
 // Build AST structure
-documentNode.addChild(headerNode)
-documentNode.addChild(paragraphNode)
+documentNode.append(headerNode)
+documentNode.append(paragraphNode)
 
 // Query AST properties
 print("Document has \(documentNode.children.count) children")
 print("Header depth: \(headerNode.depth)")
-print("Total nodes in subtree: \(documentNode.subtreeCount)")
+print("Total nodes in subtree: \(documentNode.count)")
 
 // Modify AST structure
-let newHeader = CodeNode(type: MarkdownElement.header2, value: "Subtitle")
-documentNode.insertChild(newHeader, at: 1)
+let newHeader = CodeNode<MarkdownNodeElement>(element: .heading)
+documentNode.insert(newHeader, at: 1)
 
 // Remove nodes
-let removedNode = documentNode.removeChild(at: 0)
-print("Removed node: \(removedNode.value)")
+let removedNode = documentNode.remove(at: 0)
+print("Removed node element: \(removedNode.element)")
 ```
 
-### Custom Consumer Implementation
+### Custom Builder Implementation
 
 ```swift
-// Example of implementing a custom consumer
-public class CustomMarkdownConsumer: CodeTokenConsumer {
-    public func canConsume(_ token: CodeToken) -> Bool {
-        // Check if this consumer can handle the token
-        guard let mdToken = token as? MarkdownToken else { return false }
-        return mdToken.kind == .customMarker
-    }
-    
-    public func consume(context: inout CodeContext, token: CodeToken) -> Bool {
-        guard canConsume(token) else { return false }
-        
-        // Create a new node for the custom element
-        let customNode = CodeNode(type: MarkdownElement.text, value: token.text)
-        context.currentNode.addChild(customNode)
-        
-        // Advance the token consumer
-        context.advanceTokenConsumer()
+// Example of implementing a custom builder
+public class CustomElementBuilder: CodeNodeBuilder {
+    public func build(from context: inout CodeContext<MarkdownNodeElement, MarkdownTokenElement>) -> Bool {
+        guard context.consuming < context.tokens.count,
+              let token = context.tokens[context.consuming] as? MarkdownToken,
+              token.element == .customMarker else { return false }
+
+        let customNode = CodeNode<MarkdownNodeElement>(element: .customElement)
+        context.current.append(customNode)
+        context.consuming += 1
         return true
     }
 }
@@ -333,16 +308,16 @@ The test suite covers:
 #### Basic Elements Test
 ```swift
 func testMarkdownBasicParsing() {
-    let parser = SwiftParser()
+    let parser = SwiftParser<MarkdownNodeElement, MarkdownTokenElement>()
+    let language = MarkdownLanguage()
     let markdown = "# Title\n\nThis is a paragraph."
-    let result = parser.parseMarkdown(markdown)
+    let result = parser.parse(markdown, language: language)
     
     XCTAssertFalse(result.hasErrors)
     XCTAssertEqual(result.root.children.count, 2)
     
-    let headers = result.markdownNodes(ofType: .header1)
+    let headers = result.root.nodes { $0.element == .heading }
     XCTAssertEqual(headers.count, 1)
-    XCTAssertEqual(headers.first?.value, "Title")
 }
 ```
 
@@ -404,8 +379,8 @@ func testMarkdownCitations() {
 - **Memory Usage**: Efficient node reuse and minimal token storage
 
 #### Optimization Features
-- **Lazy Evaluation**: Consumers are only invoked when needed
-- **Early Exit**: Failed consumer attempts exit quickly
+- **Lazy Evaluation**: Builders are only invoked when needed
+- **Early Exit**: Failed builder attempts exit quickly
 - **Container Reuse**: AST nodes are reused where possible
 - **Minimal Backtracking**: Only used for complex emphasis structures
 
@@ -416,7 +391,7 @@ func benchmarkMarkdownParsing() {
     
     let startTime = CFAbsoluteTimeGetCurrent()
     let parser = SwiftParser()
-    let result = parser.parseMarkdown(largeMarkdown)
+    let result = parser.parse(largeMarkdown, language: language)
     let endTime = CFAbsoluteTimeGetCurrent()
     
     print("Parsed \(largeMarkdown.count) characters in \(endTime - startTime) seconds")
@@ -442,17 +417,16 @@ swift-parser/
 │       │   ├── CodeNode.swift       # AST node implementation
 │       │   ├── CodeParser.swift     # Core parser logic
 │       │   ├── CodeToken.swift      # Token definitions
-│       │   ├── CodeTokenConsumer.swift  # Consumer protocol
+│       │   ├── CodeNodeBuilder.swift    # Node builder protocol
 │       │   └── CodeTokenizer.swift  # Tokenization interface
 │       └── Markdown/               # Markdown-specific implementation
-│           ├── MarkdownBlockConsumers.swift   # Block-level consumers
-│           ├── MarkdownElement.swift          # Markdown elements
-│           ├── MarkdownInlineConsumers.swift  # Inline consumers
-│           ├── MarkdownLanguage.swift         # Markdown language
-│           ├── MarkdownLinkConsumers.swift    # Link/image consumers
-│           ├── MarkdownMiscConsumers.swift    # Utility consumers
-│           ├── MarkdownToken.swift            # Markdown tokens
-│           └── MarkdownTokenizer.swift        # Markdown tokenizer
+│           ├── Builders/                     # Node builders
+│           ├── MarkdownContextState.swift    # Parsing state
+│           ├── MarkdownLanguage.swift        # Markdown language
+│           ├── MarkdownNodeElement.swift     # Node element definitions
+│           ├── MarkdownNodes.swift           # Node implementations
+│           ├── MarkdownTokenizer.swift       # Tokenizer
+│           └── MarkdownTokens.swift          # Token definitions
 └── Tests/
     └── SwiftParserTests/
         ├── SwiftParserTests.swift   # Main test suite
@@ -500,10 +474,10 @@ swift build -c release
 To add support for new Markdown elements, follow these steps:
 
 #### 1. Define the Element
-Add new cases to `MarkdownElement` enum:
+Add new cases to `MarkdownNodeElement` enum:
 ```swift
-// In MarkdownElement.swift
-public enum MarkdownElement: CodeElement, CaseIterable {
+// In MarkdownNodeElement.swift
+public enum MarkdownNodeElement: String, CaseIterable, CodeNodeElement {
     // ... existing cases ...
     case customElement
     case customInlineElement
@@ -520,39 +494,19 @@ public enum MarkdownElement: CodeElement, CaseIterable {
 ```
 
 #### 2. Create Token Types
-Add token types to `MarkdownToken`:
+Add token types to `MarkdownTokenElement`:
 ```swift
-// In MarkdownToken.swift
-public enum MarkdownTokenKind: String, CaseIterable {
+// In MarkdownTokens.swift
+public enum MarkdownTokenElement: String, CaseIterable, CodeTokenElement {
     // ... existing cases ...
     case customMarker = "CUSTOM_MARKER"
 }
 ```
 
-#### 3. Implement Consumer
-Create a consumer class:
-```swift
-public class CustomElementConsumer: CodeTokenConsumer {
-    public func canConsume(_ token: CodeToken) -> Bool {
-        guard let mdToken = token as? MarkdownToken else { return false }
-        return mdToken.kind == .customMarker
-    }
-    
-    public func consume(context: inout CodeContext, token: CodeToken) -> Bool {
-        guard canConsume(token) else { return false }
-        
-        // Parse the custom element
-        let customNode = CodeNode(type: MarkdownElement.customElement, value: token.text)
-        context.currentNode.addChild(customNode)
-        
-        // Advance token consumer
-        context.advanceTokenConsumer()
-        return true
-    }
-}
-```
+#### 3. Implement Builder
+Create a builder class:
 
-#### 4. Register Consumer
+#### 4. Register Builder
 Add to `MarkdownLanguage`:
 ```swift
 // In MarkdownLanguage.swift
@@ -560,8 +514,8 @@ public class MarkdownLanguage: CodeLanguage {
     public init() {
         super.init(
             consumers: [
-                // ... existing consumers ...
-                CustomElementConsumer(),
+                // ... existing builders ...
+                CustomElementBuilder(),
             ]
         )
     }
@@ -587,41 +541,37 @@ public class CustomMarkdownLanguage: CodeLanguage {
     public init() {
         super.init(
             consumers: [
-                // Only include desired consumers
-                MarkdownHeaderConsumer(),
-                MarkdownParagraphConsumer(),
-                MarkdownEmphasisConsumer(),
+                // Only include desired builders
+                MarkdownHeadingBuilder(),
+                MarkdownParagraphBuilder(),
+                MarkdownListBuilder(),
                 // Skip advanced features if not needed
             ]
         )
     }
-    
+
     public override var rootElement: any CodeElement {
-        return MarkdownElement.document
+        return MarkdownNodeElement.document
     }
 }
 ```
 
 ### Plugin Architecture
 
-The parser supports a plugin-like architecture through consumer registration:
+The parser supports a plugin-like architecture through builder registration:
 
 ```swift
 // Create a plugin manager
 class MarkdownPluginManager {
-    private var additionalConsumers: [CodeTokenConsumer] = []
-    
-    func registerPlugin(_ consumer: CodeTokenConsumer) {
-        additionalConsumers.append(consumer)
+    private var additionalBuilders: [any CodeNodeBuilder<MarkdownNodeElement, MarkdownTokenElement>] = []
+
+    func registerPlugin(_ builder: any CodeNodeBuilder<MarkdownNodeElement, MarkdownTokenElement>) {
+        additionalBuilders.append(builder)
     }
-    
+
     func createLanguage() -> MarkdownLanguage {
-        let language = MarkdownLanguage()
-        // Add plugins to language
-        for consumer in additionalConsumers {
-            language.addConsumer(consumer)
-        }
-        return language
+        let base = MarkdownLanguage()
+        return MarkdownLanguage(consumers: base.builders + additionalBuilders)
     }
 }
 ```
