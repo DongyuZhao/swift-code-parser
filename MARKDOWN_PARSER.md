@@ -12,12 +12,12 @@ This document provides an overview of the Markdown parser built on top of the Sw
 - ✅ Fenced code blocks (```code```)
 - ✅ Block quotes (> quote) with multi-line merging
 - ✅ Lists (ordered and unordered) with automatic numbering
-- ✅ Task lists (- [ ] unchecked, - [x] checked) – GFM extension
 - ✅ Links ([text](URL) and reference style)
 - ✅ Images (![alt](URL))
 - ✅ Autolinks (<URL>)
 - ✅ Horizontal rules (---)
 - ✅ HTML inline elements
+- ✅ HTML block elements
 - ✅ Line break handling
 
 ### GitHub Flavored Markdown (GFM) Extensions
@@ -28,6 +28,12 @@ This document provides an overview of the Markdown parser built on top of the Sw
 ### Academic Extensions
 - ✅ **Footnotes**: Definition and reference support ([^1]: footnote, [^1])
 - ✅ **Citations**: Academic citation support ([@author2023]: reference, [@author2023])
+- ✅ **Math formulas**: inline ($math$) and block ($$math$$)
+
+### Other Extensions
+- ✅ **Definition lists**: term/definition pairs
+- ✅ **Admonitions**: note/warning/info blocks using `:::`
+- ✅ **Custom containers**: generic container syntax (`:::`)
 
 ### Advanced List Features
 - ✅ **Unordered lists**: supports `-`, `*`, `+` markers
@@ -657,11 +663,10 @@ When reporting bugs, include:
 ## Future Roadmap
 
 ### Planned Features
-- [ ] **Math Support**: LaTeX-style math expressions (`$inline$`, `$$block$$`)
-- [ ] **Definition Lists**: Support for definition list syntax
-- [ ] **Admonitions**: Support for warning/info/note blocks
+- [x] **Definition Lists**: Support for definition list syntax
+- [x] **Admonitions**: Support for warning/info/note blocks
 - [ ] **Mermaid Diagrams**: Inline diagram support
-- [ ] **Custom Containers**: Generic container syntax (:::)
+- [x] **Custom Containers**: Generic container syntax (:::)
 - [ ] **Syntax Highlighting**: Code block syntax highlighting
 - [ ] **Export Formats**: HTML, PDF, and other output formats
 
@@ -690,4 +695,4 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ---
 
-*Last updated: 2025-07-18*
+*Last updated: 2025-07-20*

@@ -193,6 +193,58 @@ public class ImageBlockNode: MarkdownNodeBase {
     }
 }
 
+public class DefinitionListNode: MarkdownNodeBase {
+    public init() {
+        super.init(element: .definitionList)
+    }
+}
+
+public class DefinitionItemNode: MarkdownNodeBase {
+    public init() {
+        super.init(element: .definitionItem)
+    }
+}
+
+public class DefinitionTermNode: MarkdownNodeBase {
+    public init() {
+        super.init(element: .definitionTerm)
+    }
+}
+
+public class DefinitionDescriptionNode: MarkdownNodeBase {
+    public init() {
+        super.init(element: .definitionDescription)
+    }
+}
+
+public class AdmonitionNode: MarkdownNodeBase {
+    public var kind: String
+
+    public init(kind: String) {
+        self.kind = kind
+        super.init(element: .admonition)
+    }
+
+    public override func hash(into hasher: inout Hasher) {
+        super.hash(into: &hasher)
+        hasher.combine(kind)
+    }
+}
+
+public class CustomContainerNode: MarkdownNodeBase {
+    public var name: String
+
+    public init(name: String) {
+        self.name = name
+        super.init(element: .customContainer)
+    }
+
+    public override func hash(into hasher: inout Hasher) {
+        super.hash(into: &hasher)
+        hasher.combine(name)
+    }
+}
+
 // MARK: - Inline Elements
 public class TextNode: MarkdownNodeBase {
     public var content: String
@@ -407,6 +459,37 @@ public class FootnoteNode: MarkdownNodeBase {
         hasher.combine(identifier)
         hasher.combine(content)
         hasher.combine(referenceText)
+    }
+}
+
+public class CitationNode: MarkdownNodeBase {
+    public var identifier: String
+    public var content: String
+
+    public init(identifier: String, content: String) {
+        self.identifier = identifier
+        self.content = content
+        super.init(element: .citation)
+    }
+
+    public override func hash(into hasher: inout Hasher) {
+        super.hash(into: &hasher)
+        hasher.combine(identifier)
+        hasher.combine(content)
+    }
+}
+
+public class CitationReferenceNode: MarkdownNodeBase {
+    public var identifier: String
+
+    public init(identifier: String) {
+        self.identifier = identifier
+        super.init(element: .citationReference)
+    }
+
+    public override func hash(into hasher: inout Hasher) {
+        super.hash(into: &hasher)
+        hasher.combine(identifier)
     }
 }
 

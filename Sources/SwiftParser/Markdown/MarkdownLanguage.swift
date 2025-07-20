@@ -15,6 +15,14 @@ public class MarkdownLanguage: CodeLanguage {
         consumers: [any CodeNodeBuilder<MarkdownNodeElement, MarkdownTokenElement>] = [
             MarkdownReferenceDefinitionBuilder(),
             MarkdownHeadingBuilder(),
+            MarkdownThematicBreakBuilder(),
+            MarkdownFencedCodeBuilder(),
+            MarkdownFormulaBlockBuilder(),
+            MarkdownHTMLBlockBuilder(),
+            MarkdownDefinitionListBuilder(),
+            MarkdownAdmonitionBuilder(),
+            MarkdownTableBuilder(),
+            MarkdownListBuilder(),
             MarkdownBlockquoteBuilder(),
             MarkdownParagraphBuilder(),
             MarkdownNewlineBuilder()
