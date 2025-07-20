@@ -10,10 +10,16 @@ public class MarkdownReferenceDefinitionBuilder: CodeNodeBuilder {
               lb.element == .leftBracket else { return false }
         var idx = context.consuming + 1
         var isFootnote = false
+        var isCitation = false
         if idx < context.tokens.count,
            let caret = context.tokens[idx] as? MarkdownToken,
            caret.element == .caret {
             isFootnote = true
+            idx += 1
+        } else if idx < context.tokens.count,
+                  let at = context.tokens[idx] as? MarkdownToken,
+                  at.element == .text, at.text == "@" {
+            isCitation = true
             idx += 1
         }
         var identifier = ""
@@ -52,6 +58,9 @@ public class MarkdownReferenceDefinitionBuilder: CodeNodeBuilder {
         }
         if isFootnote {
             let node = FootnoteNode(identifier: identifier, content: value, referenceText: nil, range: lb.range)
+            context.current.append(node)
+        } else if isCitation {
+            let node = CitationNode(identifier: identifier, content: value)
             context.current.append(node)
         } else {
             let node = ReferenceNode(identifier: identifier, url: value, title: "")

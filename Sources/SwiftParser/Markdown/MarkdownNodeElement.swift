@@ -41,6 +41,8 @@ public enum MarkdownNodeElement: String, CaseIterable, CodeNodeElement {
     case taskListItem = "task_list_item"
     case reference = "reference"
     case footnote = "footnote"
+    case citation = "citation"
+    case citationReference = "citation_reference"
     
     // MARK: - Math Elements (LaTeX/TeX)
     case formula = "formula"

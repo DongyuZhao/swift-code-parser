@@ -13,7 +13,7 @@ struct MarkdownInlineParser {
             if stopAt.contains(token.element) { break }
 
             switch token.element {
-            case .asterisk, .underscore:
+            case .asterisk, .underscore, .tilde:
                 let marker = token.element
                 var count = 0
                 while context.consuming < context.tokens.count,
@@ -22,7 +22,12 @@ struct MarkdownInlineParser {
                     count += 1
                     context.consuming += 1
                 }
-                handleDelimiter(marker: marker, count: count, nodes: &nodes, stack: &delimiters)
+                if marker == .tilde && count < 2 {
+                    let text = String(repeating: "~", count: count)
+                    nodes.append(TextNode(content: text))
+                } else {
+                    handleDelimiter(marker: marker, count: count, nodes: &nodes, stack: &delimiters)
+                }
             case .inlineCode:
                 nodes.append(InlineCodeNode(code: trimBackticks(token.text)))
                 context.consuming += 1
@@ -90,7 +95,14 @@ struct MarkdownInlineParser {
 
         while remaining > 0, let openIdx = stack.lastIndex(where: { $0.marker == marker }) {
             let open = stack.remove(at: openIdx)
-            let closeCount = min(open.count, remaining)
+            var closeCount = min(open.count, remaining)
+            if marker == .tilde {
+                guard open.count >= 2 && remaining >= 2 else {
+                    stack.append(open)
+                    break
+                }
+                closeCount = 2
+            }
 
             let start = open.index + 1
             let removedCount = nodes.count - open.index
@@ -102,7 +114,12 @@ struct MarkdownInlineParser {
                 }
             }
 
-            let node: MarkdownNodeBase = (closeCount >= 2) ? StrongNode(content: "") : EmphasisNode(content: "")
+            let node: MarkdownNodeBase
+            if marker == .tilde {
+                node = StrikeNode(content: "")
+            } else {
+                node = (closeCount >= 2) ? StrongNode(content: "") : EmphasisNode(content: "")
+            }
             for child in content { node.append(child) }
             nodes.append(node)
 
@@ -119,7 +136,7 @@ struct MarkdownInlineParser {
     private static func parseLinkOrFootnote(_ context: inout CodeContext<MarkdownNodeElement, MarkdownTokenElement>) -> MarkdownNodeBase? {
         let start = context.consuming
         context.consuming += 1
-        // Footnote reference [^id]
+        // Footnote reference [^id] or citation [@id]
         if context.consuming < context.tokens.count,
            let caret = context.tokens[context.consuming] as? MarkdownToken,
            caret.element == .caret {
@@ -136,6 +153,22 @@ struct MarkdownInlineParser {
                   rb.element == .rightBracket else { context.consuming = start; return nil }
             context.consuming += 1
             return FootnoteNode(identifier: ident, content: "", referenceText: nil, range: rb.range)
+        } else if context.consuming < context.tokens.count,
+                  let at = context.tokens[context.consuming] as? MarkdownToken,
+                  at.element == .text, at.text == "@" {
+            context.consuming += 1
+            var ident = ""
+            while context.consuming < context.tokens.count,
+                  let t = context.tokens[context.consuming] as? MarkdownToken,
+                  t.element != .rightBracket {
+                ident += t.text
+                context.consuming += 1
+            }
+            guard context.consuming < context.tokens.count,
+                  let rb = context.tokens[context.consuming] as? MarkdownToken,
+                  rb.element == .rightBracket else { context.consuming = start; return nil }
+            context.consuming += 1
+            return CitationReferenceNode(identifier: ident)
         }
 
         let textNodes = parseInline(&context, stopAt: [.rightBracket])

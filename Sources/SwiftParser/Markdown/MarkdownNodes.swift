@@ -410,6 +410,37 @@ public class FootnoteNode: MarkdownNodeBase {
     }
 }
 
+public class CitationNode: MarkdownNodeBase {
+    public var identifier: String
+    public var content: String
+
+    public init(identifier: String, content: String) {
+        self.identifier = identifier
+        self.content = content
+        super.init(element: .citation)
+    }
+
+    public override func hash(into hasher: inout Hasher) {
+        super.hash(into: &hasher)
+        hasher.combine(identifier)
+        hasher.combine(content)
+    }
+}
+
+public class CitationReferenceNode: MarkdownNodeBase {
+    public var identifier: String
+
+    public init(identifier: String) {
+        self.identifier = identifier
+        super.init(element: .citationReference)
+    }
+
+    public override func hash(into hasher: inout Hasher) {
+        super.hash(into: &hasher)
+        hasher.combine(identifier)
+    }
+}
+
 // MARK: - Math Elements
 public class FormulaNode: MarkdownNodeBase {
     public var expression: String
