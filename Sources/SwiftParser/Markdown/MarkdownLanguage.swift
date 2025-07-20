@@ -20,6 +20,7 @@ public class MarkdownLanguage: CodeLanguage {
             BlockquoteConsumer(),
             InlineCodeConsumer(),
             InlineFormulaConsumer(),
+            MarkdownEmphasisConsumer(),
             AutolinkConsumer(),
             URLConsumer(),
             HTMLInlineConsumer(),
