@@ -56,8 +56,11 @@ let code = "hi"
 Citation[@smith2023] and footnote[^1].
 
 <div>HTML block</div>
-
 ![Alt](https://example.com/img.png)
+
+[link](https://example.com)
+
+<https://autolink.com> &amp; more.
 
 [^1]: Footnote text
 [@smith2023]: Smith, J. (2023). Example.
