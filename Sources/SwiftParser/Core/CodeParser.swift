@@ -1,50 +1,51 @@
 import Foundation
 
-public final class CodeParser {
-    private var consumers: [CodeTokenConsumer]
-    private let tokenizer: CodeTokenizer
+public final class CodeParser<Node, Token> where Node: CodeNodeElement, Token: CodeTokenElement {
+    private let language: any CodeLanguage<Node, Token>
 
-    // Registered state is now reset for each parse run
-
-    public init(language: CodeLanguage) {
-        self.tokenizer = language.tokenizer
-        self.consumers = language.consumers
+    public init(language: any CodeLanguage<Node, Token>) {
+        self.language = language
     }
 
+    public func parse(_ input: String, root: CodeNode<Node>) -> (node: CodeNode<Node>, context: CodeContext<Node, Token>) {
+        let normalized = normalize(input)
+        let tokens = language.tokenizer.tokenize(normalized)
+        var context = CodeContext(current: root, tokens: tokens, state: language.state(of: normalized))
 
-
-    public func parse(_ input: String, rootNode: CodeNode) -> (node: CodeNode, context: CodeContext) {
-        let tokens = tokenizer.tokenize(input)
-        var context = CodeContext(tokens: tokens, currentNode: rootNode, errors: [])
-
-        // Infinite loop protection: track token count progression
-        var lastCount = context.tokens.count + 1
-
-        while let token = context.tokens.first {
-            // Infinite loop detection - if token count hasn't decreased, terminate parsing immediately
-            if context.tokens.count == lastCount {
-                context.errors.append(CodeError("Infinite loop detected: parser stuck at token \(token.kindDescription). Terminating parse to prevent hang.", range: token.range))
+        while context.consuming < context.tokens.count {
+            // Stop at EOF without recording an error
+            if let token = context.tokens[context.consuming] as? MarkdownToken,
+               token.element == .eof {
                 break
             }
-            lastCount = context.tokens.count
 
-            if token.kindDescription == "eof" {
-                break
-            }
             var matched = false
-            for consumer in consumers {
-                if consumer.consume(context: &context, token: token) {
+            for builder in language.builders {
+                if builder.build(from: &context) {
                     matched = true
                     break
                 }
             }
 
             if !matched {
-                context.errors.append(CodeError("Unrecognized token \(token.kindDescription)", range: token.range))
-                context.tokens.removeFirst()
+                // If no builder matched, record an error and skip the token
+                let token = context.tokens[context.consuming]
+                let error = CodeError("Unrecognized token: \(token.element)", range: token.range)
+                context.errors.append(error)
+                context.consuming += 1
             }
         }
 
-        return (rootNode, context)
+        return (root, context)
+    }
+
+    /// Normalizes input string to handle line ending inconsistencies and other common issues
+    /// This ensures consistent behavior across different platforms and input sources
+    private func normalize(_ raw: String) -> String {
+        // Normalize line endings: Convert CRLF (\r\n) and CR (\r) to LF (\n)
+        // This prevents issues with different line ending conventions
+        return raw
+            .replacingOccurrences(of: "\r\n", with: "\n")  // Windows CRLF -> Unix LF
+            .replacingOccurrences(of: "\r", with: "\n")    // Classic Mac CR -> Unix LF
     }
 }

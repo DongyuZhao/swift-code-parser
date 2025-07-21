@@ -1,13 +1,31 @@
 import Foundation
 
-public struct CodeContext {
-    public var tokens: [any CodeToken]
-    public var currentNode: CodeNode
+public protocol CodeContextState<Node, Token> where Node: CodeNodeElement, Token: CodeTokenElement {
+    associatedtype Node: CodeNodeElement
+    associatedtype Token: CodeTokenElement
+}
+
+public class CodeContext<Node, Token> where Node: CodeNodeElement, Token: CodeTokenElement {
+    /// The current node being processed in the context
+    public var current: CodeNode<Node>
+
+    /// The tokens that need to be processed in this context
+    public var tokens: [any CodeToken<Token>]
+
+    /// The index of the next token to consume
+    public var consuming: Int
+
+    /// Any errors encountered during processing
     public var errors: [CodeError]
 
-    public init(tokens: [any CodeToken], currentNode: CodeNode, errors: [CodeError]) {
+    /// The state of the processing, which can hold additional information
+    public var state:  (any CodeContextState<Node, Token>)?
+
+    public init(current: CodeNode<Node>, tokens: [any CodeToken<Token>], consuming: Int = 0, state: (any CodeContextState<Node, Token>)? = nil, errors: [CodeError] = []) {
+        self.current = current
         self.tokens = tokens
-        self.currentNode = currentNode
+        self.consuming = consuming
+        self.state = state
         self.errors = errors
     }
 }
