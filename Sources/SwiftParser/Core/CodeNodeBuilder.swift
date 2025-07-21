@@ -7,5 +7,5 @@ public protocol CodeNodeBuilder<Node, Token> where Node: CodeNodeElement, Token:
 
     /// Attempt to build part of the AST from the context.
     /// Returns true if the builder successfully consumed tokens and updated the context.
-    func build(from context: inout CodeContext<Node, Token>) -> Bool
+    func build(from context: inout CodeConstructContext<Node, Token>) -> Bool
 }

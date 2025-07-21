@@ -3,7 +3,7 @@ import Foundation
 public class MarkdownCustomContainerBuilder: CodeNodeBuilder {
     public init() {}
 
-    public func build(from context: inout CodeContext<MarkdownNodeElement, MarkdownTokenElement>) -> Bool {
+    public func build(from context: inout CodeConstructContext<MarkdownNodeElement, MarkdownTokenElement>) -> Bool {
         guard context.consuming < context.tokens.count,
               isStartOfLine(context),
               let token = context.tokens[context.consuming] as? MarkdownToken,
@@ -39,7 +39,7 @@ public class MarkdownCustomContainerBuilder: CodeNodeBuilder {
         return (name, content)
     }
 
-    private func isStartOfLine(_ context: CodeContext<MarkdownNodeElement, MarkdownTokenElement>) -> Bool {
+    private func isStartOfLine(_ context: CodeConstructContext<MarkdownNodeElement, MarkdownTokenElement>) -> Bool {
         if context.consuming == 0 { return true }
         if let prev = context.tokens[context.consuming - 1] as? MarkdownToken {
             return prev.element == .newline

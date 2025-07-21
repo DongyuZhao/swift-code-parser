@@ -1,11 +1,11 @@
 import Foundation
 
-public protocol CodeContextState<Node, Token> where Node: CodeNodeElement, Token: CodeTokenElement {
+public protocol CodeConstructState<Node, Token> where Node: CodeNodeElement, Token: CodeTokenElement {
     associatedtype Node: CodeNodeElement
     associatedtype Token: CodeTokenElement
 }
 
-public class CodeContext<Node, Token> where Node: CodeNodeElement, Token: CodeTokenElement {
+public class CodeConstructContext<Node, Token> where Node: CodeNodeElement, Token: CodeTokenElement {
     /// The current node being processed in the context
     public var current: CodeNode<Node>
 
@@ -19,9 +19,9 @@ public class CodeContext<Node, Token> where Node: CodeNodeElement, Token: CodeTo
     public var errors: [CodeError]
 
     /// The state of the processing, which can hold additional information
-    public var state:  (any CodeContextState<Node, Token>)?
+    public var state:  (any CodeConstructState<Node, Token>)?
 
-    public init(current: CodeNode<Node>, tokens: [any CodeToken<Token>], consuming: Int = 0, state: (any CodeContextState<Node, Token>)? = nil, errors: [CodeError] = []) {
+    public init(current: CodeNode<Node>, tokens: [any CodeToken<Token>], consuming: Int = 0, state: (any CodeConstructState<Node, Token>)? = nil, errors: [CodeError] = []) {
         self.current = current
         self.tokens = tokens
         self.consuming = consuming
