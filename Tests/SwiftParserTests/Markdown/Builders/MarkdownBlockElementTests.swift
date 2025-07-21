@@ -73,11 +73,20 @@ final class MarkdownBlockElementTests: XCTestCase {
     }
 
     func testAdmonitionBlock() {
-        let input = "::: note\nhello\n:::" 
+        let input = "> [!NOTE]\n> hello"
         let root = language.root(of: input)
         let (node, context) = parser.parse(input, root: root)
         XCTAssertTrue(context.errors.isEmpty)
         XCTAssertEqual(node.children.count, 1)
         XCTAssertTrue(node.children.first is AdmonitionNode)
+    }
+
+    func testCustomContainerBlock() {
+        let input = "::: custom\nhello\n:::"
+        let root = language.root(of: input)
+        let (node, context) = parser.parse(input, root: root)
+        XCTAssertTrue(context.errors.isEmpty)
+        XCTAssertEqual(node.children.count, 1)
+        XCTAssertTrue(node.children.first is CustomContainerNode)
     }
 }

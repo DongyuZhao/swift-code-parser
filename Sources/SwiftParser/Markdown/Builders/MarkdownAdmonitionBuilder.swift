@@ -4,60 +4,43 @@ public class MarkdownAdmonitionBuilder: CodeNodeBuilder {
     public init() {}
 
     public func build(from context: inout CodeContext<MarkdownNodeElement, MarkdownTokenElement>) -> Bool {
-        guard context.consuming + 2 < context.tokens.count,
+        guard context.consuming < context.tokens.count,
               isStartOfLine(context),
-              let c1 = context.tokens[context.consuming] as? MarkdownToken,
-              let c2 = context.tokens[context.consuming + 1] as? MarkdownToken,
-              let c3 = context.tokens[context.consuming + 2] as? MarkdownToken,
-              c1.element == .colon, c2.element == .colon, c3.element == .colon else { return false }
-        var idx = context.consuming + 3
-        var name = ""
-        while idx < context.tokens.count,
-              let t = context.tokens[idx] as? MarkdownToken,
-              t.element != .newline {
-            name += t.text
+              let gt = context.tokens[context.consuming] as? MarkdownToken,
+              gt.element == .gt else { return false }
+        var idx = context.consuming + 1
+        if idx < context.tokens.count,
+           let space = context.tokens[idx] as? MarkdownToken,
+           space.element == .space {
             idx += 1
         }
-        name = name.trimmingCharacters(in: .whitespaces)
+        guard idx + 3 < context.tokens.count,
+              let lb = context.tokens[idx] as? MarkdownToken, lb.element == .leftBracket,
+              let ex = context.tokens[idx+1] as? MarkdownToken, ex.element == .exclamation,
+              let text = context.tokens[idx+2] as? MarkdownToken, text.element == .text,
+              let rb = context.tokens[idx+3] as? MarkdownToken, rb.element == .rightBracket else { return false }
+        let kind = text.text.lowercased()
+        idx += 4
         guard idx < context.tokens.count,
               let nl = context.tokens[idx] as? MarkdownToken,
               nl.element == .newline else { return false }
         idx += 1
-        var innerTokens: [any CodeToken<MarkdownTokenElement>] = []
-        while idx < context.tokens.count {
-            if isStartOfLine(index: idx, tokens: context.tokens),
-               idx + 2 < context.tokens.count,
-               let e1 = context.tokens[idx] as? MarkdownToken,
-               let e2 = context.tokens[idx + 1] as? MarkdownToken,
-               let e3 = context.tokens[idx + 2] as? MarkdownToken,
-               e1.element == .colon, e2.element == .colon, e3.element == .colon {
-                idx += 3
-                while idx < context.tokens.count,
-                      let t = context.tokens[idx] as? MarkdownToken,
-                      t.element != .newline { idx += 1 }
-                if idx < context.tokens.count,
-                   let nl2 = context.tokens[idx] as? MarkdownToken,
-                   nl2.element == .newline { idx += 1 }
-                break
-            }
-            innerTokens.append(context.tokens[idx])
-            idx += 1
-        }
+        guard idx < context.tokens.count,
+              isStartOfLine(index: idx, tokens: context.tokens),
+              let gt2 = context.tokens[idx] as? MarkdownToken,
+              gt2.element == .gt else { return false }
+        idx += 1
+        if idx < context.tokens.count,
+           let sp = context.tokens[idx] as? MarkdownToken,
+           sp.element == .space { idx += 1 }
         context.consuming = idx
-        var subContext = CodeContext(current: DocumentNode(), tokens: innerTokens)
-        let children = MarkdownInlineParser.parseInline(&subContext)
-        let lower = name.lowercased()
-        let node: MarkdownNodeBase
-        if ["note", "warning", "info"].contains(lower) {
-            let admon = AdmonitionNode(kind: lower)
-            for c in children { admon.append(c) }
-            node = admon
-        } else {
-            let container = CustomContainerNode(name: name)
-            for c in children { container.append(c) }
-            node = container
-        }
+        let children = MarkdownInlineParser.parseInline(&context)
+        let node = AdmonitionNode(kind: kind)
+        for c in children { node.append(c) }
         context.current.append(node)
+        if context.consuming < context.tokens.count,
+           let nl2 = context.tokens[context.consuming] as? MarkdownToken,
+           nl2.element == .newline { context.consuming += 1 }
         return true
     }
 

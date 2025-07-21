@@ -32,7 +32,7 @@ This document provides an overview of the Markdown parser built on top of the Sw
 
 ### Other Extensions
 - ✅ **Definition lists**: term/definition pairs
-- ✅ **Admonitions**: note/warning/info blocks using `:::`
+- ✅ **Admonitions**: note/warning/info blocks using `> [!NOTE]` style
 - ✅ **Custom containers**: generic container syntax (`:::`)
 
 ### Advanced List Features
