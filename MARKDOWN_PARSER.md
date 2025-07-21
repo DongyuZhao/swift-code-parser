@@ -5,30 +5,30 @@ This document provides an overview of the Markdown parser built on top of the Sw
 ## Features
 
 ### CommonMark Support
-- ✅ ATX headers (# Heading)
+- ✅ ATX headers (\# Heading)
 - ✅ Paragraphs
-- ✅ Emphasis (*italic*, **bold**) with nested structures and backtracking
-- ✅ Inline code (`code`)
-- ✅ Fenced code blocks (```code```)
-- ✅ Block quotes (> quote) with multi-line merging
+- ✅ Emphasis (\*italic\*, \*\*bold\*\*) with nested structures and backtracking
+- ✅ Inline code (\`code\`)
+- ✅ Fenced code blocks (\`\`\`code\`\`\`)
+- ✅ Block quotes (\> quote) with multi-line merging
 - ✅ Lists (ordered and unordered) with automatic numbering
-- ✅ Links ([text](URL) and reference style)
-- ✅ Images (![alt](URL))
-- ✅ Autolinks (<URL>)
-- ✅ Horizontal rules (---)
+- ✅ Links (\[text\]\(URL\) and reference style)
+- ✅ Images (\!\[alt\]\(URL\))
+- ✅ Autolinks (\<URL\>)
+- ✅ Horizontal rules (\-\-\-)
 - ✅ HTML inline elements
 - ✅ HTML block elements
 - ✅ Line break handling
 
 ### GitHub Flavored Markdown (GFM) Extensions
 - ✅ Tables
-- ✅ Strikethrough (~~text~~)
-- ✅ Task lists (- [ ], - [x])
+- ✅ Strikethrough (\~\~text\~\~)
+- ✅ Task lists (\- \[ \], \- \[x\])
 
 ### Academic Extensions
-- ✅ **Footnotes**: Definition and reference support ([^1]: footnote, [^1])
-- ✅ **Citations**: Academic citation support ([@author2023]: reference, [@author2023])
-- ✅ **Math formulas**: inline ($math$) and block ($$math$$)
+- ✅ **Footnotes**: Definition and reference support (\[\^1\]: footnote, \[^1\])
+- ✅ **Citations**: Academic citation support (\[\@author2023\]: reference, \[\@author2023\])
+- ✅ **Math formulas**: inline (\$math\$) and block (\$\$math\$\$)
 
 ### Other Extensions
 - ✅ **Definition lists**: term/definition pairs
