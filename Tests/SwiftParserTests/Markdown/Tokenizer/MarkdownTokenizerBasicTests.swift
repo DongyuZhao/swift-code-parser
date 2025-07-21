@@ -412,6 +412,16 @@ final class MarkdownTokenizerBasicTests: XCTestCase {
         XCTAssertEqual(firstToken.text, "`", "Should be just the backtick")
     }
 
+    func testCustomContainerTokenization() {
+        let input = "::: custom\ncontent\n:::"
+        let tokens = tokenizer.tokenize(input)
+
+        XCTAssertEqual(tokens.count, 2)
+        XCTAssertEqual(tokens[0].element, .customContainer)
+        XCTAssertEqual(tokens[0].text, input)
+        XCTAssertEqual(tokens[1].element, .eof)
+    }
+
     // MARK: - Edge Cases and Special Scenarios
     
     func testEmptyAndWhitespaceInputs() {

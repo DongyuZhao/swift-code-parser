@@ -233,15 +233,18 @@ public class AdmonitionNode: MarkdownNodeBase {
 
 public class CustomContainerNode: MarkdownNodeBase {
     public var name: String
+    public var content: String
 
-    public init(name: String) {
+    public init(name: String, content: String) {
         self.name = name
+        self.content = content
         super.init(element: .customContainer)
     }
 
     public override func hash(into hasher: inout Hasher) {
         super.hash(into: &hasher)
         hasher.combine(name)
+        hasher.combine(content)
     }
 }
 
