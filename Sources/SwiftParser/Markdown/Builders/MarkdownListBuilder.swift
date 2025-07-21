@@ -3,9 +3,9 @@ import Foundation
 public class MarkdownListBuilder: CodeNodeBuilder {
     public init() {}
 
-    public func build(from context: inout CodeContext<MarkdownNodeElement, MarkdownTokenElement>) -> Bool {
+    public func build(from context: inout CodeParseContext<MarkdownNodeElement, MarkdownTokenElement>) -> Bool {
         guard context.consuming < context.tokens.count else { return false }
-        let state = context.state as? MarkdownContextState ?? MarkdownContextState()
+        let state = context.state as? MarkdownParseState ?? MarkdownParseState()
         if context.state == nil { context.state = state }
 
         var idx = context.consuming

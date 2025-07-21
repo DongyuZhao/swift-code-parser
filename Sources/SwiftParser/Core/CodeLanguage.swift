@@ -4,9 +4,11 @@ public protocol CodeLanguage<Node, Token> where Node: CodeNodeElement, Token: Co
     associatedtype Node: CodeNodeElement
     associatedtype Token: CodeTokenElement
 
-    var tokenizer: any CodeTokenizer<Token> { get }
-    var builders: [any CodeNodeBuilder<Node, Token>] { get }
+    var outdatedTokenizer: (any CodeOutdatedTokenizer<Token>)? { get }
+    var tokens: [any CodeTokenBuilder<Token>] { get }
+    var nodes: [any CodeNodeBuilder<Node, Token>] { get }
 
     func root(of content: String) -> CodeNode<Node>
-    func state(of content: String) -> (any CodeContextState<Node, Token>)?
+    func state(of content: String) -> (any CodeParseState<Node, Token>)?
+    func state(of content: String) -> (any CodeTokenState<Token>)?
 }

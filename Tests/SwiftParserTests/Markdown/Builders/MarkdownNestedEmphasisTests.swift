@@ -14,7 +14,7 @@ final class MarkdownNestedEmphasisTests: XCTestCase {
     func testEmphasisWithLinkAndCode() {
         let input = "*see [link](url) `code`*"
         let root = language.root(of: input)
-        let (node, ctx) = parser.parse(input, root: root)
+        let (node, ctx) = parser.outdatedParse(input, root: root)
         XCTAssertTrue(ctx.errors.isEmpty)
         XCTAssertEqual(node.children.count, 1)
         guard let para = node.children.first as? ParagraphNode,
@@ -31,7 +31,7 @@ final class MarkdownNestedEmphasisTests: XCTestCase {
     func testStrongWithImageAndHTML() {
         let input = "**image ![alt](img.png) <b>bold</b>**"
         let root = language.root(of: input)
-        let (node, ctx) = parser.parse(input, root: root)
+        let (node, ctx) = parser.outdatedParse(input, root: root)
         XCTAssertTrue(ctx.errors.isEmpty)
         XCTAssertEqual(node.children.count, 1)
         guard let para = node.children.first as? ParagraphNode,

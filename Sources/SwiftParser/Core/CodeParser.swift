@@ -2,15 +2,17 @@ import Foundation
 
 public final class CodeParser<Node, Token> where Node: CodeNodeElement, Token: CodeTokenElement {
     private let language: any CodeLanguage<Node, Token>
+    private let tokenizer: CodeTokenizer<Node, Token>
 
     public init(language: any CodeLanguage<Node, Token>) {
         self.language = language
+        self.tokenizer = CodeTokenizer(language: language)
     }
 
-    public func parse(_ input: String, root: CodeNode<Node>) -> (node: CodeNode<Node>, context: CodeContext<Node, Token>) {
+    public func parse(_ input: String, root: CodeNode<Node>) -> (node: CodeNode<Node>, context: CodeParseContext<Node, Token>) {
         let normalized = normalize(input)
-        let tokens = language.tokenizer.tokenize(normalized)
-        var context = CodeContext(current: root, tokens: tokens, state: language.state(of: normalized))
+        let tokens = tokenizer.tokenize(normalized)
+        var context = CodeParseContext(current: root, tokens: tokens, state: language.state(of: normalized))
 
         while context.consuming < context.tokens.count {
             // Stop at EOF without recording an error
@@ -20,8 +22,40 @@ public final class CodeParser<Node, Token> where Node: CodeNodeElement, Token: C
             }
 
             var matched = false
-            for builder in language.builders {
-                if builder.build(from: &context) {
+            for node in language.nodes {
+                if node.build(from: &context) {
+                    matched = true
+                    break
+                }
+            }
+
+            if !matched {
+                // If no builder matched, record an error and skip the token
+                let token = context.tokens[context.consuming]
+                let error = CodeError("Unrecognized token: \(token.element)", range: token.range)
+                context.errors.append(error)
+                context.consuming += 1
+            }
+        }
+
+        return (root, context)
+    }
+
+    public func outdatedParse(_ input: String, root: CodeNode<Node>) -> (node: CodeNode<Node>, context: CodeParseContext<Node, Token>) {
+        let normalized = normalize(input)
+        let tokens = language.outdatedTokenizer?.tokenize(normalized) ?? []
+        var context = CodeParseContext(current: root, tokens: tokens, state: language.state(of: normalized))
+
+        while context.consuming < context.tokens.count {
+            // Stop at EOF without recording an error
+            if let token = context.tokens[context.consuming] as? MarkdownToken,
+               token.element == .eof {
+                break
+            }
+
+            var matched = false
+            for node in language.nodes {
+                if node.build(from: &context) {
                     matched = true
                     break
                 }

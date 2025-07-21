@@ -3,7 +3,7 @@ import Foundation
 public class MarkdownFormulaBlockBuilder: CodeNodeBuilder {
     public init() {}
 
-    public func build(from context: inout CodeContext<MarkdownNodeElement, MarkdownTokenElement>) -> Bool {
+    public func build(from context: inout CodeParseContext<MarkdownNodeElement, MarkdownTokenElement>) -> Bool {
         guard context.consuming < context.tokens.count,
               let token = context.tokens[context.consuming] as? MarkdownToken,
               token.element == .formulaBlock else { return false }

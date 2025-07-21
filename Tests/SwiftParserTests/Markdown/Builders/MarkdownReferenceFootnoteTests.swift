@@ -14,7 +14,7 @@ final class MarkdownReferenceFootnoteTests: XCTestCase {
     func testReferenceDefinition() {
         let input = "[ref]: https://example.com"
         let root = language.root(of: input)
-        let (node, ctx) = parser.parse(input, root: root)
+        let (node, ctx) = parser.outdatedParse(input, root: root)
         XCTAssertTrue(ctx.errors.isEmpty)
         XCTAssertEqual(node.children.count, 1)
         if let ref = node.children.first as? ReferenceNode {
@@ -28,7 +28,7 @@ final class MarkdownReferenceFootnoteTests: XCTestCase {
     func testFootnoteDefinitionAndReference() {
         let input = "[^1]: Footnote text\nParagraph with reference[^1]"
         let root = language.root(of: input)
-        let (node, ctx) = parser.parse(input, root: root)
+        let (node, ctx) = parser.outdatedParse(input, root: root)
         XCTAssertTrue(ctx.errors.isEmpty)
         XCTAssertEqual(node.children.count, 2)
         guard let footnote = node.children.first as? FootnoteNode else {

@@ -14,7 +14,7 @@ final class MarkdownInlineBuilderTests: XCTestCase {
     func testItalicBuilderParsesItalicText() {
         let input = "*italic*"
         let root = language.root(of: input)
-        let (node, context) = parser.parse(input, root: root)
+        let (node, context) = parser.outdatedParse(input, root: root)
 
         XCTAssertTrue(context.errors.isEmpty)
         XCTAssertEqual(node.children.count, 1)
@@ -35,7 +35,7 @@ final class MarkdownInlineBuilderTests: XCTestCase {
     func testBoldBuilderParsesStrongText() {
         let input = "**bold**"
         let root = language.root(of: input)
-        let (node, context) = parser.parse(input, root: root)
+        let (node, context) = parser.outdatedParse(input, root: root)
 
         XCTAssertTrue(context.errors.isEmpty)
         XCTAssertEqual(node.children.count, 1)
@@ -56,7 +56,7 @@ final class MarkdownInlineBuilderTests: XCTestCase {
     func testNestedEmphasisParsesBoldAndItalic() {
         let input = "**bold *and italic***"
         let root = language.root(of: input)
-        let (node, context) = parser.parse(input, root: root)
+        let (node, context) = parser.outdatedParse(input, root: root)
 
         XCTAssertTrue(context.errors.isEmpty)
         // Ensure parsing succeeded
@@ -72,7 +72,7 @@ final class MarkdownInlineBuilderTests: XCTestCase {
     func testInlineCodeBuilderParsesInlineCode() {
         let input = "`code`"
         let root = language.root(of: input)
-        let (node, context) = parser.parse(input, root: root)
+        let (node, context) = parser.outdatedParse(input, root: root)
 
         XCTAssertTrue(context.errors.isEmpty)
         XCTAssertEqual(node.children.count, 1)
@@ -88,7 +88,7 @@ final class MarkdownInlineBuilderTests: XCTestCase {
     func testInlineFormulaBuilderParsesFormula() {
         let input = "$x^2$"
         let root = language.root(of: input)
-        let (node, context) = parser.parse(input, root: root)
+        let (node, context) = parser.outdatedParse(input, root: root)
 
         XCTAssertTrue(context.errors.isEmpty)
         XCTAssertEqual(node.children.count, 1)
@@ -105,7 +105,7 @@ final class MarkdownInlineBuilderTests: XCTestCase {
         let urlString = "https://example.com"
         let input = "<\(urlString)>"
         let root = language.root(of: input)
-        let (node, context) = parser.parse(input, root: root)
+        let (node, context) = parser.outdatedParse(input, root: root)
 
         XCTAssertTrue(context.errors.isEmpty)
         XCTAssertEqual(node.children.count, 1)
@@ -123,7 +123,7 @@ final class MarkdownInlineBuilderTests: XCTestCase {
         let urlString = "https://example.com"
         let input = urlString
         let root = language.root(of: input)
-        let (node, context) = parser.parse(input, root: root)
+        let (node, context) = parser.outdatedParse(input, root: root)
 
         XCTAssertTrue(context.errors.isEmpty)
         XCTAssertEqual(node.children.count, 1)
@@ -140,7 +140,7 @@ final class MarkdownInlineBuilderTests: XCTestCase {
     func testHTMLInlineBuilderParsesEntityAndTag() {
         let input = "&amp;<b>bold</b>"
         let root = language.root(of: input)
-        let (node, context) = parser.parse(input, root: root)
+        let (node, context) = parser.outdatedParse(input, root: root)
 
         XCTAssertTrue(context.errors.isEmpty)
         XCTAssertEqual(node.children.count, 1)
@@ -162,7 +162,7 @@ final class MarkdownInlineBuilderTests: XCTestCase {
     func testBlockquoteBuilderParsesBlockquote() {
         let input = "> hello"
         let root = language.root(of: input)
-        let (node, context) = parser.parse(input, root: root)
+        let (node, context) = parser.outdatedParse(input, root: root)
 
         XCTAssertTrue(context.errors.isEmpty)
         XCTAssertEqual(node.children.count, 1)

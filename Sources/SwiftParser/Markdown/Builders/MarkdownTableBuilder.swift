@@ -3,7 +3,7 @@ import Foundation
 public class MarkdownTableBuilder: CodeNodeBuilder {
     public init() {}
 
-    public func build(from context: inout CodeContext<MarkdownNodeElement, MarkdownTokenElement>) -> Bool {
+    public func build(from context: inout CodeParseContext<MarkdownNodeElement, MarkdownTokenElement>) -> Bool {
         guard context.consuming < context.tokens.count,
               let first = context.tokens[context.consuming] as? MarkdownToken,
               first.element == .pipe else { return false }
@@ -20,7 +20,7 @@ public class MarkdownTableBuilder: CodeNodeBuilder {
         return true
     }
 
-    private func parseRow(into table: TableNode, context: inout CodeContext<MarkdownNodeElement, MarkdownTokenElement>) -> Bool {
+    private func parseRow(into table: TableNode, context: inout CodeParseContext<MarkdownNodeElement, MarkdownTokenElement>) -> Bool {
         guard context.consuming < context.tokens.count,
               let start = context.tokens[context.consuming] as? MarkdownToken,
               start.element == .pipe else { return false }
@@ -40,7 +40,7 @@ public class MarkdownTableBuilder: CodeNodeBuilder {
         for tok in rowTokens + [MarkdownToken.pipe(at: start.range)] {
             if tok.element == .pipe {
                 let cell = TableCellNode(range: start.range)
-                var subCtx = CodeContext(current: cell, tokens: cellTokens, state: context.state)
+                var subCtx = CodeParseContext(current: cell, tokens: cellTokens, state: context.state)
                 let children = MarkdownInlineParser.parseInline(&subCtx, stopAt: [])
                 for child in children { cell.append(child) }
                 row.append(cell)

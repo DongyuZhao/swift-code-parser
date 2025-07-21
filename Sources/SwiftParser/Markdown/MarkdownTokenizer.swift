@@ -1,7 +1,7 @@
 import Foundation
 
 // MARK: - Markdown Tokenizer
-public class MarkdownTokenizer: CodeTokenizer {
+public class MarkdownTokenizer: CodeOutdatedTokenizer {
     // MARK: - Tokenization State
     private var input: String = ""
     private var current: String.Index = "".startIndex

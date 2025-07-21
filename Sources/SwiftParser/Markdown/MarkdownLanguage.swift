@@ -6,12 +6,24 @@ public class MarkdownLanguage: CodeLanguage {
     public typealias Token = MarkdownTokenElement
     
     // MARK: - Language Components
-    public let tokenizer: any CodeTokenizer<MarkdownTokenElement>
-    public let builders: [any CodeNodeBuilder<MarkdownNodeElement, MarkdownTokenElement>]
+    public let outdatedTokenizer: (any CodeOutdatedTokenizer<MarkdownTokenElement>)?
+
+    /// The token builders that define how to create tokens from Markdown input
+    public let tokens: [any CodeTokenBuilder<MarkdownTokenElement>]
+
+    /// The node builders that define how to parse different Markdown constructs
+    public let nodes: [any CodeNodeBuilder<MarkdownNodeElement, MarkdownTokenElement>]
     
+    public init(tokens: [any CodeTokenBuilder<MarkdownTokenElement>], 
+                nodes: [any CodeNodeBuilder<MarkdownNodeElement, MarkdownTokenElement>]) {
+        self.tokens = tokens
+        self.nodes = nodes
+        self.outdatedTokenizer = nil
+    }
+
     // MARK: - Initialization
     public init(
-        tokenizer: any CodeTokenizer<MarkdownTokenElement> = MarkdownTokenizer(),
+        outdatedTokenizer: any CodeOutdatedTokenizer<MarkdownTokenElement> = MarkdownTokenizer(),
         consumers: [any CodeNodeBuilder<MarkdownNodeElement, MarkdownTokenElement>] = [
             MarkdownReferenceDefinitionBuilder(),
             MarkdownHeadingBuilder(),
@@ -29,8 +41,9 @@ public class MarkdownLanguage: CodeLanguage {
             MarkdownNewlineBuilder()
         ]
     ) {
-        self.tokenizer = tokenizer
-        self.builders = consumers
+        self.outdatedTokenizer = outdatedTokenizer
+        self.nodes = consumers
+        self.tokens = []
     }
     
     // MARK: - Language Protocol Implementation
@@ -38,8 +51,12 @@ public class MarkdownLanguage: CodeLanguage {
         return DocumentNode()
     }
 
-    public func state(of content: String) -> (any CodeContextState<Node, Token>)? {
-        return MarkdownContextState()
+    public func state(of content: String) -> (any CodeParseState<Node, Token>)? {
+        return MarkdownParseState()
+    }
+
+    public func state(of content: String) -> (any CodeTokenState<Token>)? {
+        return nil
     }
 }
 
@@ -255,8 +272,8 @@ extension MarkdownLanguage {
         //     consumers.append(MathConsumer())
         // }
         // ... etc
-        
-        return MarkdownLanguage(tokenizer: tokenizer, consumers: consumers)
+
+        return MarkdownLanguage(outdatedTokenizer: tokenizer, consumers: consumers)
     }
 }
 

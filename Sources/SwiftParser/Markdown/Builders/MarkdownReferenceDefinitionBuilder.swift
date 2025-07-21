@@ -3,7 +3,7 @@ import Foundation
 public class MarkdownReferenceDefinitionBuilder: CodeNodeBuilder {
     public init() {}
 
-    public func build(from context: inout CodeContext<MarkdownNodeElement, MarkdownTokenElement>) -> Bool {
+    public func build(from context: inout CodeParseContext<MarkdownNodeElement, MarkdownTokenElement>) -> Bool {
         guard context.consuming < context.tokens.count,
               isStartOfLine(context),
               let lb = context.tokens[context.consuming] as? MarkdownToken,
@@ -69,7 +69,7 @@ public class MarkdownReferenceDefinitionBuilder: CodeNodeBuilder {
         return true
     }
 
-    private func isStartOfLine(_ context: CodeContext<MarkdownNodeElement, MarkdownTokenElement>) -> Bool {
+    private func isStartOfLine(_ context: CodeParseContext<MarkdownNodeElement, MarkdownTokenElement>) -> Bool {
         if context.consuming == 0 { return true }
         if let prev = context.tokens[context.consuming - 1] as? MarkdownToken {
             return prev.element == .newline

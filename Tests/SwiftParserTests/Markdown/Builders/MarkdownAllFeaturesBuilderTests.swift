@@ -66,7 +66,7 @@ Citation[@smith2023] and footnote[^1].
 """
 
         let root = language.root(of: markdown)
-        let (node, context) = parser.parse(markdown, root: root)
+        let (node, context) = parser.outdatedParse(markdown, root: root)
 
         XCTAssertTrue(context.errors.isEmpty)
         XCTAssertGreaterThan(node.children.count, 0)

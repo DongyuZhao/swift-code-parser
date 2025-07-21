@@ -14,7 +14,7 @@ final class MarkdownTokenBuilderTests: XCTestCase {
     func testHeadingBuilderAppendsHeaderNodeWithText() {
         let input = "# Hello"
         let root = language.root(of: input)
-        let (node, context) = parser.parse(input, root: root)
+        let (node, context) = parser.outdatedParse(input, root: root)
 
         // Expect one child: HeaderNode
         XCTAssertEqual(node.children.count, 1)
@@ -38,7 +38,7 @@ final class MarkdownTokenBuilderTests: XCTestCase {
     func testTextBuilderAppendsTextNodeToRoot() {
         let input = "Hello World"
         let root = language.root(of: input)
-        let (node, context) = parser.parse(input, root: root)
+        let (node, context) = parser.outdatedParse(input, root: root)
 
         // Expect a paragraph with one TextNode
         XCTAssertEqual(node.children.count, 1)
@@ -58,7 +58,7 @@ final class MarkdownTokenBuilderTests: XCTestCase {
     func testNewlineBuilderResetsContextToParent() {
         let input = "# Title\nSubtitle"
         let root = language.root(of: input)
-        let (node, context) = parser.parse(input, root: root)
+        let (node, context) = parser.outdatedParse(input, root: root)
 
         // After header parse, Title in HeaderNode, then newline resets context, Subtitle appended to root
 

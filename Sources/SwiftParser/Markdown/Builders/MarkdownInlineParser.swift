@@ -2,7 +2,7 @@ import Foundation
 
 struct MarkdownInlineParser {
     static func parseInline(
-        _ context: inout CodeContext<MarkdownNodeElement, MarkdownTokenElement>,
+        _ context: inout CodeParseContext<MarkdownNodeElement, MarkdownTokenElement>,
         stopAt: Set<MarkdownTokenElement> = [.newline, .eof]
     ) -> [MarkdownNodeBase] {
         var nodes: [MarkdownNodeBase] = []
@@ -133,7 +133,7 @@ struct MarkdownInlineParser {
         }
     }
 
-    private static func parseLinkOrFootnote(_ context: inout CodeContext<MarkdownNodeElement, MarkdownTokenElement>) -> MarkdownNodeBase? {
+    private static func parseLinkOrFootnote(_ context: inout CodeParseContext<MarkdownNodeElement, MarkdownTokenElement>) -> MarkdownNodeBase? {
         let start = context.consuming
         context.consuming += 1
         // Footnote reference [^id] or citation [@id]
@@ -223,7 +223,7 @@ struct MarkdownInlineParser {
         return nil
     }
 
-    private static func parseImage(_ context: inout CodeContext<MarkdownNodeElement, MarkdownTokenElement>) -> MarkdownNodeBase? {
+    private static func parseImage(_ context: inout CodeParseContext<MarkdownNodeElement, MarkdownTokenElement>) -> MarkdownNodeBase? {
         guard context.consuming + 1 < context.tokens.count,
               let lb = context.tokens[context.consuming + 1] as? MarkdownToken,
               lb.element == .leftBracket else { return nil }

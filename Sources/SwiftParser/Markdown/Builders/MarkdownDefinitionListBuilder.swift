@@ -3,10 +3,10 @@ import Foundation
 public class MarkdownDefinitionListBuilder: CodeNodeBuilder {
     public init() {}
 
-    public func build(from context: inout CodeContext<MarkdownNodeElement, MarkdownTokenElement>) -> Bool {
+    public func build(from context: inout CodeParseContext<MarkdownNodeElement, MarkdownTokenElement>) -> Bool {
         guard context.consuming < context.tokens.count,
               isStartOfLine(context) else { return false }
-        let state = context.state as? MarkdownContextState ?? MarkdownContextState()
+        let state = context.state as? MarkdownParseState ?? MarkdownParseState()
         if context.state == nil { context.state = state }
 
         var idx = context.consuming
@@ -50,9 +50,9 @@ public class MarkdownDefinitionListBuilder: CodeNodeBuilder {
             context.consuming += 1
         }
 
-        var termContext = CodeContext(current: DocumentNode(), tokens: termTokens)
+        var termContext = CodeParseContext(current: DocumentNode(), tokens: termTokens)
         let termChildren = MarkdownInlineParser.parseInline(&termContext)
-        var defContext = CodeContext(current: DocumentNode(), tokens: defTokens)
+        var defContext = CodeParseContext(current: DocumentNode(), tokens: defTokens)
         let defChildren = MarkdownInlineParser.parseInline(&defContext)
 
         let item = DefinitionItemNode()
@@ -74,7 +74,7 @@ public class MarkdownDefinitionListBuilder: CodeNodeBuilder {
         return true
     }
 
-    private func isStartOfLine(_ context: CodeContext<MarkdownNodeElement, MarkdownTokenElement>) -> Bool {
+    private func isStartOfLine(_ context: CodeParseContext<MarkdownNodeElement, MarkdownTokenElement>) -> Bool {
         if context.consuming == 0 { return true }
         if let prev = context.tokens[context.consuming - 1] as? MarkdownToken {
             return prev.element == .newline

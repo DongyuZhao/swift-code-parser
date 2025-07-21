@@ -1,6 +1,6 @@
 import Foundation
 
-public class MarkdownContextState: CodeContextState {
+public class MarkdownParseState: CodeParseState {
     public typealias Node = MarkdownNodeElement
     public typealias Token = MarkdownTokenElement
 
