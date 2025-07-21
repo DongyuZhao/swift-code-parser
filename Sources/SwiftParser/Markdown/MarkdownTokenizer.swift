@@ -69,8 +69,11 @@ public class MarkdownTokenizer: CodeTokenizer {
             
         case "|":
             addToken(.pipe, text: "|", from: startIndex)
-            
+
         case ":":
+            if tokenizeCustomContainer(from: startIndex) {
+                return
+            }
             addToken(.colon, text: ":", from: startIndex)
             
         case ";":
@@ -1376,6 +1379,55 @@ extension MarkdownTokenizer {
         }
         
         return false
+    }
+
+    /// Tokenize custom containers starting with ':::' at line start
+    private func tokenizeCustomContainer(from startIndex: String.Index) -> Bool {
+        guard isAtLineStart(index: startIndex), match(":::") else { return false }
+
+        var tempIndex = input.index(startIndex, offsetBy: 3)
+
+        // Scan for the closing ':::' at line start
+        while tempIndex < input.endIndex {
+            if isAtLineStart(index: tempIndex) && input[tempIndex...].hasPrefix(":::") {
+                // Move to end of closing line
+                var end = input.index(tempIndex, offsetBy: 3)
+                while end < input.endIndex && input[end] != "\n" && input[end] != "\r" {
+                    end = input.index(after: end)
+                }
+                if end < input.endIndex {
+                    if input[end] == "\r" {
+                        let next = input.index(after: end)
+                        if next < input.endIndex && input[next] == "\n" {
+                            end = input.index(after: next)
+                        } else {
+                            end = next
+                        }
+                    } else {
+                        end = input.index(after: end)
+                    }
+                }
+                let range = startIndex..<end
+                let text = String(input[range])
+                tokens.append(MarkdownToken.customContainer(text, at: range))
+                current = end
+                return true
+            }
+            tempIndex = input.index(after: tempIndex)
+        }
+
+        // No closing delimiter found - consume to EOF
+        let range = startIndex..<input.endIndex
+        let text = String(input[range])
+        tokens.append(MarkdownToken.customContainer(text, at: range))
+        current = input.endIndex
+        return true
+    }
+
+    private func isAtLineStart(index: String.Index) -> Bool {
+        if index == input.startIndex { return true }
+        let prev = input[input.index(before: index)]
+        return prev == "\n" || prev == "\r"
     }
 
     // ...existing code...
