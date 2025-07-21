@@ -18,9 +18,8 @@ final class MarkdownAllFeaturesBuilderTests: XCTestCase {
 
 This paragraph has *italic*, **bold**, ~~strike~~, and `code` with a $x+1$ formula.
 
-::: note
-Admonition content
-:::
+> [!NOTE]
+> Admonition content
 
 ::: custom
 Custom container
