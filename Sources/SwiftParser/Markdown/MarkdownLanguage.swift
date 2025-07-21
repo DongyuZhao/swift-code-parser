@@ -6,12 +6,14 @@ public class MarkdownLanguage: CodeLanguage {
     public typealias Token = MarkdownTokenElement
     
     // MARK: - Language Components
-    public let tokenizer: any CodeTokenizer<MarkdownTokenElement>
-    public let builders: [any CodeNodeBuilder<MarkdownNodeElement, MarkdownTokenElement>]
+    public let tokenizer: any CodeOutdatedTokenizer<MarkdownTokenElement>
+    public var tokens: [any CodeTokenBuilder<MarkdownTokenElement>]
+    public let nodes: [any CodeNodeBuilder<MarkdownNodeElement, MarkdownTokenElement>]
+    
     
     // MARK: - Initialization
     public init(
-        tokenizer: any CodeTokenizer<MarkdownTokenElement> = MarkdownTokenizer(),
+        tokenizer: any CodeOutdatedTokenizer<MarkdownTokenElement> = MarkdownTokenizer(),
         consumers: [any CodeNodeBuilder<MarkdownNodeElement, MarkdownTokenElement>] = [
             MarkdownReferenceDefinitionBuilder(),
             MarkdownHeadingBuilder(),
@@ -30,16 +32,21 @@ public class MarkdownLanguage: CodeLanguage {
         ]
     ) {
         self.tokenizer = tokenizer
-        self.builders = consumers
+        self.nodes = consumers
+        self.tokens = []
     }
     
     // MARK: - Language Protocol Implementation
-    public func root(of content: String) -> CodeNode<MarkdownNodeElement> {
+    public func root() -> CodeNode<MarkdownNodeElement> {
         return DocumentNode()
     }
 
-    public func state(of content: String) -> (any CodeContextState<Node, Token>)? {
+    public func state() -> (any CodeConstructState<Node, Token>)? {
         return MarkdownContextState()
+    }
+    
+    public func state() -> (any CodeTokenState<MarkdownTokenElement>)? {
+        nil
     }
 }
 

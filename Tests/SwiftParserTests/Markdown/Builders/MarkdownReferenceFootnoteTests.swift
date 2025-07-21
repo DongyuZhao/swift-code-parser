@@ -2,13 +2,13 @@ import XCTest
 @testable import SwiftParser
 
 final class MarkdownReferenceFootnoteTests: XCTestCase {
-    private var parser: CodeParser<MarkdownNodeElement, MarkdownTokenElement>!
+    private var parser: CodeOutdatedParser<MarkdownNodeElement, MarkdownTokenElement>!
     private var language: MarkdownLanguage!
 
     override func setUp() {
         super.setUp()
         language = MarkdownLanguage()
-        parser = CodeParser(language: language)
+        parser = CodeOutdatedParser(language: language)
     }
 
     func testReferenceDefinition() {

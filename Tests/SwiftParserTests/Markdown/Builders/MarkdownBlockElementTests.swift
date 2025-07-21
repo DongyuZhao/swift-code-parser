@@ -2,13 +2,13 @@ import XCTest
 @testable import SwiftParser
 
 final class MarkdownBlockElementTests: XCTestCase {
-    var parser: CodeParser<MarkdownNodeElement, MarkdownTokenElement>!
+    var parser: CodeOutdatedParser<MarkdownNodeElement, MarkdownTokenElement>!
     var language: MarkdownLanguage!
 
     override func setUp() {
         super.setUp()
         language = MarkdownLanguage()
-        parser = CodeParser(language: language)
+        parser = CodeOutdatedParser(language: language)
     }
 
     func testFencedCodeBlock() {

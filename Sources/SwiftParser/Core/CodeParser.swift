@@ -1,51 +1,38 @@
-import Foundation
+public struct CodeParseResult<Node: CodeNodeElement, Token: CodeTokenElement> {
+    public let root: CodeNode<Node>
+    public let tokens: [any CodeToken<Token>]
+    public let errors: [CodeError]
 
-public final class CodeParser<Node, Token> where Node: CodeNodeElement, Token: CodeTokenElement {
+    public init(root: CodeNode<Node>, tokens: [any CodeToken<Token>], errors: [CodeError] = []) {
+        self.root = root
+        self.tokens = tokens
+        self.errors = errors
+    }
+}
+
+public class CodeParser<Node: CodeNodeElement, Token: CodeTokenElement> where Node: CodeNodeElement, Token: CodeTokenElement {
     private let language: any CodeLanguage<Node, Token>
+
+    private let tokenizer: CodeTokenizer<Token>
+    private let constructor: CodeConstructor<Node, Token>
 
     public init(language: any CodeLanguage<Node, Token>) {
         self.language = language
+        self.tokenizer = CodeTokenizer(builders: language.tokens, state: language.state)
+        self.constructor = CodeConstructor(builders: language.nodes, state: language.state)
     }
 
-    public func parse(_ input: String, root: CodeNode<Node>) -> (node: CodeNode<Node>, context: CodeContext<Node, Token>) {
-        let normalized = normalize(input)
-        let tokens = language.tokenizer.tokenize(normalized)
-        var context = CodeContext(current: root, tokens: tokens, state: language.state(of: normalized))
+    public func parse(_ source: String, language: any CodeLanguage<Node, Token>) -> CodeParseResult<Node, Token> {
+        let root = language.root()
+        let (tokens, errors) = tokenizer.tokenize(source)
 
-        while context.consuming < context.tokens.count {
-            // Stop at EOF without recording an error
-            if let token = context.tokens[context.consuming] as? MarkdownToken,
-               token.element == .eof {
-                break
-            }
-
-            var matched = false
-            for builder in language.builders {
-                if builder.build(from: &context) {
-                    matched = true
-                    break
-                }
-            }
-
-            if !matched {
-                // If no builder matched, record an error and skip the token
-                let token = context.tokens[context.consuming]
-                let error = CodeError("Unrecognized token: \(token.element)", range: token.range)
-                context.errors.append(error)
-                context.consuming += 1
-            }
+        if !errors.isEmpty {
+            return CodeParseResult(root: root, tokens: tokens, errors: errors)
         }
 
-        return (root, context)
-    }
+        let (parsed, failures) = constructor.parse(tokens, root: root)
 
-    /// Normalizes input string to handle line ending inconsistencies and other common issues
-    /// This ensures consistent behavior across different platforms and input sources
-    private func normalize(_ raw: String) -> String {
-        // Normalize line endings: Convert CRLF (\r\n) and CR (\r) to LF (\n)
-        // This prevents issues with different line ending conventions
-        return raw
-            .replacingOccurrences(of: "\r\n", with: "\n")  // Windows CRLF -> Unix LF
-            .replacingOccurrences(of: "\r", with: "\n")    // Classic Mac CR -> Unix LF
+        // Errors from the tokenization phase must be empty here
+        return CodeParseResult(root: parsed, tokens: tokens, errors: failures)
     }
 }

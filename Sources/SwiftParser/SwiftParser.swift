@@ -4,9 +4,14 @@ import Foundation
 public struct SwiftParser<Node: CodeNodeElement, Token: CodeTokenElement> where Node: CodeNodeElement, Token: CodeTokenElement {
     public init() {}
 
-    public func parse(_ source: String, language: any CodeLanguage<Node, Token>) -> ParsedSource<Node> {
-        let root = language.root(of: source)
+    public static func parse(_ source: String, language: any CodeLanguage<Node, Token>) -> CodeParseResult<Node, Token> {
         let parser = CodeParser(language: language)
+        return parser.parse(source, language: language)
+    }
+
+    public func parse(_ source: String, language: any CodeLanguage<Node, Token>) -> ParsedSource<Node> {
+        let root = language.root()
+        let parser = CodeOutdatedParser(language: language)
         let result = parser.parse(source, root: root)
         return ParsedSource(content: source, root: result.node, errors: result.context.errors)
     }
