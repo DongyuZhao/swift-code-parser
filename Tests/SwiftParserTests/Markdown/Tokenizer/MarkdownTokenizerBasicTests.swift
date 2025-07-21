@@ -445,9 +445,10 @@ final class MarkdownTokenizerBasicTests: XCTestCase {
         // Should tokenize each character individually and end with EOF
         XCTAssertEqual(tokens.count, 32) // 31 chars + EOF
         XCTAssertEqual(tokens.last?.element, .eof)
-        
+
         // Test some key characters are properly recognized
         XCTAssertEqual(tokens[0].element, .exclamation)
+        XCTAssertEqual(tokens[1].element, .atSign)
         XCTAssertEqual(tokens[2].element, .hash)
         XCTAssertEqual(tokens[5].element, .caret)
         XCTAssertEqual(tokens[6].element, .ampersand)

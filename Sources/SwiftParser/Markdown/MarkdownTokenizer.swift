@@ -66,6 +66,9 @@ public class MarkdownTokenizer: CodeTokenizer {
             
         case "^":
             addToken(.caret, text: "^", from: startIndex)
+
+        case "@":
+            addToken(.atSign, text: "@", from: startIndex)
             
         case "|":
             addToken(.pipe, text: "|", from: startIndex)
@@ -1174,7 +1177,7 @@ extension MarkdownTokenizer {
     /// Check if a character is a special character that should be tokenized separately
     private func isSpecialCharacter(_ char: Character) -> Bool {
         switch char {
-        case "#", "*", "_", "`", "-", "+", "=", "~", "^", "|", ":", ";", "!", "?", ".", ",", ">", "<", "&", "\\", "/", "\"", "'", "[", "]", "(", ")", "{", "}", "$":
+        case "#", "*", "_", "`", "-", "+", "=", "~", "^", "@", "|", ":", ";", "!", "?", ".", ",", ">", "<", "&", "\\", "/", "\"", "'", "[", "]", "(", ")", "{", "}", "$":
             return true
         case " ", "\t", "\n", "\r":
             return true
