@@ -44,39 +44,99 @@ final class MarkdownTokenizerComplexTests: XCTestCase {
     // MARK: - Complex Tests
     
     func testComplexMarkdownStructures() {
-        let testCases: [(String, String)] = [
-            ("# Heading with **bold** and *italic*", "Heading with mixed formatting"),
-            ("Text with `inline code` and **bold** text", "Mixed inline elements"),
-            ("Link with [text](url) and ![image](src)", "Links and images"),
-            ("List with - **bold** item and - *italic* item", "Lists with formatting"),
-            ("Quote with > **bold** text and > *italic* text", "Quotes with formatting"),
-            ("Math with $x = 1$ and code with `y = 2`", "Math and code"),
-            ("HTML with <strong>bold</strong> and markdown **bold**", "HTML and markdown")
+        let testCases: [(String, [MarkdownTokenElement], String)] = [
+            (
+                "# Heading with **bold** and *italic*",
+                [.hash, .space, .text, .space, .text, .space, .asterisk, .asterisk, .text, .asterisk, .asterisk, .space, .text, .space, .asterisk, .text, .asterisk, .eof],
+                "Heading with mixed formatting"
+            ),
+            (
+                "Text with `inline code` and **bold** text",
+                [.text, .space, .text, .space, .inlineCode, .space, .text, .space, .asterisk, .asterisk, .text, .asterisk, .asterisk, .space, .text, .eof],
+                "Mixed inline elements"
+            ),
+            (
+                "Link with [text](url) and ![image](src)",
+                [.text, .space, .text, .space, .leftBracket, .text, .rightBracket, .leftParen, .text, .rightParen, .space, .text, .space, .exclamation, .leftBracket, .text, .rightBracket, .leftParen, .text, .rightParen, .eof],
+                "Links and images"
+            ),
+            (
+                "List with - **bold** item and - *italic* item",
+                [.text, .space, .text, .space, .dash, .space, .asterisk, .asterisk, .text, .asterisk, .asterisk, .space, .text, .space, .text, .space, .dash, .space, .asterisk, .text, .asterisk, .space, .text, .eof],
+                "Lists with formatting"
+            ),
+            (
+                "Quote with > **bold** text and > *italic* text",
+                [.text, .space, .text, .space, .gt, .space, .asterisk, .asterisk, .text, .asterisk, .asterisk, .space, .text, .space, .text, .space, .gt, .space, .asterisk, .text, .asterisk, .space, .text, .eof],
+                "Quotes with formatting"
+            ),
+            (
+                "Math with $x = 1$ and code with `y = 2`",
+                [.text, .space, .text, .space, .formula, .space, .text, .space, .text, .space, .text, .space, .inlineCode, .eof],
+                "Math and code"
+            ),
+            (
+                "HTML with <strong>bold</strong> and markdown **bold**",
+                [.text, .space, .text, .space, .htmlBlock, .space, .text, .space, .text, .space, .asterisk, .asterisk, .text, .asterisk, .asterisk, .eof],
+                "HTML and markdown"
+            )
         ]
-        
-        for (input, description) in testCases {
+
+        for (input, expectedElements, description) in testCases {
             let tokens = tokenizer.tokenize(input)
-            XCTAssertGreaterThan(tokens.count, 1, "Should tokenize: \(description)")
-            XCTAssertEqual(tokens.last?.element, .eof, "Should end with EOF: \(description)")
+            let actual = getTokenElements(tokens)
+            XCTAssertEqual(actual, expectedElements, "Token sequence mismatch for: \(description)")
         }
     }
     
     func testMixedComplexSyntax() {
-        let testCases: [(String, String)] = [
-            ("**Bold with `code` inside**", "Bold with code"),
-            ("*Italic with **bold** inside*", "Italic with bold"),
-            ("`Code with **bold** inside`", "Code with bold"),
-            ("$Math with text inside$", "Math with text"),
-            ("<strong>HTML with `code` inside</strong>", "HTML with code"),
-            ("<!-- Comment with **bold** inside -->", "Comment with bold"),
-            ("&amp; Entity with **bold** after", "Entity with bold"),
-            ("# Heading with $math$ and [link](url)", "Heading with math and link")
+        let testCases: [(String, [MarkdownTokenElement], String)] = [
+            (
+                "**Bold with `code` inside**",
+                [.asterisk, .asterisk, .text, .space, .text, .space, .inlineCode, .space, .text, .asterisk, .asterisk, .eof],
+                "Bold with code"
+            ),
+            (
+                "*Italic with **bold** inside*",
+                [.asterisk, .text, .space, .text, .space, .asterisk, .asterisk, .text, .asterisk, .asterisk, .space, .text, .asterisk, .eof],
+                "Italic with bold"
+            ),
+            (
+                "`Code with **bold** inside`",
+                [.inlineCode, .eof],
+                "Code with bold"
+            ),
+            (
+                "$Math with text inside$",
+                [.formula, .eof],
+                "Math with text"
+            ),
+            (
+                "<strong>HTML with `code` inside</strong>",
+                [.htmlBlock, .eof],
+                "HTML with code"
+            ),
+            (
+                "<!-- Comment with **bold** inside -->",
+                [.htmlComment, .eof],
+                "Comment with bold"
+            ),
+            (
+                "&amp; Entity with **bold** after",
+                [.htmlEntity, .space, .text, .space, .text, .space, .asterisk, .asterisk, .text, .asterisk, .asterisk, .space, .text, .eof],
+                "Entity with bold"
+            ),
+            (
+                "# Heading with $math$ and [link](url)",
+                [.hash, .space, .text, .space, .text, .space, .formula, .space, .text, .space, .leftBracket, .text, .rightBracket, .leftParen, .text, .rightParen, .eof],
+                "Heading with math and link"
+            )
         ]
-        
-        for (input, description) in testCases {
+
+        for (input, expectedElements, description) in testCases {
             let tokens = tokenizer.tokenize(input)
-            XCTAssertGreaterThan(tokens.count, 1, "Should tokenize: \(description)")
-            XCTAssertEqual(tokens.last?.element, .eof, "Should end with EOF: \(description)")
+            let actual = getTokenElements(tokens)
+            XCTAssertEqual(actual, expectedElements, "Token sequence mismatch for: \(description)")
         }
     }
     
