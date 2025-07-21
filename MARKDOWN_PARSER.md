@@ -28,7 +28,7 @@ This document provides an overview of the Markdown parser built on top of the Sw
 ### Academic Extensions
 - ✅ **Footnotes**: Definition and reference support (\[\^1\]: footnote, \[^1\])
 - ✅ **Citations**: Academic citation support (\[\@author2023\]: reference, \[\@author2023\])
-- ✅ **Math formulas**: inline (\$math\$) and block (\$\$math\$\$)
+- ✅ **Math formulas**: inline (`$math$`) and block (`$$math$$`)
 
 ### Other Extensions
 - ✅ **Definition lists**: term/definition pairs
@@ -625,10 +625,6 @@ When reporting bugs, include:
 ## Future Roadmap
 
 ### Planned Features
-- [x] **Definition Lists**: Support for definition list syntax
-- [x] **Admonitions**: Support for warning/info/note blocks
-- [ ] **Mermaid Diagrams**: Inline diagram support
-- [x] **Custom Containers**: Generic container syntax (:::)
 - [ ] **Syntax Highlighting**: Code block syntax highlighting
 - [ ] **Export Formats**: HTML, PDF, and other output formats
 
