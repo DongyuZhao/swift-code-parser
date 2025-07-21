@@ -1,7 +1,7 @@
 import XCTest
 @testable import SwiftParser
 
-final class MarkdownInlineConsumerTests: XCTestCase {
+final class MarkdownInlineBuilderTests: XCTestCase {
     private var parser: CodeParser<MarkdownNodeElement, MarkdownTokenElement>!
     private var language: MarkdownLanguage!
 
@@ -11,7 +11,7 @@ final class MarkdownInlineConsumerTests: XCTestCase {
         parser = CodeParser(language: language)
     }
 
-    func testItalicConsumer_parsesItalicText() {
+    func testItalicBuilderParsesItalicText() {
         let input = "*italic*"
         let root = language.root(of: input)
         let (node, context) = parser.parse(input, root: root)
@@ -32,7 +32,7 @@ final class MarkdownInlineConsumerTests: XCTestCase {
         }
     }
 
-    func testBoldConsumer_parsesStrongText() {
+    func testBoldBuilderParsesStrongText() {
         let input = "**bold**"
         let root = language.root(of: input)
         let (node, context) = parser.parse(input, root: root)
@@ -53,7 +53,7 @@ final class MarkdownInlineConsumerTests: XCTestCase {
         }
     }
 
-    func testNestedEmphasis_parsesBoldAndItalic() {
+    func testNestedEmphasisParsesBoldAndItalic() {
         let input = "**bold *and italic***"
         let root = language.root(of: input)
         let (node, context) = parser.parse(input, root: root)
@@ -69,7 +69,7 @@ final class MarkdownInlineConsumerTests: XCTestCase {
         XCTAssertTrue(para.children[2] is TextNode)
     }
 
-    func testInlineCodeConsumer_parsesInlineCode() {
+    func testInlineCodeBuilderParsesInlineCode() {
         let input = "`code`"
         let root = language.root(of: input)
         let (node, context) = parser.parse(input, root: root)
@@ -85,7 +85,7 @@ final class MarkdownInlineConsumerTests: XCTestCase {
         XCTAssertEqual(code?.code, "code")
     }
 
-    func testInlineFormulaConsumer_parsesFormula() {
+    func testInlineFormulaBuilderParsesFormula() {
         let input = "$x^2$"
         let root = language.root(of: input)
         let (node, context) = parser.parse(input, root: root)
@@ -101,7 +101,7 @@ final class MarkdownInlineConsumerTests: XCTestCase {
         XCTAssertEqual(formula?.expression, "x^2")
     }
 
-    func testAutolinkConsumer_parsesAutolink() {
+    func testAutolinkBuilderParsesAutolink() {
         let urlString = "https://example.com"
         let input = "<\(urlString)>"
         let root = language.root(of: input)
@@ -119,7 +119,7 @@ final class MarkdownInlineConsumerTests: XCTestCase {
         XCTAssertEqual(link?.title, urlString)
     }
 
-    func testURLConsumer_parsesBareURL() {
+    func testURLBuilderParsesBareURL() {
         let urlString = "https://example.com"
         let input = urlString
         let root = language.root(of: input)
@@ -137,7 +137,7 @@ final class MarkdownInlineConsumerTests: XCTestCase {
         XCTAssertEqual(link?.title, urlString)
     }
 
-    func testHTMLInlineConsumer_parsesEntityAndTag() {
+    func testHTMLInlineBuilderParsesEntityAndTag() {
         let input = "&amp;<b>bold</b>"
         let root = language.root(of: input)
         let (node, context) = parser.parse(input, root: root)
@@ -159,7 +159,7 @@ final class MarkdownInlineConsumerTests: XCTestCase {
         XCTAssertEqual(tag?.content, "<b>bold</b>")
     }
     
-    func testBlockquoteConsumer_parsesBlockquote() {
+    func testBlockquoteBuilderParsesBlockquote() {
         let input = "> hello"
         let root = language.root(of: input)
         let (node, context) = parser.parse(input, root: root)
