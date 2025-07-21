@@ -11,6 +11,7 @@ public enum MarkdownTokenElement: String, CaseIterable, CodeTokenElement {
     case equals = "="
     case tilde = "~"
     case caret = "^"
+    case atSign = "@"
     case pipe = "|"
     case colon = ":"
     case semicolon = ";"
@@ -110,6 +111,10 @@ public class MarkdownToken: CodeToken {
     
     public static func tilde(at range: Range<String.Index>) -> MarkdownToken {
         return MarkdownToken(element: .tilde, text: "~", range: range)
+    }
+
+    public static func atSign(at range: Range<String.Index>) -> MarkdownToken {
+        return MarkdownToken(element: .atSign, text: "@", range: range)
     }
     
     public static func pipe(at range: Range<String.Index>) -> MarkdownToken {
@@ -261,7 +266,7 @@ extension MarkdownToken {
     /// Check if this token is a punctuation character
     public var isPunctuation: Bool {
         switch element {
-        case .exclamation, .question, .dot, .comma, .semicolon, .colon, .quote, .singleQuote:
+        case .exclamation, .question, .dot, .comma, .semicolon, .colon, .quote, .singleQuote, .atSign:
             return true
         default:
             return false
