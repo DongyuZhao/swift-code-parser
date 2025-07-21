@@ -43,7 +43,7 @@ public class MarkdownLanguage: CodeLanguage {
     ) {
         self.outdatedTokenizer = outdatedTokenizer
         self.nodes = consumers
-        self.tokens = []
+        self.tokens = MarkdownTokenBuilders.commonMarkBase()
     }
     
     // MARK: - Language Protocol Implementation
