@@ -28,6 +28,8 @@ public class MarkdownSingleCharacterTokenBuilder: CodeTokenBuilder {
         "/": .forwardSlash,
         "\"": .quote,
         "'": .singleQuote,
+        "$": .text,
+        "%": .text,
         "[": .leftBracket,
         "]": .rightBracket,
         "(": .leftParen,

@@ -10,6 +10,12 @@ public class MarkdownWhitespaceTokenBuilder: CodeTokenBuilder {
         let char = context.source[context.consuming]
 
         switch char {
+        case "\r\n":
+            let start = context.consuming
+            context.consuming = context.source.index(after: context.consuming)
+            let range = start..<context.consuming
+            context.tokens.append(MarkdownToken(element: .newline, text: "\r\n", range: range))
+            return true
         case " ":
             let start = context.consuming
             context.consuming = context.source.index(after: context.consuming)

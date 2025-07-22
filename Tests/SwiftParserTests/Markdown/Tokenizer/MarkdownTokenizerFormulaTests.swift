@@ -2,14 +2,15 @@ import XCTest
 @testable import SwiftParser
 
 final class MarkdownTokenizerFormulaTests: XCTestCase {
-    
-    var tokenizer: MarkdownTokenizer!
-    
+
+    private var tokenizer: CodeTokenizer<MarkdownTokenElement>!
+
     override func setUp() {
         super.setUp()
-        tokenizer = MarkdownTokenizer()
+        let language = MarkdownLanguage()
+        tokenizer = CodeTokenizer(builders: language.tokens, state: language.state)
     }
-    
+
     override func tearDown() {
         tokenizer = nil
         super.tearDown()
@@ -64,7 +65,7 @@ final class MarkdownTokenizerFormulaTests: XCTestCase {
         ]
         
         for (input, expectedElements) in testCases {
-            let tokens = tokenizer.tokenize(input)
+            let (tokens, _) = tokenizer.tokenize(input)
             XCTAssertEqual(tokens.count, expectedElements.count, "Failed for input '\(input)'")
             
             for (index, expectedElement) in expectedElements.enumerated() {
@@ -80,7 +81,7 @@ final class MarkdownTokenizerFormulaTests: XCTestCase {
         ]
         
         for (input, expectedElements) in testCases {
-            let tokens = tokenizer.tokenize(input)
+            let (tokens, _) = tokenizer.tokenize(input)
             XCTAssertEqual(tokens.count, expectedElements.count, "Failed for input '\(input)'")
             
             for (index, expectedElement) in expectedElements.enumerated() {
@@ -97,7 +98,7 @@ final class MarkdownTokenizerFormulaTests: XCTestCase {
         ]
         
         for (input, expectedMath) in testCases {
-            let tokens = tokenizer.tokenize(input)
+            let (tokens, _) = tokenizer.tokenize(input)
             let mathTokens = tokens.filter { $0.element == .formula }
             XCTAssertGreaterThan(mathTokens.count, 0, "Should find math tokens in: \(input)")
             
@@ -117,7 +118,7 @@ final class MarkdownTokenizerFormulaTests: XCTestCase {
         ]
         
         for (input, expectedMath) in testCases {
-            let tokens = tokenizer.tokenize(input)
+            let (tokens, _) = tokenizer.tokenize(input)
             let mathTokens = tokens.filter { $0.element == .formulaBlock }
             XCTAssertGreaterThan(mathTokens.count, 0, "Should find display math tokens in: \(input)")
             
@@ -131,7 +132,7 @@ final class MarkdownTokenizerFormulaTests: XCTestCase {
     
     func testMathInTextContext() {
         let text = "This is \\(inline\\) and \\[display\\] math."
-        let tokens = tokenizer.tokenize(text)
+        let (tokens, _) = tokenizer.tokenize(text)
         
         let elements = getTokenElements(tokens)
         let texts = getTokenTexts(tokens)
@@ -157,7 +158,7 @@ final class MarkdownTokenizerFormulaTests: XCTestCase {
         ]
         
         for (input, expectedElement) in testCases {
-            let tokens = tokenizer.tokenize(input)
+            let (tokens, _) = tokenizer.tokenize(input)
             XCTAssertEqual(tokens.count, 2, "Expected 2 tokens for math formula '\(input)'")
             assertToken(at: 0, in: tokens, expectedElement: expectedElement, expectedText: input)
             assertToken(at: 1, in: tokens, expectedElement: .eof, expectedText: "")
@@ -174,7 +175,7 @@ final class MarkdownTokenizerFormulaTests: XCTestCase {
         ]
         
         for (input, expectedElement) in testCases {
-            let tokens = tokenizer.tokenize(input)
+            let (tokens, _) = tokenizer.tokenize(input)
             XCTAssertEqual(tokens.count, 2, "Expected 2 tokens for complex math formula '\(input)'")
             assertToken(at: 0, in: tokens, expectedElement: expectedElement, expectedText: input)
             assertToken(at: 1, in: tokens, expectedElement: .eof, expectedText: "")
@@ -196,7 +197,7 @@ final class MarkdownTokenizerFormulaTests: XCTestCase {
         ]
         
         for (input, expectedElement) in testCases {
-            let tokens = tokenizer.tokenize(input)
+            let (tokens, _) = tokenizer.tokenize(input)
             XCTAssertEqual(tokens.count, 2, "Expected 2 tokens for TeX math formula '\(input)'")
             assertToken(at: 0, in: tokens, expectedElement: expectedElement, expectedText: input)
             assertToken(at: 1, in: tokens, expectedElement: .eof, expectedText: "")
@@ -216,7 +217,7 @@ final class MarkdownTokenizerFormulaTests: XCTestCase {
         ]
         
         for (input, expectedElement, expectedCount) in testCases {
-            let tokens = tokenizer.tokenize(input)
+            let (tokens, _) = tokenizer.tokenize(input)
             
             if input == "$ $" {
                 // For "$ $", it should be treated as separate tokens
@@ -247,7 +248,7 @@ final class MarkdownTokenizerFormulaTests: XCTestCase {
         ]
         
         for (input, expectedElement) in testCases {
-            let tokens = tokenizer.tokenize(input)
+            let (tokens, _) = tokenizer.tokenize(input)
             XCTAssertEqual(tokens.count, 2, "Expected 2 tokens for math formula with special chars '\(input)'")
             assertToken(at: 0, in: tokens, expectedElement: expectedElement, expectedText: input)
             assertToken(at: 1, in: tokens, expectedElement: .eof, expectedText: "")
@@ -265,7 +266,7 @@ final class MarkdownTokenizerFormulaTests: XCTestCase {
         ]
         
         for (input, expectedElement, expectedCount) in testCases {
-            let tokens = tokenizer.tokenize(input)
+            let (tokens, _) = tokenizer.tokenize(input)
             
             if input == "$ x = y $" {
                 // This should be treated as separate tokens because inline math can't start with whitespace
@@ -304,7 +305,7 @@ final class MarkdownTokenizerFormulaTests: XCTestCase {
     
     func testNonMathBackslash() {
         let text = "\\n and \\t and \\x"
-        let tokens = tokenizer.tokenize(text)
+        let (tokens, _) = tokenizer.tokenize(text)
         
         let elements = getTokenElements(tokens)
         
@@ -344,7 +345,7 @@ final class MarkdownTokenizerFormulaTests: XCTestCase {
         ]
         
         for input in testCases {
-            let tokens = tokenizer.tokenize(input)
+            let (tokens, _) = tokenizer.tokenize(input)
             let elements = getTokenElements(tokens)
             
             XCTAssertFalse(elements.contains(.formula), "Should not contain formula tokens for '\(input)'")
@@ -382,7 +383,7 @@ final class MarkdownTokenizerFormulaTests: XCTestCase {
     
     func testCompleteMathFormulas() {
         let input = "Inline $a = b$ and display $$c = d$$ and TeX inline \\(e = f\\) and TeX display \\[g = h\\]"
-        let tokens = tokenizer.tokenize(input)
+        let (tokens, _) = tokenizer.tokenize(input)
         
         let formulaTokens = tokens.filter { $0.element == .formula }
         let formulaBlockTokens = tokens.filter { $0.element == .formulaBlock }
@@ -400,7 +401,7 @@ final class MarkdownTokenizerFormulaTests: XCTestCase {
     
     func testUnmatchedMathDelimiters() {
         let input = "Just a $ sign and some \\] closing"
-        let tokens = tokenizer.tokenize(input)
+        let (tokens, _) = tokenizer.tokenize(input)
         
         let textTokens = tokens.filter { $0.element == .text }
         let formulaTokens = tokens.filter { $0.element == .formula }
@@ -423,7 +424,7 @@ final class MarkdownTokenizerFormulaTests: XCTestCase {
         ]
         
         for input in testCases {
-            let tokens = tokenizer.tokenize(input)
+            let (tokens, _) = tokenizer.tokenize(input)
             let formulaTokens = tokens.filter { $0.element == .formula }
             let formulaBlockTokens = tokens.filter { $0.element == .formulaBlock }
             
@@ -452,7 +453,7 @@ final class MarkdownTokenizerFormulaTests: XCTestCase {
         ]
         
         for input in testCases {
-            let tokens = tokenizer.tokenize(input)
+            let (tokens, _) = tokenizer.tokenize(input)
             let formulaTokens = tokens.filter { $0.element == .formula }
             let formulaBlockTokens = tokens.filter { $0.element == .formulaBlock }
             
@@ -479,7 +480,7 @@ final class MarkdownTokenizerFormulaTests: XCTestCase {
     
     func testLargeMathFormulas() {
         let longFormula = "$" + String(repeating: "x + ", count: 1000) + "y$"
-        let tokens = tokenizer.tokenize(longFormula)
+        let (tokens, _) = tokenizer.tokenize(longFormula)
         
         XCTAssertEqual(tokens.count, 2, "Should produce 2 tokens for long formula")
         XCTAssertEqual(tokens[0].element, .formula, "Should be formula token")
@@ -488,7 +489,7 @@ final class MarkdownTokenizerFormulaTests: XCTestCase {
     
     func testManyMathFormulas() {
         let manyFormulas = Array(1...100).map { "$x_{\($0)}$" }.joined(separator: " ")
-        let tokens = tokenizer.tokenize(manyFormulas)
+        let (tokens, _) = tokenizer.tokenize(manyFormulas)
         
         let formulaTokens = tokens.filter { $0.element == .formula }
         XCTAssertEqual(formulaTokens.count, 100, "Should find 100 formula tokens")
@@ -514,7 +515,7 @@ final class MarkdownTokenizerFormulaTests: XCTestCase {
         ]
         
         for input in testCases {
-            let tokens = tokenizer.tokenize(input)
+            let (tokens, _) = tokenizer.tokenize(input)
             let mathTokens = tokens.filter { $0.element == .formula || $0.element == .formulaBlock }
             
             XCTAssertGreaterThan(mathTokens.count, 0, "Should find math tokens in: \(input)")
