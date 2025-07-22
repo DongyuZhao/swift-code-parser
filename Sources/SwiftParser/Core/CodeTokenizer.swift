@@ -16,20 +16,36 @@ public class CodeTokenizer<Token> where Token: CodeTokenElement {
 
     public func tokenize(_ input: String) -> ([any CodeToken<Token>], [CodeError]) {
         var context = CodeTokenContext<Token>(source: input, state: state())
-        let current = context.consuming
 
         while context.consuming < context.source.endIndex {
-            for token in builders {
-                if token.build(from: &context) {
+            let start = context.consuming
+            var matched = false
+
+            for builder in builders {
+                if builder.build(from: &context) {
+                    matched = true
                     break
                 }
             }
 
-            if current == context.consuming {
+            if !matched {
                 // No token matched, record an error and skip one character
-                context.errors.append(CodeError("Unrecognized character: \(context.source[context.consuming])", range: context.consuming..<context.consuming))
-                break
+                let next = context.source.index(after: context.consuming)
+                let range = context.consuming..<next
+                context.errors.append(CodeError("Unrecognized character: \(context.source[context.consuming])", range: range))
+                context.consuming = next
             }
+
+            if start == context.consuming {
+                // Ensure progress to avoid infinite loop
+                context.consuming = context.source.index(after: context.consuming)
+            }
+        }
+
+        // Automatically append EOF token for Markdown
+        if Token.self == MarkdownTokenElement.self,
+           let eof = MarkdownToken.eof(at: input.endIndex..<input.endIndex) as? any CodeToken<Token> {
+            context.tokens.append(eof)
         }
 
         return (context.tokens, context.errors)
