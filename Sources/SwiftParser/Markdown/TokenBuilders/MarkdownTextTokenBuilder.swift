@@ -29,9 +29,17 @@ public class MarkdownTextTokenBuilder: CodeTokenBuilder {
             } else {
                 prevIsLetter = false
             }
-            let nextIdx = context.source.index(after: context.consuming)
-            let nextIsLetter = nextIdx < context.source.endIndex ? context.source[nextIdx].isLetter : false
-            if !prevIsLetter && !nextIsLetter {
+
+            var lookahead = context.source.index(after: context.consuming)
+            var hasLetter = false
+            while lookahead < context.source.endIndex {
+                let c = context.source[lookahead]
+                if c.isLetter { hasLetter = true; break }
+                if boundaries.contains(c) { break }
+                if !c.isNumber { break }
+                lookahead = context.source.index(after: lookahead)
+            }
+            if !prevIsLetter && !hasLetter {
                 return false
             }
         }

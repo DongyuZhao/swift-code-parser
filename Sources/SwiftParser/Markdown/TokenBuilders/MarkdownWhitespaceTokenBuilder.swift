@@ -29,8 +29,10 @@ public class MarkdownWhitespaceTokenBuilder: CodeTokenBuilder {
             let start = context.consuming
             let next = context.source.index(after: context.consuming)
             if next < context.source.endIndex && context.source[next] == "\n" {
-                context.consuming = context.source.index(after: next)
-                context.tokens.append(MarkdownToken.newline(at: start..<context.consuming))
+                let end = context.source.index(after: next)
+                context.consuming = end
+                let range = start..<end
+                context.tokens.append(MarkdownToken(element: .newline, text: "\r\n", range: range))
             } else {
                 context.consuming = next
                 let range = start..<context.consuming
