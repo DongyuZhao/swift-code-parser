@@ -36,6 +36,7 @@ public class MarkdownLanguage: CodeLanguage {
         let single = MarkdownSingleCharacterTokenBuilder()
         self.tokens = [
             MarkdownCodeTokenBuilder(),
+            MarkdownFormulaTokenBuilder(),
             MarkdownWhitespaceTokenBuilder(),
             MarkdownURLTokenBuilder(),
             MarkdownHTMLTokenBuilder(),
