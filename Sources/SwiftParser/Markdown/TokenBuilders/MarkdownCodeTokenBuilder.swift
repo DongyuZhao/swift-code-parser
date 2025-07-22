@@ -90,7 +90,7 @@ public class MarkdownCodeTokenBuilder: CodeTokenBuilder {
         }
 
         let end: String.Index
-        if let closing = closingStart {
+        if closingStart != nil {
             end = search
             context.consuming = search
         } else {

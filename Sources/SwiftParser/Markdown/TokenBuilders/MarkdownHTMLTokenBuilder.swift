@@ -115,7 +115,7 @@ public class MarkdownHTMLTokenBuilder: CodeTokenBuilder {
         return false
     }
 
-    @preconcurrency nonisolated(unsafe) static let validEntities: Set<String> = [
+    static let validEntities: Set<String> = [
         "amp", "lt", "gt", "quot", "apos", "nbsp", "copy", "reg", "trade",
         "hellip", "mdash", "ndash", "lsquo", "rsquo", "ldquo", "rdquo",
         "bull", "middot", "times", "divide", "plusmn", "sup2", "sup3",
