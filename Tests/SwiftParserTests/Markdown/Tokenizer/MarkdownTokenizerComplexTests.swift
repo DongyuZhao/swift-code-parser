@@ -2,14 +2,15 @@ import XCTest
 @testable import SwiftParser
 
 final class MarkdownTokenizerComplexTests: XCTestCase {
-    
-    var tokenizer: MarkdownTokenizer!
-    
+
+    private var tokenizer: CodeTokenizer<MarkdownTokenElement>!
+
     override func setUp() {
         super.setUp()
-        tokenizer = MarkdownTokenizer()
+        let language = MarkdownLanguage()
+        tokenizer = CodeTokenizer(builders: language.tokens, state: language.state)
     }
-    
+
     override func tearDown() {
         tokenizer = nil
         super.tearDown()
@@ -83,7 +84,7 @@ final class MarkdownTokenizerComplexTests: XCTestCase {
         ]
 
         for (input, expectedElements, description) in testCases {
-            let tokens = tokenizer.tokenize(input)
+            let (tokens, _) = tokenizer.tokenize(input)
             let actual = getTokenElements(tokens)
             XCTAssertEqual(actual, expectedElements, "Token sequence mismatch for: \(description)")
         }
@@ -134,7 +135,7 @@ final class MarkdownTokenizerComplexTests: XCTestCase {
         ]
 
         for (input, expectedElements, description) in testCases {
-            let tokens = tokenizer.tokenize(input)
+            let (tokens, _) = tokenizer.tokenize(input)
             let actual = getTokenElements(tokens)
             XCTAssertEqual(actual, expectedElements, "Token sequence mismatch for: \(description)")
         }
@@ -178,7 +179,7 @@ final class MarkdownTokenizerComplexTests: XCTestCase {
         &amp; HTML entity &lt;test&gt;
         """
         
-        let tokens = tokenizer.tokenize(complexDocument)
+        let (tokens, _) = tokenizer.tokenize(complexDocument)
         
         XCTAssertGreaterThan(tokens.count, 100, "Should produce many tokens for complex document")
         XCTAssertEqual(tokens.last?.element, .eof, "Should end with EOF")
@@ -214,7 +215,7 @@ final class MarkdownTokenizerComplexTests: XCTestCase {
         // Create a reasonably large document
         let largeText = Array(repeating: "This is a paragraph with **bold** and *italic* text. ", count: 50).joined()
         
-        let tokens = tokenizer.tokenize(largeText)
+        let (tokens, _) = tokenizer.tokenize(largeText)
         
         XCTAssertGreaterThan(tokens.count, 50, "Should produce many tokens for large document")
         XCTAssertEqual(tokens.last?.element, .eof, "Should end with EOF")
@@ -243,7 +244,7 @@ final class MarkdownTokenizerComplexTests: XCTestCase {
         ]
         
         for (input, description, expectedElements) in testCases {
-            let tokens = tokenizer.tokenize(input)
+            let (tokens, _) = tokenizer.tokenize(input)
             let actualElements = getTokenElements(tokens)
             
             XCTAssertEqual(actualElements.count, expectedElements.count, 
@@ -267,7 +268,7 @@ final class MarkdownTokenizerComplexTests: XCTestCase {
         ]
         
         for (input, description) in testCases {
-            let tokens = tokenizer.tokenize(input)
+            let (tokens, _) = tokenizer.tokenize(input)
             
             if input.starts(with: "```") {
                 // Should be treated as fenced code block

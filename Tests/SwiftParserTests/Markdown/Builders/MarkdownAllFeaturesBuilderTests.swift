@@ -71,8 +71,9 @@ Citation[@smith2023] and footnote[^1].
         XCTAssertTrue(context.errors.isEmpty)
         XCTAssertGreaterThan(node.children.count, 0)
 
-        // Ensure tokenizer runs without errors
-        let tokens = MarkdownTokenizer().tokenize(markdown)
+        // Ensure tokenizer runs without errors using the new tokenizer
+        let tokenizer = CodeTokenizer(builders: language.tokens, state: language.state)
+        let (tokens, _) = tokenizer.tokenize(markdown)
         XCTAssertGreaterThan(tokens.count, 0)
 
         // Verify important structures exist

@@ -2,14 +2,15 @@ import XCTest
 @testable import SwiftParser
 
 final class MarkdownTokenizerBasicTests: XCTestCase {
-    
-    var tokenizer: MarkdownTokenizer!
-    
+
+    private var tokenizer: CodeTokenizer<MarkdownTokenElement>!
+
     override func setUp() {
         super.setUp()
-        tokenizer = MarkdownTokenizer()
+        let language = MarkdownLanguage()
+        tokenizer = CodeTokenizer(builders: language.tokens, state: language.state)
     }
-    
+
     override func tearDown() {
         tokenizer = nil
         super.tearDown()
@@ -74,7 +75,7 @@ final class MarkdownTokenizerBasicTests: XCTestCase {
         ]
         
         for (input, expectedElement) in testCases {
-            let tokens = tokenizer.tokenize(input)
+            let (tokens, _) = tokenizer.tokenize(input)
             XCTAssertEqual(tokens.count, 2, "Expected 2 tokens for input '\(input)'")
             assertToken(at: 0, in: tokens, expectedElement: expectedElement, expectedText: input)
             assertToken(at: 1, in: tokens, expectedElement: .eof, expectedText: "")
@@ -90,7 +91,7 @@ final class MarkdownTokenizerBasicTests: XCTestCase {
         ]
         
         for (input, expectedElements) in testCases {
-            let tokens = tokenizer.tokenize(input)
+            let (tokens, _) = tokenizer.tokenize(input)
             XCTAssertEqual(tokens.count, expectedElements.count + 1, "Expected \(expectedElements.count + 1) tokens for input '\(input)'")
             
             for (index, expectedElement) in expectedElements.enumerated() {
@@ -111,7 +112,7 @@ final class MarkdownTokenizerBasicTests: XCTestCase {
         ]
         
         for (input, expectedElement) in testCases {
-            let tokens = tokenizer.tokenize(input)
+            let (tokens, _) = tokenizer.tokenize(input)
             XCTAssertEqual(tokens.count, 2, "Expected 2 tokens for whitespace input")
             assertToken(at: 0, in: tokens, expectedElement: expectedElement, expectedText: input)
             assertToken(at: 1, in: tokens, expectedElement: .eof, expectedText: "")
@@ -120,7 +121,7 @@ final class MarkdownTokenizerBasicTests: XCTestCase {
     
     func testCRLFHandling() {
         let text = "\r\n"
-        let tokens = tokenizer.tokenize(text)
+        let (tokens, _) = tokenizer.tokenize(text)
         
         XCTAssertEqual(tokens.count, 2)
         XCTAssertEqual(tokens[0].element, .newline)
@@ -130,7 +131,7 @@ final class MarkdownTokenizerBasicTests: XCTestCase {
     
     func testMultipleWhitespace() {
         let text = "   \t\n  "
-        let tokens = tokenizer.tokenize(text)
+        let (tokens, _) = tokenizer.tokenize(text)
         
         let expectedElements: [MarkdownTokenElement] = [
             .space, .space, .space, .tab, .newline, .space, .space, .eof
@@ -156,7 +157,7 @@ final class MarkdownTokenizerBasicTests: XCTestCase {
         ]
         
         for (input, expectedElement) in testCases {
-            let tokens = tokenizer.tokenize(input)
+            let (tokens, _) = tokenizer.tokenize(input)
             XCTAssertEqual(tokens.count, 2, "Expected 2 tokens for input '\(input)'")
             assertToken(at: 0, in: tokens, expectedElement: expectedElement, expectedText: input)
             assertToken(at: 1, in: tokens, expectedElement: .eof, expectedText: "")
@@ -167,7 +168,7 @@ final class MarkdownTokenizerBasicTests: XCTestCase {
         let testCases = ["123", "456", "789"]
         
         for input in testCases {
-            let tokens = tokenizer.tokenize(input)
+            let (tokens, _) = tokenizer.tokenize(input)
             XCTAssertEqual(tokens.count, 2, "Expected 2 tokens for number input '\(input)'")
             assertToken(at: 0, in: tokens, expectedElement: .number, expectedText: input)
             assertToken(at: 1, in: tokens, expectedElement: .eof, expectedText: "")
@@ -176,7 +177,7 @@ final class MarkdownTokenizerBasicTests: XCTestCase {
     
     func testMixedAlphanumericTokens() {
         let text = "abc-123"
-        let tokens = tokenizer.tokenize(text)
+        let (tokens, _) = tokenizer.tokenize(text)
         
         XCTAssertEqual(tokens.count, 4) // "abc" + "-" + "123" + eof
         assertToken(at: 0, in: tokens, expectedElement: .text, expectedText: "abc")
@@ -189,7 +190,7 @@ final class MarkdownTokenizerBasicTests: XCTestCase {
     
     func testMarkdownHeadings() {
         let text = "# Hello"
-        let tokens = tokenizer.tokenize(text)
+        let (tokens, _) = tokenizer.tokenize(text)
         
         let expectedElements: [MarkdownTokenElement] = [.hash, .space, .text, .eof]
         XCTAssertEqual(tokens.count, expectedElements.count)
@@ -201,7 +202,7 @@ final class MarkdownTokenizerBasicTests: XCTestCase {
     
     func testMarkdownLinks() {
         let text = "[link](url)"
-        let tokens = tokenizer.tokenize(text)
+        let (tokens, _) = tokenizer.tokenize(text)
         
         let expectedElements: [MarkdownTokenElement] = [
             .leftBracket, .text, .rightBracket, .leftParen, .text, .rightParen, .eof
@@ -215,7 +216,7 @@ final class MarkdownTokenizerBasicTests: XCTestCase {
     
     func testMarkdownImages() {
         let text = "![alt](src)"
-        let tokens = tokenizer.tokenize(text)
+        let (tokens, _) = tokenizer.tokenize(text)
         
         let expectedElements: [MarkdownTokenElement] = [
             .exclamation, .leftBracket, .text, .rightBracket, .leftParen, .text, .rightParen, .eof
@@ -235,7 +236,7 @@ final class MarkdownTokenizerBasicTests: XCTestCase {
         ]
         
         for (input, expectedElements) in testCases {
-            let tokens = tokenizer.tokenize(input)
+            let (tokens, _) = tokenizer.tokenize(input)
             XCTAssertEqual(tokens.count, expectedElements.count, "Failed for input '\(input)'")
             
             for (index, expectedElement) in expectedElements.enumerated() {
@@ -246,7 +247,7 @@ final class MarkdownTokenizerBasicTests: XCTestCase {
     
     func testMarkdownCode() {
         let text = "`code`"
-        let tokens = tokenizer.tokenize(text)
+        let (tokens, _) = tokenizer.tokenize(text)
         
         let expectedElements: [MarkdownTokenElement] = [.inlineCode, .eof]
         XCTAssertEqual(tokens.count, expectedElements.count)
@@ -261,7 +262,7 @@ final class MarkdownTokenizerBasicTests: XCTestCase {
     
     func testMarkdownBlockquote() {
         let text = "> Quote"
-        let tokens = tokenizer.tokenize(text)
+        let (tokens, _) = tokenizer.tokenize(text)
         
         let expectedElements: [MarkdownTokenElement] = [.gt, .space, .text, .eof]
         XCTAssertEqual(tokens.count, expectedElements.count)
@@ -279,7 +280,7 @@ final class MarkdownTokenizerBasicTests: XCTestCase {
         ]
         
         for (input, expectedElements) in testCases {
-            let tokens = tokenizer.tokenize(input)
+            let (tokens, _) = tokenizer.tokenize(input)
             XCTAssertEqual(tokens.count, expectedElements.count, "Failed for input '\(input)'")
             
             for (index, expectedElement) in expectedElements.enumerated() {
@@ -292,7 +293,7 @@ final class MarkdownTokenizerBasicTests: XCTestCase {
     
     func testGFMTable() {
         let text = "| A | B |"
-        let tokens = tokenizer.tokenize(text)
+        let (tokens, _) = tokenizer.tokenize(text)
         
         let expectedElements: [MarkdownTokenElement] = [
             .pipe, .space, .text, .space, .pipe, .space, .text, .space, .pipe, .eof
@@ -306,7 +307,7 @@ final class MarkdownTokenizerBasicTests: XCTestCase {
     
     func testGFMStrikethrough() {
         let text = "~~strike~~"
-        let tokens = tokenizer.tokenize(text)
+        let (tokens, _) = tokenizer.tokenize(text)
         
         let expectedElements: [MarkdownTokenElement] = [
             .tilde, .tilde, .text, .tilde, .tilde, .eof
@@ -325,7 +326,7 @@ final class MarkdownTokenizerBasicTests: XCTestCase {
         ]
         
         for (input, expectedElements) in testCases {
-            let tokens = tokenizer.tokenize(input)
+            let (tokens, _) = tokenizer.tokenize(input)
             XCTAssertEqual(tokens.count, expectedElements.count, "Failed for input '\(input)'")
             
             for (index, expectedElement) in expectedElements.enumerated() {
@@ -345,7 +346,7 @@ final class MarkdownTokenizerBasicTests: XCTestCase {
         ]
         
         for (input, expectedText) in testCases {
-            let tokens = tokenizer.tokenize(input)
+            let (tokens, _) = tokenizer.tokenize(input)
             XCTAssertGreaterThan(tokens.count, 0, "Should have at least one token for input: \(input)")
             
             let firstToken = tokens[0]
@@ -363,7 +364,7 @@ final class MarkdownTokenizerBasicTests: XCTestCase {
         ]
         
         for (input, expectedText) in testCases {
-            let tokens = tokenizer.tokenize(input)
+            let (tokens, _) = tokenizer.tokenize(input)
             XCTAssertGreaterThan(tokens.count, 0, "Should have at least one token for input: \(input)")
             
             let firstToken = tokens[0]
@@ -380,7 +381,7 @@ final class MarkdownTokenizerBasicTests: XCTestCase {
         ]
         
         for (input, expectedText) in testCases {
-            let tokens = tokenizer.tokenize(input)
+            let (tokens, _) = tokenizer.tokenize(input)
             XCTAssertGreaterThan(tokens.count, 0, "Should have at least one token for input: \(input)")
             
             let firstToken = tokens[0]
@@ -391,7 +392,7 @@ final class MarkdownTokenizerBasicTests: XCTestCase {
     
     func testUnclosedCodeBlock() {
         let input = "```\ncode without closing"
-        let tokens = tokenizer.tokenize(input)
+        let (tokens, _) = tokenizer.tokenize(input)
         
         XCTAssertGreaterThan(tokens.count, 0, "Should have at least one token")
         
@@ -402,7 +403,7 @@ final class MarkdownTokenizerBasicTests: XCTestCase {
     
     func testUnclosedInlineCode() {
         let input = "`code without closing"
-        let tokens = tokenizer.tokenize(input)
+        let (tokens, _) = tokenizer.tokenize(input)
         
         // Should fall back to individual backtick token
         XCTAssertGreaterThan(tokens.count, 0, "Should have at least one token")
@@ -414,7 +415,7 @@ final class MarkdownTokenizerBasicTests: XCTestCase {
 
     func testCustomContainerTokenization() {
         let input = "::: custom\ncontent\n:::"
-        let tokens = tokenizer.tokenize(input)
+        let (tokens, _) = tokenizer.tokenize(input)
 
         XCTAssertEqual(tokens.count, 2)
         XCTAssertEqual(tokens[0].element, .customContainer)
@@ -432,7 +433,7 @@ final class MarkdownTokenizerBasicTests: XCTestCase {
         ]
         
         for (input, expectedCount) in testCases {
-            let tokens = tokenizer.tokenize(input)
+            let (tokens, _) = tokenizer.tokenize(input)
             XCTAssertEqual(tokens.count, expectedCount, "Failed for input '\(input)'")
             XCTAssertEqual(tokens.last?.element, .eof, "Should end with EOF")
         }
@@ -440,7 +441,7 @@ final class MarkdownTokenizerBasicTests: XCTestCase {
     
     func testSpecialCharacters() {
         let text = "!@#$%^&*()_+-=[]{}|;:'\",.<>?/~`"
-        let tokens = tokenizer.tokenize(text)
+        let (tokens, _) = tokenizer.tokenize(text)
         
         // Should tokenize each character individually and end with EOF
         XCTAssertEqual(tokens.count, 32) // 31 chars + EOF
@@ -457,7 +458,7 @@ final class MarkdownTokenizerBasicTests: XCTestCase {
     
     func testUnicodeCharacters() {
         let text = "café 🚀 中文"
-        let tokens = tokenizer.tokenize(text)
+        let (tokens, _) = tokenizer.tokenize(text)
         
         XCTAssertTrue(tokens.count > 1, "Should produce multiple tokens")
         XCTAssertEqual(tokens.last?.element, .eof, "Should end with EOF")
@@ -465,7 +466,7 @@ final class MarkdownTokenizerBasicTests: XCTestCase {
     
     func testTokenRanges() {
         let text = "abc"
-        let tokens = tokenizer.tokenize(text)
+        let (tokens, _) = tokenizer.tokenize(text)
         
         XCTAssertEqual(tokens.count, 2) // "abc" + EOF
         XCTAssertEqual(tokens[0].range, text.startIndex..<text.endIndex)
@@ -476,7 +477,7 @@ final class MarkdownTokenizerBasicTests: XCTestCase {
     
     func testTokenUtilities() {
         let text = "* _test_ `code` \n"
-        let tokens = tokenizer.tokenize(text)
+        let (tokens, _) = tokenizer.tokenize(text)
         
         // Test asterisk token properties
         guard let asteriskTokenBase = tokens.first(where: { $0.element == .asterisk }),

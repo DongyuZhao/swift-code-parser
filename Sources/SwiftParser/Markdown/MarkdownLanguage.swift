@@ -33,7 +33,18 @@ public class MarkdownLanguage: CodeLanguage {
     ) {
         self.tokenizer = tokenizer
         self.nodes = consumers
-        self.tokens = []
+        let single = MarkdownSingleCharacterTokenBuilder()
+        self.tokens = [
+            MarkdownCodeTokenBuilder(),
+            MarkdownFormulaTokenBuilder(),
+            MarkdownWhitespaceTokenBuilder(),
+            MarkdownURLTokenBuilder(),
+            MarkdownHTMLTokenBuilder(),
+            MarkdownCustomContainerTokenBuilder(),
+            single,
+            MarkdownNumberTokenBuilder(),
+            MarkdownTextTokenBuilder(singleCharacterMap: MarkdownSingleCharacterTokenBuilder.mapping)
+        ]
     }
     
     // MARK: - Language Protocol Implementation

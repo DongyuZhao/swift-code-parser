@@ -2,14 +2,15 @@ import XCTest
 @testable import SwiftParser
 
 final class MarkdownTokenizerHTMLTests: XCTestCase {
-    
-    var tokenizer: MarkdownTokenizer!
-    
+
+    private var tokenizer: CodeTokenizer<MarkdownTokenElement>!
+
     override func setUp() {
         super.setUp()
-        tokenizer = MarkdownTokenizer()
+        let language = MarkdownLanguage()
+        tokenizer = CodeTokenizer(builders: language.tokens, state: language.state)
     }
-    
+
     override func tearDown() {
         tokenizer = nil
         super.tearDown()
@@ -51,7 +52,7 @@ final class MarkdownTokenizerHTMLTests: XCTestCase {
         ]
         
         for (input, expectedElement) in testCases {
-            let tokens = tokenizer.tokenize(input)
+            let (tokens, _) = tokenizer.tokenize(input)
             XCTAssertEqual(tokens.count, 2, "Expected 2 tokens for HTML tag '\(input)'")
             assertToken(at: 0, in: tokens, expectedElement: expectedElement, expectedText: input)
             assertToken(at: 1, in: tokens, expectedElement: .eof, expectedText: "")
@@ -69,7 +70,7 @@ final class MarkdownTokenizerHTMLTests: XCTestCase {
         ]
         
         for (input, expectedElement) in testCases {
-            let tokens = tokenizer.tokenize(input)
+            let (tokens, _) = tokenizer.tokenize(input)
             XCTAssertEqual(tokens.count, 2, "Expected 2 tokens for HTML entity '\(input)'")
             assertToken(at: 0, in: tokens, expectedElement: expectedElement, expectedText: input)
             assertToken(at: 1, in: tokens, expectedElement: .eof, expectedText: "")
@@ -84,7 +85,7 @@ final class MarkdownTokenizerHTMLTests: XCTestCase {
         ]
         
         for (input, expectedElement) in testCases {
-            let tokens = tokenizer.tokenize(input)
+            let (tokens, _) = tokenizer.tokenize(input)
             XCTAssertEqual(tokens.count, 2, "Expected 2 tokens for HTML comment '\(input)'")
             assertToken(at: 0, in: tokens, expectedElement: expectedElement, expectedText: input)
             assertToken(at: 1, in: tokens, expectedElement: .eof, expectedText: "")
@@ -101,7 +102,7 @@ final class MarkdownTokenizerHTMLTests: XCTestCase {
         ]
         
         for (input, expectedElement) in testCases {
-            let tokens = tokenizer.tokenize(input)
+            let (tokens, _) = tokenizer.tokenize(input)
             XCTAssertEqual(tokens.count, 2, "Expected 2 tokens for HTML block '\(input)'")
             assertToken(at: 0, in: tokens, expectedElement: expectedElement, expectedText: input)
             assertToken(at: 1, in: tokens, expectedElement: .eof, expectedText: "")
@@ -110,7 +111,7 @@ final class MarkdownTokenizerHTMLTests: XCTestCase {
     
     func testMixedHtmlAndMarkdown() {
         let text = "Text with <strong>bold</strong> and *emphasis*"
-        let tokens = tokenizer.tokenize(text)
+        let (tokens, _) = tokenizer.tokenize(text)
         
         let expectedElements: [MarkdownTokenElement] = [
             .text, .space, .text, .space, .htmlBlock, .space, .text, .space, .asterisk, .text, .asterisk, .eof
@@ -124,7 +125,7 @@ final class MarkdownTokenizerHTMLTests: XCTestCase {
     
     func testInvalidHtmlLikeContent() {
         let text = "< not a tag > and < another"
-        let tokens = tokenizer.tokenize(text)
+        let (tokens, _) = tokenizer.tokenize(text)
         
         let expectedElements: [MarkdownTokenElement] = [
             .lt, .space, .text, .space, .text, .space, .text, .space, .gt, .space, .text, .space, .lt, .space, .text, .eof
