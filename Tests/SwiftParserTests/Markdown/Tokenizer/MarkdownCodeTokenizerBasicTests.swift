@@ -12,5 +12,32 @@ final class MarkdownCodeTokenizerBasicTests: XCTestCase {
         XCTAssertEqual(tokens[2].element, .text)
         XCTAssertEqual(tokens[3].element, .eof)
     }
-}
 
+    func testAutolinkTokenization() {
+        let language = MarkdownLanguage()
+        let tokenizer = CodeTokenizer(builders: language.tokens, state: language.state)
+        let (tokens, _) = tokenizer.tokenize("<https://example.com>")
+        XCTAssertEqual(tokens.count, 2)
+        XCTAssertEqual(tokens[0].element, .autolink)
+        XCTAssertEqual(tokens[0].text, "<https://example.com>")
+        XCTAssertEqual(tokens[1].element, .eof)
+    }
+
+    func testBareURLTokenization() {
+        let language = MarkdownLanguage()
+        let tokenizer = CodeTokenizer(builders: language.tokens, state: language.state)
+        let (tokens, _) = tokenizer.tokenize("https://example.com")
+        XCTAssertEqual(tokens.count, 2)
+        XCTAssertEqual(tokens[0].element, .url)
+        XCTAssertEqual(tokens[1].element, .eof)
+    }
+
+    func testBareEmailTokenization() {
+        let language = MarkdownLanguage()
+        let tokenizer = CodeTokenizer(builders: language.tokens, state: language.state)
+        let (tokens, _) = tokenizer.tokenize("user@example.com")
+        XCTAssertEqual(tokens.count, 2)
+        XCTAssertEqual(tokens[0].element, .email)
+        XCTAssertEqual(tokens[1].element, .eof)
+    }
+}
