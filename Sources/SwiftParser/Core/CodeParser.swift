@@ -23,8 +23,9 @@ public class CodeParser<Node: CodeNodeElement, Token: CodeTokenElement> where No
     }
 
     public func parse(_ source: String, language: any CodeLanguage<Node, Token>) -> CodeParseResult<Node, Token> {
+        let normalized = normalize(source)
         let root = language.root()
-        let (tokens, errors) = tokenizer.tokenize(source)
+        let (tokens, errors) = tokenizer.tokenize(normalized)
 
         if !errors.isEmpty {
             return CodeParseResult(root: root, tokens: tokens, errors: errors)
@@ -34,5 +35,15 @@ public class CodeParser<Node: CodeNodeElement, Token: CodeTokenElement> where No
 
         // Errors from the tokenization phase must be empty here
         return CodeParseResult(root: parsed, tokens: tokens, errors: failures)
+    }
+
+    /// Normalizes input string to handle line ending inconsistencies and other common issues
+    /// This ensures consistent behavior across different platforms and input sources
+    private func normalize(_ raw: String) -> String {
+        // Normalize line endings: Convert CRLF (\r\n) and CR (\r) to LF (\n)
+        // This prevents issues with different line ending conventions
+        return raw
+            .replacingOccurrences(of: "\r\n", with: "\n")  // Windows CRLF -> Unix LF
+            .replacingOccurrences(of: "\r", with: "\n")    // Classic Mac CR -> Unix LF
     }
 }
