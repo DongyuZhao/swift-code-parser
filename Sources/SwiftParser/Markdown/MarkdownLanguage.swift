@@ -35,6 +35,7 @@ public class MarkdownLanguage: CodeLanguage {
         self.nodes = consumers
         let single = MarkdownSingleCharacterTokenBuilder()
         self.tokens = [
+            MarkdownCodeTokenBuilder(),
             MarkdownWhitespaceTokenBuilder(),
             MarkdownURLTokenBuilder(),
             MarkdownHTMLTokenBuilder(),
