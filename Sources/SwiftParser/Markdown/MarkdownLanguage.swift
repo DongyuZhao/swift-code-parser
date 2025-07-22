@@ -40,6 +40,7 @@ public class MarkdownLanguage: CodeLanguage {
             MarkdownWhitespaceTokenBuilder(),
             MarkdownURLTokenBuilder(),
             MarkdownHTMLTokenBuilder(),
+            MarkdownCustomContainerTokenBuilder(),
             single,
             MarkdownNumberTokenBuilder(),
             MarkdownTextTokenBuilder(singleCharacterMap: MarkdownSingleCharacterTokenBuilder.mapping)
