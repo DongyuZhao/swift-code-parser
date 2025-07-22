@@ -2,23 +2,22 @@ import XCTest
 @testable import SwiftParser
 
 final class MarkdownInlineBuilderTests: XCTestCase {
-    private var parser: CodeOutdatedParser<MarkdownNodeElement, MarkdownTokenElement>!
+    private var parser: CodeParser<MarkdownNodeElement, MarkdownTokenElement>!
     private var language: MarkdownLanguage!
 
     override func setUp() {
         super.setUp()
         language = MarkdownLanguage()
-        parser = CodeOutdatedParser(language: language)
+        parser = CodeParser(language: language)
     }
 
     func testItalicBuilderParsesItalicText() {
         let input = "*italic*"
-        let root = language.root(of: input)
-        let (node, context) = parser.parse(input, root: root)
+        let result = parser.parse(input, language: language)
 
-        XCTAssertTrue(context.errors.isEmpty)
-        XCTAssertEqual(node.children.count, 1)
-        guard let para = node.children.first as? ParagraphNode else {
+        XCTAssertTrue(result.errors.isEmpty)
+        XCTAssertEqual(result.root.children.count, 1)
+        guard let para = result.root.children.first as? ParagraphNode else {
             return XCTFail("Expected ParagraphNode")
         }
         XCTAssertEqual(para.children.count, 1)
@@ -34,12 +33,11 @@ final class MarkdownInlineBuilderTests: XCTestCase {
 
     func testBoldBuilderParsesStrongText() {
         let input = "**bold**"
-        let root = language.root(of: input)
-        let (node, context) = parser.parse(input, root: root)
+        let result = parser.parse(input, language: language)
 
-        XCTAssertTrue(context.errors.isEmpty)
-        XCTAssertEqual(node.children.count, 1)
-        guard let para = node.children.first as? ParagraphNode else {
+        XCTAssertTrue(result.errors.isEmpty)
+        XCTAssertEqual(result.root.children.count, 1)
+        guard let para = result.root.children.first as? ParagraphNode else {
             return XCTFail("Expected ParagraphNode")
         }
         XCTAssertEqual(para.children.count, 1)
@@ -55,12 +53,11 @@ final class MarkdownInlineBuilderTests: XCTestCase {
 
     func testNestedEmphasisParsesBoldAndItalic() {
         let input = "**bold *and italic***"
-        let root = language.root(of: input)
-        let (node, context) = parser.parse(input, root: root)
+        let result = parser.parse(input, language: language)
 
-        XCTAssertTrue(context.errors.isEmpty)
+        XCTAssertTrue(result.errors.isEmpty)
         // Ensure parsing succeeded
-        guard let para = node.children.first as? ParagraphNode else {
+        guard let para = result.root.children.first as? ParagraphNode else {
             return XCTFail("Expected ParagraphNode")
         }
         XCTAssertEqual(para.children.count, 3)
@@ -71,12 +68,11 @@ final class MarkdownInlineBuilderTests: XCTestCase {
 
     func testInlineCodeBuilderParsesInlineCode() {
         let input = "`code`"
-        let root = language.root(of: input)
-        let (node, context) = parser.parse(input, root: root)
+        let result = parser.parse(input, language: language)
 
-        XCTAssertTrue(context.errors.isEmpty)
-        XCTAssertEqual(node.children.count, 1)
-        guard let para = node.children.first as? ParagraphNode else {
+        XCTAssertTrue(result.errors.isEmpty)
+        XCTAssertEqual(result.root.children.count, 1)
+        guard let para = result.root.children.first as? ParagraphNode else {
             return XCTFail("Expected ParagraphNode")
         }
         XCTAssertEqual(para.children.count, 1)
@@ -87,12 +83,11 @@ final class MarkdownInlineBuilderTests: XCTestCase {
 
     func testInlineFormulaBuilderParsesFormula() {
         let input = "$x^2$"
-        let root = language.root(of: input)
-        let (node, context) = parser.parse(input, root: root)
+        let result = parser.parse(input, language: language)
 
-        XCTAssertTrue(context.errors.isEmpty)
-        XCTAssertEqual(node.children.count, 1)
-        guard let para = node.children.first as? ParagraphNode else {
+        XCTAssertTrue(result.errors.isEmpty)
+        XCTAssertEqual(result.root.children.count, 1)
+        guard let para = result.root.children.first as? ParagraphNode else {
             return XCTFail("Expected ParagraphNode")
         }
         XCTAssertEqual(para.children.count, 1)
@@ -104,12 +99,11 @@ final class MarkdownInlineBuilderTests: XCTestCase {
     func testAutolinkBuilderParsesAutolink() {
         let urlString = "https://example.com"
         let input = "<\(urlString)>"
-        let root = language.root(of: input)
-        let (node, context) = parser.parse(input, root: root)
+        let result = parser.parse(input, language: language)
 
-        XCTAssertTrue(context.errors.isEmpty)
-        XCTAssertEqual(node.children.count, 1)
-        guard let para = node.children.first as? ParagraphNode else {
+        XCTAssertTrue(result.errors.isEmpty)
+        XCTAssertEqual(result.root.children.count, 1)
+        guard let para = result.root.children.first as? ParagraphNode else {
             return XCTFail("Expected ParagraphNode")
         }
         XCTAssertEqual(para.children.count, 1)
@@ -122,12 +116,11 @@ final class MarkdownInlineBuilderTests: XCTestCase {
     func testURLBuilderParsesBareURL() {
         let urlString = "https://example.com"
         let input = urlString
-        let root = language.root(of: input)
-        let (node, context) = parser.parse(input, root: root)
+        let result = parser.parse(input, language: language)
 
-        XCTAssertTrue(context.errors.isEmpty)
-        XCTAssertEqual(node.children.count, 1)
-        guard let para = node.children.first as? ParagraphNode else {
+        XCTAssertTrue(result.errors.isEmpty)
+        XCTAssertEqual(result.root.children.count, 1)
+        guard let para = result.root.children.first as? ParagraphNode else {
             return XCTFail("Expected ParagraphNode")
         }
         XCTAssertEqual(para.children.count, 1)
@@ -139,12 +132,11 @@ final class MarkdownInlineBuilderTests: XCTestCase {
 
     func testHTMLInlineBuilderParsesEntityAndTag() {
         let input = "&amp;<b>bold</b>"
-        let root = language.root(of: input)
-        let (node, context) = parser.parse(input, root: root)
+        let result = parser.parse(input, language: language)
 
-        XCTAssertTrue(context.errors.isEmpty)
-        XCTAssertEqual(node.children.count, 1)
-        guard let para = node.children.first as? ParagraphNode else {
+        XCTAssertTrue(result.errors.isEmpty)
+        XCTAssertEqual(result.root.children.count, 1)
+        guard let para = result.root.children.first as? ParagraphNode else {
             return XCTFail("Expected ParagraphNode")
         }
         XCTAssertEqual(para.children.count, 2)
@@ -161,12 +153,11 @@ final class MarkdownInlineBuilderTests: XCTestCase {
     
     func testBlockquoteBuilderParsesBlockquote() {
         let input = "> hello"
-        let root = language.root(of: input)
-        let (node, context) = parser.parse(input, root: root)
+        let result = parser.parse(input, language: language)
 
-        XCTAssertTrue(context.errors.isEmpty)
-        XCTAssertEqual(node.children.count, 1)
-        let bq = node.children.first as? BlockquoteNode
+        XCTAssertTrue(result.errors.isEmpty)
+        XCTAssertEqual(result.root.children.count, 1)
+        let bq = result.root.children.first as? BlockquoteNode
         XCTAssertNotNil(bq)
         XCTAssertEqual(bq?.children.count, 1)
         if let text = bq?.children.first as? TextNode {

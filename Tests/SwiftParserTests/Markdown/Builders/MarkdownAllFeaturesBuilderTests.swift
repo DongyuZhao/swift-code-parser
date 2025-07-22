@@ -3,13 +3,13 @@ import XCTest
 
 /// Comprehensive tests covering all supported Markdown features.
 final class MarkdownAllFeaturesBuilderTests: XCTestCase {
-    private var parser: CodeOutdatedParser<MarkdownNodeElement, MarkdownTokenElement>!
+    private var parser: CodeParser<MarkdownNodeElement, MarkdownTokenElement>!
     private var language: MarkdownLanguage!
 
     override func setUp() {
         super.setUp()
         language = MarkdownLanguage()
-        parser = CodeOutdatedParser(language: language)
+        parser = CodeParser(language: language)
     }
 
     func testParsingComprehensiveMarkdownDocument() {
@@ -65,11 +65,10 @@ Citation[@smith2023] and footnote[^1].
 [@smith2023]: Smith, J. (2023). Example.
 """
 
-        let root = language.root(of: markdown)
-        let (node, context) = parser.parse(markdown, root: root)
+        let result = parser.parse(markdown, language: language)
 
-        XCTAssertTrue(context.errors.isEmpty)
-        XCTAssertGreaterThan(node.children.count, 0)
+        XCTAssertTrue(result.errors.isEmpty)
+        XCTAssertGreaterThan(result.root.children.count, 0)
 
         // Ensure tokenizer runs without errors using the new tokenizer
         let tokenizer = CodeTokenizer(builders: language.tokens, state: language.state)
@@ -77,19 +76,19 @@ Citation[@smith2023] and footnote[^1].
         XCTAssertGreaterThan(tokens.count, 0)
 
         // Verify important structures exist
-        XCTAssertNotNil(node.first { ($0 as? HeaderNode) != nil })
-        XCTAssertNotNil(node.first { ($0 as? ParagraphNode) != nil })
-        XCTAssertNotNil(node.first { ($0 as? BlockquoteNode) != nil })
-        XCTAssertEqual(node.nodes { $0.element == .orderedList }.count, 1)
-        XCTAssertEqual(node.nodes { $0.element == .unorderedList }.count, 2)
-        XCTAssertNotNil(node.first { ($0 as? DefinitionListNode) != nil })
-        XCTAssertNotNil(node.first { ($0 as? TableNode) != nil })
-        XCTAssertNotNil(node.first { ($0 as? FormulaBlockNode) != nil })
-        XCTAssertNotNil(node.first { ($0 as? CodeBlockNode) != nil })
-        XCTAssertNotNil(node.first { ($0 as? ThematicBreakNode) != nil })
-        XCTAssertEqual(node.nodes { $0.element == .footnote }.count, 1)
-        XCTAssertNotNil(node.first { ($0 as? HTMLBlockNode) != nil })
-        XCTAssertNotNil(node.first { ($0 as? ImageNode) != nil })
+        XCTAssertNotNil(result.root.first { ($0 as? HeaderNode) != nil })
+        XCTAssertNotNil(result.root.first { ($0 as? ParagraphNode) != nil })
+        XCTAssertNotNil(result.root.first { ($0 as? BlockquoteNode) != nil })
+        XCTAssertEqual(result.root.nodes { $0.element == .orderedList }.count, 1)
+        XCTAssertEqual(result.root.nodes { $0.element == .unorderedList }.count, 2)
+        XCTAssertNotNil(result.root.first { ($0 as? DefinitionListNode) != nil })
+        XCTAssertNotNil(result.root.first { ($0 as? TableNode) != nil })
+        XCTAssertNotNil(result.root.first { ($0 as? FormulaBlockNode) != nil })
+        XCTAssertNotNil(result.root.first { ($0 as? CodeBlockNode) != nil })
+        XCTAssertNotNil(result.root.first { ($0 as? ThematicBreakNode) != nil })
+        XCTAssertEqual(result.root.nodes { $0.element == .footnote }.count, 1)
+        XCTAssertNotNil(result.root.first { ($0 as? HTMLBlockNode) != nil })
+        XCTAssertNotNil(result.root.first { ($0 as? ImageNode) != nil })
     }
 }
 

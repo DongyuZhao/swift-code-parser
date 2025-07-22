@@ -6,14 +6,12 @@ public class MarkdownLanguage: CodeLanguage {
     public typealias Token = MarkdownTokenElement
     
     // MARK: - Language Components
-    public let tokenizer: any CodeOutdatedTokenizer<MarkdownTokenElement>
     public var tokens: [any CodeTokenBuilder<MarkdownTokenElement>]
     public let nodes: [any CodeNodeBuilder<MarkdownNodeElement, MarkdownTokenElement>]
     
     
     // MARK: - Initialization
     public init(
-        tokenizer: any CodeOutdatedTokenizer<MarkdownTokenElement> = MarkdownTokenizer(),
         consumers: [any CodeNodeBuilder<MarkdownNodeElement, MarkdownTokenElement>] = [
             MarkdownReferenceDefinitionBuilder(),
             MarkdownHeadingBuilder(),
@@ -31,7 +29,6 @@ public class MarkdownLanguage: CodeLanguage {
             MarkdownNewlineBuilder()
         ]
     ) {
-        self.tokenizer = tokenizer
         self.nodes = consumers
         let single = MarkdownSingleCharacterTokenBuilder()
         self.tokens = [
@@ -255,26 +252,6 @@ extension MarkdownLanguage {
             customContainers: true,
             plugins: true
         )
-    }
-    
-    /// Create a language instance with specific configuration
-    public static func configured(_ config: Configuration) -> MarkdownLanguage {
-        let tokenizer = MarkdownTokenizer()
-        let consumers: [any CodeNodeBuilder<MarkdownNodeElement, MarkdownTokenElement>] = []
-        
-        // TODO: Add consumers based on configuration when implemented
-        // if config.commonMark {
-        //     consumers.append(CommonMarkConsumer())
-        // }
-        // if config.gfm {
-        //     consumers.append(GFMConsumer())
-        // }
-        // if config.math {
-        //     consumers.append(MathConsumer())
-        // }
-        // ... etc
-        
-        return MarkdownLanguage(tokenizer: tokenizer, consumers: consumers)
     }
 }
 
