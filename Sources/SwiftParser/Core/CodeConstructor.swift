@@ -16,7 +16,10 @@ public class CodeConstructor<Node, Token> where Node: CodeNodeElement, Token: Co
     /// - Parameters:
     ///   - builders: The node builders responsible for producing AST nodes.
     ///   - state: Factory returning the initial parsing state object.
-    public init(builders: [any CodeNodeBuilder<Node, Token>], state: @escaping () -> (any CodeConstructState<Node, Token>)?) {
+    public init(
+        builders: [any CodeNodeBuilder<Node, Token>],
+        state: @escaping () -> (any CodeConstructState<Node, Token>)?
+    ) {
         self.builders = builders
         self.state = state
     }
@@ -30,11 +33,6 @@ public class CodeConstructor<Node, Token> where Node: CodeNodeElement, Token: Co
         var context = CodeConstructContext(current: root, tokens: tokens, state: state())
 
         while context.consuming < context.tokens.count {
-            // Stop at EOF without recording an error
-            if let token = context.tokens[context.consuming] as? MarkdownToken,
-               token.element == .eof {
-                break
-            }
 
             var matched = false
             for node in builders {

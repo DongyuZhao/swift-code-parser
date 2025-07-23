@@ -18,4 +18,12 @@ public protocol CodeLanguage<Node, Token> where Node: CodeNodeElement, Token: Co
 
     /// The function that creates the initial context for tokenization.
     func state() -> (any CodeTokenState<Token>)?
+
+    /// Provide an EOF token if the language requires one.
+    /// - Parameter range: The range where the EOF token should be inserted.
+    func eofToken(at range: Range<String.Index>) -> (any CodeToken<Token>)?
+}
+
+extension CodeLanguage {
+    public func eofToken(at range: Range<String.Index>) -> (any CodeToken<Token>)? { nil }
 }
