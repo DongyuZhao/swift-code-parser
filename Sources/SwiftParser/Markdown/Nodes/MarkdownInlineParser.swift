@@ -1,6 +1,13 @@
 import Foundation
 
+/// Simple inline parser used by block builders to parse inline Markdown syntax.
+/// Handles emphasis, links, images, inline code and other span level elements.
 struct MarkdownInlineParser {
+    /// Parse inline content until one of the `stopAt` tokens is encountered.
+    /// - Parameters:
+    ///   - context: Construction context providing tokens and current state.
+    ///   - stopAt: Tokens that terminate inline parsing.
+    /// - Returns: Array of parsed inline nodes.
     static func parseInline(
         _ context: inout CodeConstructContext<MarkdownNodeElement, MarkdownTokenElement>,
         stopAt: Set<MarkdownTokenElement> = [.newline, .eof]

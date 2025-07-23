@@ -602,6 +602,12 @@ class MarkdownPluginManager {
 - Add documentation comments for public APIs
 - Keep functions focused and single-purpose
 
+### Documentation
+The codebase now contains detailed Swift documentation comments explaining the
+responsibilities of core types such as `CodeParser`, `CodeConstructor` and the
+inline parser.  These comments can be viewed in Xcode Quick Help or rendered by
+documentation tools.
+
 ### Testing Requirements
 - All new features must include comprehensive tests
 - Maintain test coverage above 90%
@@ -653,4 +659,4 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ---
 
-*Last updated: 2025-07-20*
+*Last updated: 2025-07-21*
