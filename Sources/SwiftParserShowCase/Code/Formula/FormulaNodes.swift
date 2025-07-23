@@ -70,6 +70,11 @@ public enum BinaryOperator: String {
     case equals = "="
 }
 
+public enum UnaryOperator: String {
+    case plus = "+"
+    case minus = "-"
+}
+
 public class BinaryOperationNode: FormulaNodeBase {
     public var op: BinaryOperator
     public var left: FormulaNodeBase
@@ -82,6 +87,23 @@ public class BinaryOperationNode: FormulaNodeBase {
         super.init(element: .binaryOperation)
         append(left)
         append(right)
+    }
+
+    public override func hash(into hasher: inout Hasher) {
+        super.hash(into: &hasher)
+        hasher.combine(op.rawValue)
+    }
+}
+
+public class UnaryOperationNode: FormulaNodeBase {
+    public var op: UnaryOperator
+    public var operand: FormulaNodeBase
+
+    public init(op: UnaryOperator, operand: FormulaNodeBase) {
+        self.op = op
+        self.operand = operand
+        super.init(element: .unaryOperation)
+        append(operand)
     }
 
     public override func hash(into hasher: inout Hasher) {

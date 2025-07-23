@@ -99,4 +99,24 @@ final class FormulaParserTests: XCTestCase {
         XCTAssertEqual(cmd.arguments.count, 1)
         XCTAssertTrue(cmd.arguments.first is BinaryOperationNode)
     }
+
+    func testParseUnaryMinus() {
+        let result = parser.parse("-x", language: language)
+        XCTAssertTrue(result.errors.isEmpty)
+        guard let unary = result.root.children.first as? UnaryOperationNode else {
+            XCTFail("Expected UnaryOperationNode"); return
+        }
+        XCTAssertEqual(unary.op, .minus)
+        XCTAssertTrue(unary.operand is IdentifierNode)
+    }
+
+    func testParseUnaryPlus() {
+        let result = parser.parse("+3", language: language)
+        XCTAssertTrue(result.errors.isEmpty)
+        guard let unary = result.root.children.first as? UnaryOperationNode else {
+            XCTFail("Expected UnaryOperationNode"); return
+        }
+        XCTAssertEqual(unary.op, .plus)
+        XCTAssertTrue(unary.operand is NumberNode)
+    }
 }

@@ -32,6 +32,16 @@ struct FormulaParser {
     }
 
     private static func parseFactor(_ context: inout CodeConstructContext<FormulaNodeElement, FormulaTokenElement>) -> FormulaNodeBase? {
+        // handle unary operators
+        if context.consuming < context.tokens.count,
+           let tok = context.tokens[context.consuming] as? FormulaToken,
+           tok.element == .plus || tok.element == .minus {
+            context.consuming += 1
+            guard let operand = parseFactor(&context) else { return nil }
+            let op = unaryOpFromToken(tok.element)
+            return UnaryOperationNode(op: op, operand: operand)
+        }
+
         guard var node = parseAtom(&context) else { return nil }
         while context.consuming < context.tokens.count,
               let token = context.tokens[context.consuming] as? FormulaToken,
@@ -101,6 +111,14 @@ struct FormulaParser {
         case .caret: return .caret
         case .underscore: return .underscore
         case .equals: return .equals
+        default: return .plus
+        }
+    }
+
+    private static func unaryOpFromToken(_ element: FormulaTokenElement) -> UnaryOperator {
+        switch element {
+        case .plus: return .plus
+        case .minus: return .minus
         default: return .plus
         }
     }

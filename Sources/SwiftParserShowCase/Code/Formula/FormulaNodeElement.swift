@@ -7,5 +7,6 @@ public enum FormulaNodeElement: String, CaseIterable, CodeNodeElement {
     case identifier
     case command
     case binaryOperation
+    case unaryOperation
     case group
 }
