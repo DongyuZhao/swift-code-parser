@@ -30,8 +30,15 @@ public class CodeParser<Node: CodeNodeElement, Token: CodeTokenElement> where No
 
     public init(language: any CodeLanguage<Node, Token>) {
         self.language = language
-        self.tokenizer = CodeTokenizer(builders: language.tokens, state: language.state)
-        self.constructor = CodeConstructor(builders: language.nodes, state: language.state)
+        self.tokenizer = CodeTokenizer(
+            builders: language.tokens,
+            state: language.state,
+            eofTokenFactory: { language.eofToken(at: $0) }
+        )
+        self.constructor = CodeConstructor(
+            builders: language.nodes,
+            state: language.state
+        )
     }
 
     /// Parse a source string using the supplied language.

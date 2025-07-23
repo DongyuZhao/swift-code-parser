@@ -37,7 +37,8 @@ public class MarkdownLanguage: CodeLanguage {
             MarkdownListBuilder(),
             MarkdownBlockquoteBuilder(),
             MarkdownParagraphBuilder(),
-            MarkdownNewlineBuilder()
+            MarkdownNewlineBuilder(),
+            MarkdownEOFBuilder()
         ]
     ) {
         self.nodes = consumers
@@ -66,6 +67,10 @@ public class MarkdownLanguage: CodeLanguage {
     
     public func state() -> (any CodeTokenState<MarkdownTokenElement>)? {
         nil
+    }
+
+    public func eofToken(at range: Range<String.Index>) -> (any CodeToken<MarkdownTokenElement>)? {
+        return MarkdownToken.eof(at: range)
     }
 }
 
