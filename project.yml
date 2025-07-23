@@ -68,8 +68,26 @@ targets:
     dependencies:
       - target: SwiftParser
         destinationFilter: [iOS, macOS]
+      - target: SwiftParserShowCase
+        destinationFilter: [iOS, macOS]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.swiftparser.SwiftParserTests
+        SWIFT_VERSION: "6.0"
+        GENERATE_INFOPLIST_FILE: true
+
+  SwiftParserShowCaseTests:
+    type: bundle.unit-test
+    supportedDestinations: [iOS, macOS]
+    sources:
+      - path: Tests/SwiftParserShowCaseTests
+    dependencies:
+      - target: SwiftParser
+        destinationFilter: [iOS, macOS]
+      - target: SwiftParserShowCase
+        destinationFilter: [iOS, macOS]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.swiftparser.SwiftParserShowCaseTests
         SWIFT_VERSION: "6.0"
         GENERATE_INFOPLIST_FILE: true

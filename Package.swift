@@ -23,9 +23,16 @@ let package = Package(
             name: "SwiftParser",
             dependencies: []
         ),
+        .target(name: "SwiftParserShowCase",
+            dependencies: ["SwiftParser"]
+        ),
         .testTarget(
             name: "SwiftParserTests",
             dependencies: ["SwiftParser"]
+        ),
+        .testTarget(
+            name: "SwiftParserShowCaseTests",
+            dependencies: ["SwiftParser", "SwiftParserShowCase"]
         ),
     ],
     swiftLanguageModes: [.v6]
