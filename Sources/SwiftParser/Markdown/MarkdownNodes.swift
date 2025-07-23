@@ -24,6 +24,7 @@ public class MarkdownNodeBase: CodeNode<MarkdownNodeElement> {
 }
 
 // MARK: - Document Structure
+/// Root node representing an entire Markdown document.
 public class DocumentNode: MarkdownNodeBase {
     public var title: String?
     public var metadata: [String: Any] = [:]
