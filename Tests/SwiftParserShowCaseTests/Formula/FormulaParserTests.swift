@@ -56,4 +56,47 @@ final class FormulaParserTests: XCTestCase {
         XCTAssertEqual(cmd?.name, "\\frac")
         XCTAssertEqual(cmd?.arguments.count, 2)
     }
+
+    func testDecimalNumberTokenization() {
+        let (tokens, errors) = tokenizer.tokenize("3.14+2")
+        XCTAssertTrue(errors.isEmpty)
+        XCTAssertEqual(tokens.count, 4)
+        XCTAssertEqual(tokens[0].element, .number)
+        XCTAssertEqual(tokens[0].text, "3.14")
+        XCTAssertEqual(tokens[2].element, .number)
+        XCTAssertEqual(tokens[2].text, "2")
+    }
+
+    func testParseExponent() {
+        let result = parser.parse("x^2", language: language)
+        XCTAssertTrue(result.errors.isEmpty)
+        guard let op = result.root.children.first as? BinaryOperationNode else {
+            XCTFail("Expected BinaryOperationNode"); return
+        }
+        XCTAssertEqual(op.op, .caret)
+        XCTAssertTrue(op.left is IdentifierNode)
+        XCTAssertTrue(op.right is NumberNode)
+    }
+
+    func testParseGroupedExpression() {
+        let result = parser.parse("(1+2)*3", language: language)
+        XCTAssertTrue(result.errors.isEmpty)
+        guard let outer = result.root.children.first as? BinaryOperationNode else {
+            XCTFail("Expected BinaryOperationNode"); return
+        }
+        XCTAssertEqual(outer.op, .times)
+        let group = outer.left as? GroupNode
+        XCTAssertNotNil(group)
+    }
+
+    func testParseNestedCommand() {
+        let result = parser.parse("\\sqrt{1+2}", language: language)
+        XCTAssertTrue(result.errors.isEmpty)
+        guard let cmd = result.root.children.first as? CommandNode else {
+            XCTFail("Expected CommandNode"); return
+        }
+        XCTAssertEqual(cmd.name, "\\sqrt")
+        XCTAssertEqual(cmd.arguments.count, 1)
+        XCTAssertTrue(cmd.arguments.first is BinaryOperationNode)
+    }
 }
