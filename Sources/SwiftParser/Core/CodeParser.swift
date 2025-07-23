@@ -1,8 +1,16 @@
+/// Result returned from `CodeParser.parse` containing the AST, token stream and
+/// any parsing errors.
 public struct CodeParseResult<Node: CodeNodeElement, Token: CodeTokenElement> {
     public let root: CodeNode<Node>
     public let tokens: [any CodeToken<Token>]
     public let errors: [CodeError]
 
+    /// Create a result object
+    /// - Parameters:
+    ///   - root: The constructed root node of the AST.
+    ///   - tokens: Token stream produced while parsing.
+    ///   - errors: Any errors that occurred during tokenization or AST
+    ///     construction.
     public init(root: CodeNode<Node>, tokens: [any CodeToken<Token>], errors: [CodeError] = []) {
         self.root = root
         self.tokens = tokens
@@ -10,6 +18,10 @@ public struct CodeParseResult<Node: CodeNodeElement, Token: CodeTokenElement> {
     }
 }
 
+/// High level parser that orchestrates tokenization and AST construction.
+///
+/// `CodeParser` uses the provided `CodeLanguage` implementation to tokenize the
+/// source text and then build an AST using the registered node builders.
 public class CodeParser<Node: CodeNodeElement, Token: CodeTokenElement> where Node: CodeNodeElement, Token: CodeTokenElement {
     private let language: any CodeLanguage<Node, Token>
 
@@ -18,10 +30,25 @@ public class CodeParser<Node: CodeNodeElement, Token: CodeTokenElement> where No
 
     public init(language: any CodeLanguage<Node, Token>) {
         self.language = language
-        self.tokenizer = CodeTokenizer(builders: language.tokens, state: language.state)
-        self.constructor = CodeConstructor(builders: language.nodes, state: language.state)
+        self.tokenizer = CodeTokenizer(
+            builders: language.tokens,
+            state: language.state,
+            eofTokenFactory: { language.eofToken(at: $0) }
+        )
+        self.constructor = CodeConstructor(
+            builders: language.nodes,
+            state: language.state
+        )
     }
 
+    /// Parse a source string using the supplied language.
+    ///
+    /// This method first tokenizes the input and, if tokenization succeeds,
+    /// constructs the AST using the language's node builders.
+    /// - Parameter source: The raw text to parse.
+    /// - Parameter language: The language definition to use for parsing.
+    /// - Returns: A `CodeParseResult` containing the root node, tokens and any
+    ///   errors encountered.
     public func parse(_ source: String, language: any CodeLanguage<Node, Token>) -> CodeParseResult<Node, Token> {
         let normalized = normalize(source)
         let root = language.root()

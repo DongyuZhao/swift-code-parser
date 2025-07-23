@@ -1,19 +1,28 @@
 import Foundation
 
 // MARK: - Markdown Language Implementation
+/// Default Markdown language implementation following CommonMark with optional
+/// extensions.
+///
+/// The language exposes a set of token and node builders that together
+/// understand Markdown syntax. The initializer allows callers to supply a
+/// custom list of builders to enable or disable features.
 public class MarkdownLanguage: CodeLanguage {
     public typealias Node = MarkdownNodeElement
     public typealias Token = MarkdownTokenElement
     
     // MARK: - Language Components
-    public let tokenizer: any CodeOutdatedTokenizer<MarkdownTokenElement>
     public var tokens: [any CodeTokenBuilder<MarkdownTokenElement>]
     public let nodes: [any CodeNodeBuilder<MarkdownNodeElement, MarkdownTokenElement>]
     
     
     // MARK: - Initialization
+    /// Create a Markdown language with the provided builders.
+    ///
+    /// - Parameter consumers: Node builders to be used when constructing the
+    ///   document AST. Passing a custom set allows features to be enabled or
+    ///   disabled.
     public init(
-        tokenizer: any CodeOutdatedTokenizer<MarkdownTokenElement> = MarkdownTokenizer(),
         consumers: [any CodeNodeBuilder<MarkdownNodeElement, MarkdownTokenElement>] = [
             MarkdownReferenceDefinitionBuilder(),
             MarkdownHeadingBuilder(),
@@ -28,10 +37,10 @@ public class MarkdownLanguage: CodeLanguage {
             MarkdownListBuilder(),
             MarkdownBlockquoteBuilder(),
             MarkdownParagraphBuilder(),
-            MarkdownNewlineBuilder()
+            MarkdownNewlineBuilder(),
+            MarkdownEOFBuilder()
         ]
     ) {
-        self.tokenizer = tokenizer
         self.nodes = consumers
         let single = MarkdownSingleCharacterTokenBuilder()
         self.tokens = [
@@ -58,6 +67,10 @@ public class MarkdownLanguage: CodeLanguage {
     
     public func state() -> (any CodeTokenState<MarkdownTokenElement>)? {
         nil
+    }
+
+    public func eofToken(at range: Range<String.Index>) -> (any CodeToken<MarkdownTokenElement>)? {
+        return MarkdownToken.eof(at: range)
     }
 }
 
@@ -255,26 +268,6 @@ extension MarkdownLanguage {
             customContainers: true,
             plugins: true
         )
-    }
-    
-    /// Create a language instance with specific configuration
-    public static func configured(_ config: Configuration) -> MarkdownLanguage {
-        let tokenizer = MarkdownTokenizer()
-        let consumers: [any CodeNodeBuilder<MarkdownNodeElement, MarkdownTokenElement>] = []
-        
-        // TODO: Add consumers based on configuration when implemented
-        // if config.commonMark {
-        //     consumers.append(CommonMarkConsumer())
-        // }
-        // if config.gfm {
-        //     consumers.append(GFMConsumer())
-        // }
-        // if config.math {
-        //     consumers.append(MathConsumer())
-        // }
-        // ... etc
-        
-        return MarkdownLanguage(tokenizer: tokenizer, consumers: consumers)
     }
 }
 

@@ -8,7 +8,11 @@ final class MarkdownTokenizerBasicTests: XCTestCase {
     override func setUp() {
         super.setUp()
         let language = MarkdownLanguage()
-        tokenizer = CodeTokenizer(builders: language.tokens, state: language.state)
+        tokenizer = CodeTokenizer(
+            builders: language.tokens,
+            state: language.state,
+            eofTokenFactory: { language.eofToken(at: $0) }
+        )
     }
 
     override func tearDown() {

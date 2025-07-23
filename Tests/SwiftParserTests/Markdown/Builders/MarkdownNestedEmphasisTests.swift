@@ -2,22 +2,21 @@ import XCTest
 @testable import SwiftParser
 
 final class MarkdownNestedEmphasisTests: XCTestCase {
-    private var parser: CodeOutdatedParser<MarkdownNodeElement, MarkdownTokenElement>!
+    private var parser: CodeParser<MarkdownNodeElement, MarkdownTokenElement>!
     private var language: MarkdownLanguage!
 
     override func setUp() {
         super.setUp()
         language = MarkdownLanguage()
-        parser = CodeOutdatedParser(language: language)
+        parser = CodeParser(language: language)
     }
 
     func testEmphasisWithLinkAndCode() {
         let input = "*see [link](url) `code`*"
-        let root = language.root(of: input)
-        let (node, ctx) = parser.parse(input, root: root)
-        XCTAssertTrue(ctx.errors.isEmpty)
-        XCTAssertEqual(node.children.count, 1)
-        guard let para = node.children.first as? ParagraphNode,
+        let result = parser.parse(input, language: language)
+        XCTAssertTrue(result.errors.isEmpty)
+        XCTAssertEqual(result.root.children.count, 1)
+        guard let para = result.root.children.first as? ParagraphNode,
               let emph = para.children.first as? EmphasisNode else {
             return XCTFail("Expected EmphasisNode inside Paragraph")
         }
@@ -30,11 +29,10 @@ final class MarkdownNestedEmphasisTests: XCTestCase {
 
     func testStrongWithImageAndHTML() {
         let input = "**image ![alt](img.png) <b>bold</b>**"
-        let root = language.root(of: input)
-        let (node, ctx) = parser.parse(input, root: root)
-        XCTAssertTrue(ctx.errors.isEmpty)
-        XCTAssertEqual(node.children.count, 1)
-        guard let para = node.children.first as? ParagraphNode,
+        let result = parser.parse(input, language: language)
+        XCTAssertTrue(result.errors.isEmpty)
+        XCTAssertEqual(result.root.children.count, 1)
+        guard let para = result.root.children.first as? ParagraphNode,
               let strong = para.children.first as? StrongNode else {
             return XCTFail("Expected StrongNode inside Paragraph")
         }

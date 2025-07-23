@@ -4,7 +4,11 @@ import XCTest
 final class MarkdownCodeTokenizerFormulaTests: XCTestCase {
     private func tokenize(_ input: String) -> [any CodeToken<MarkdownTokenElement>] {
         let language = MarkdownLanguage()
-        let tokenizer = CodeTokenizer(builders: language.tokens, state: language.state)
+        let tokenizer = CodeTokenizer(
+            builders: language.tokens,
+            state: language.state,
+            eofTokenFactory: { language.eofToken(at: $0) }
+        )
         let (tokens, _) = tokenizer.tokenize(input)
         return tokens
     }

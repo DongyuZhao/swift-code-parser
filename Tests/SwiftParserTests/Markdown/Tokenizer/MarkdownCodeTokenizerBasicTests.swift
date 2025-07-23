@@ -4,7 +4,11 @@ import XCTest
 final class MarkdownCodeTokenizerBasicTests: XCTestCase {
     func testHeadingTokenization() {
         let language = MarkdownLanguage()
-        let tokenizer = CodeTokenizer(builders: language.tokens, state: language.state)
+        let tokenizer = CodeTokenizer(
+            builders: language.tokens,
+            state: language.state,
+            eofTokenFactory: { language.eofToken(at: $0) }
+        )
         let (tokens, _) = tokenizer.tokenize("# Title")
         XCTAssertEqual(tokens.count, 4)
         XCTAssertEqual(tokens[0].element, .hash)
@@ -15,7 +19,11 @@ final class MarkdownCodeTokenizerBasicTests: XCTestCase {
 
     func testAutolinkTokenization() {
         let language = MarkdownLanguage()
-        let tokenizer = CodeTokenizer(builders: language.tokens, state: language.state)
+        let tokenizer = CodeTokenizer(
+            builders: language.tokens,
+            state: language.state,
+            eofTokenFactory: { language.eofToken(at: $0) }
+        )
         let (tokens, _) = tokenizer.tokenize("<https://example.com>")
         XCTAssertEqual(tokens.count, 2)
         XCTAssertEqual(tokens[0].element, .autolink)
@@ -25,7 +33,11 @@ final class MarkdownCodeTokenizerBasicTests: XCTestCase {
 
     func testBareURLTokenization() {
         let language = MarkdownLanguage()
-        let tokenizer = CodeTokenizer(builders: language.tokens, state: language.state)
+        let tokenizer = CodeTokenizer(
+            builders: language.tokens,
+            state: language.state,
+            eofTokenFactory: { language.eofToken(at: $0) }
+        )
         let (tokens, _) = tokenizer.tokenize("https://example.com")
         XCTAssertEqual(tokens.count, 2)
         XCTAssertEqual(tokens[0].element, .url)
@@ -34,7 +46,11 @@ final class MarkdownCodeTokenizerBasicTests: XCTestCase {
 
     func testBareEmailTokenization() {
         let language = MarkdownLanguage()
-        let tokenizer = CodeTokenizer(builders: language.tokens, state: language.state)
+        let tokenizer = CodeTokenizer(
+            builders: language.tokens,
+            state: language.state,
+            eofTokenFactory: { language.eofToken(at: $0) }
+        )
         let (tokens, _) = tokenizer.tokenize("user@example.com")
         XCTAssertEqual(tokens.count, 2)
         XCTAssertEqual(tokens[0].element, .email)

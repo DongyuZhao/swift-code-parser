@@ -5,24 +5,34 @@
 //  Created by Dongyu Zhao on 7/21/25.
 //
 
+/// Consumes a list of tokens to build an AST using registered node builders.
 public class CodeConstructor<Node, Token> where Node: CodeNodeElement, Token: CodeTokenElement {
+    /// Ordered collection of node builders that attempt to consume tokens.
     private let builders: [any CodeNodeBuilder<Node, Token>]
+    /// Factory that provides initial construction state for each parse run.
     private var state: () -> (any CodeConstructState<Node, Token>)?
     
-    public init(builders: [any CodeNodeBuilder<Node, Token>], state: @escaping () -> (any CodeConstructState<Node, Token>)?) {
+    /// Create a new constructor
+    /// - Parameters:
+    ///   - builders: The node builders responsible for producing AST nodes.
+    ///   - state: Factory returning the initial parsing state object.
+    public init(
+        builders: [any CodeNodeBuilder<Node, Token>],
+        state: @escaping () -> (any CodeConstructState<Node, Token>)?
+    ) {
         self.builders = builders
         self.state = state
     }
     
+    /// Build an AST from a token stream
+    /// - Parameters:
+    ///   - tokens: Token list to consume.
+    ///   - root: Root node that will receive parsed children.
+    /// - Returns: The populated root node and any construction errors.
     public func parse(_ tokens: [any CodeToken<Token>], root: CodeNode<Node>) -> (CodeNode<Node>, [CodeError]) {
         var context = CodeConstructContext(current: root, tokens: tokens, state: state())
 
         while context.consuming < context.tokens.count {
-            // Stop at EOF without recording an error
-            if let token = context.tokens[context.consuming] as? MarkdownToken,
-               token.element == .eof {
-                break
-            }
 
             var matched = false
             for node in builders {
