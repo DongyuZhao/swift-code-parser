@@ -12,7 +12,10 @@ public class FormulaOperatorTokenBuilder: CodeTokenBuilder {
         "/": .slash,
         "^": .caret,
         "_": .underscore,
-        "=": .equals
+        "=": .equals,
+        "<": .less,
+        ">": .greater,
+        "|": .pipe
     ]
 
     public init() {}

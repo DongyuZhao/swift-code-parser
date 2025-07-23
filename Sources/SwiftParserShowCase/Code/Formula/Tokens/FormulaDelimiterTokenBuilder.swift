@@ -9,7 +9,9 @@ public class FormulaDelimiterTokenBuilder: CodeTokenBuilder {
         "(": .lparen,
         ")": .rparen,
         "{": .lbrace,
-        "}": .rbrace
+        "}": .rbrace,
+        "[": .lbracket,
+        "]": .rbracket
     ]
 
     public init() {}

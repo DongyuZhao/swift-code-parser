@@ -68,6 +68,9 @@ public enum BinaryOperator: String {
     case caret = "^"
     case underscore = "_"
     case equals = "="
+    case less = "<"
+    case greater = ">"
+    case pipe = "|"
 }
 
 public enum UnaryOperator: String {

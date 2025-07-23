@@ -12,9 +12,14 @@ public enum FormulaTokenElement: String, CaseIterable, CodeTokenElement {
     case caret
     case underscore
     case equals
+    case less
+    case greater
+    case pipe
     case lparen
     case rparen
     case lbrace
     case rbrace
+    case lbracket
+    case rbracket
     case eof
 }

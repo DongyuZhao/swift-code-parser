@@ -8,7 +8,8 @@ struct FormulaParser {
         var node = left
         while context.consuming < context.tokens.count,
               let token = context.tokens[context.consuming] as? FormulaToken,
-              token.element == .plus || token.element == .minus || token.element == .equals {
+              token.element == .plus || token.element == .minus ||
+              token.element == .equals || token.element == .less || token.element == .greater {
             context.consuming += 1
             let op = opFromToken(token.element)
             guard let right = parseTerm(&context) else { break }
@@ -22,7 +23,7 @@ struct FormulaParser {
         var node = left
         while context.consuming < context.tokens.count,
               let token = context.tokens[context.consuming] as? FormulaToken,
-              token.element == .star || token.element == .slash {
+              token.element == .star || token.element == .slash || token.element == .pipe {
             context.consuming += 1
             let op = opFromToken(token.element)
             guard let right = parseFactor(&context) else { break }
@@ -97,6 +98,15 @@ struct FormulaParser {
                 context.consuming += 1
             }
             if let expr = expr { return GroupNode(children: [expr]) } else { return nil }
+        case .lbracket:
+            context.consuming += 1
+            let expr = parseExpression(&context)
+            if context.consuming < context.tokens.count,
+               let close = context.tokens[context.consuming] as? FormulaToken,
+               close.element == .rbracket {
+                context.consuming += 1
+            }
+            if let expr = expr { return GroupNode(children: [expr]) } else { return nil }
         default:
             return nil
         }
@@ -111,6 +121,9 @@ struct FormulaParser {
         case .caret: return .caret
         case .underscore: return .underscore
         case .equals: return .equals
+        case .less: return .less
+        case .greater: return .greater
+        case .pipe: return .pipe
         default: return .plus
         }
     }

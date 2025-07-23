@@ -119,4 +119,20 @@ final class FormulaParserTests: XCTestCase {
         XCTAssertEqual(unary.op, .plus)
         XCTAssertTrue(unary.operand is NumberNode)
     }
+
+    func testTokenizeInequality() {
+        let (tokens, errors) = tokenizer.tokenize("x<y>z")
+        XCTAssertTrue(errors.isEmpty)
+        XCTAssertEqual(tokens.map { $0.element }, [.identifier, .less, .identifier, .greater, .identifier, .eof])
+    }
+
+    func testParseBracketGroup() {
+        let result = parser.parse("[1+2]*3", language: language)
+        XCTAssertTrue(result.errors.isEmpty)
+        guard let outer = result.root.children.first as? BinaryOperationNode else {
+            XCTFail("Expected BinaryOperationNode"); return
+        }
+        XCTAssertEqual(outer.op, .times)
+        XCTAssertTrue(outer.left is GroupNode)
+    }
 }
