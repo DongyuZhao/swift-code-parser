@@ -14,6 +14,10 @@ let package = Package(
             name: "SwiftParser",
             targets: ["SwiftParser"]
         ),
+        .executable(
+            name: "SwiftParserShowCase",
+            targets: ["SwiftParserShowCase"]
+        ),
     ],
     dependencies: [
         // Add any external dependencies here
@@ -23,7 +27,7 @@ let package = Package(
             name: "SwiftParser",
             dependencies: []
         ),
-        .target(name: "SwiftParserShowCase",
+        .executableTarget(name: "SwiftParserShowCase",
             dependencies: ["SwiftParser"]
         ),
         .testTarget(
