@@ -4,35 +4,35 @@
 import PackageDescription
 
 let package = Package(
-    name: "SwiftParser",
+    name: "CodeParser",
     platforms: [
         .iOS(.v17),
         .macOS(.v14)
     ],
     products: [
         .library(
-            name: "SwiftParser",
-            targets: ["SwiftParser"]
+            name: "CodeParser",
+            targets: ["CodeParser"]
         ),
     ],
     dependencies: [
-        // Add any external dependencies here
+        .package(url: "https://github.com/apple/swift-format.git", from: "510.1.0")
     ],
     targets: [
         .target(
-            name: "SwiftParser",
+            name: "CodeParser",
             dependencies: []
         ),
-        .target(name: "SwiftParserShowCase",
-            dependencies: ["SwiftParser"]
+        .target(name: "CodeParserShowCase",
+            dependencies: ["CodeParser"]
         ),
         .testTarget(
-            name: "SwiftParserTests",
-            dependencies: ["SwiftParser"]
+            name: "CodeParserTests",
+            dependencies: ["CodeParser"]
         ),
         .testTarget(
-            name: "SwiftParserShowCaseTests",
-            dependencies: ["SwiftParser", "SwiftParserShowCase"]
+            name: "CodeParserShowCaseTests",
+            dependencies: ["CodeParser", "CodeParserShowCase"]
         ),
     ],
     swiftLanguageModes: [.v6]
