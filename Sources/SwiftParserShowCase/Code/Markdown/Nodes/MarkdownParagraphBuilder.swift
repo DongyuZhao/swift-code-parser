@@ -11,9 +11,15 @@ public class MarkdownParagraphBuilder: CodeNodeBuilder {
               token.element != .eof else { return false }
 
         let node = ParagraphNode(range: token.range)
-        // Stop parsing at either a newline or EOF to avoid leftover empty nodes
-        let children = MarkdownInlineParser.parseInline(&context)
-        for child in children { node.append(child) }
+        var inlineCtx = CodeConstructContext(
+            current: node,
+            tokens: context.tokens,
+            consuming: context.consuming,
+            state: context.state
+        )
+        let inlineBuilder = MarkdownInlineBuilder()
+        _ = inlineBuilder.build(from: &inlineCtx)
+        context.consuming = inlineCtx.consuming
         context.current.append(node)
 
         if context.consuming < context.tokens.count,

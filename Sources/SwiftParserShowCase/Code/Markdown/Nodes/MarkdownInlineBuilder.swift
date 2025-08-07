@@ -1,18 +1,31 @@
 import Foundation
 import SwiftParser
 
-/// Simple inline parser used by block builders to parse inline Markdown syntax.
-/// Instead of a giant switch, each inline element is handled by its own builder
-/// and a composite builder loops through them to construct the result.
-struct MarkdownInlineParser {
+/// Inline node builder that parses Markdown inline elements.
+/// Each inline element is handled by a dedicated sub-builder and a composite
+/// builder loops through them to construct the result.
+public class MarkdownInlineBuilder: CodeNodeBuilder {
+    private let stopAt: Set<MarkdownTokenElement>
+
+    public init(stopAt: Set<MarkdownTokenElement> = [.newline, .eof]) {
+        self.stopAt = stopAt
+    }
+
+    public func build(from context: inout CodeConstructContext<MarkdownNodeElement, MarkdownTokenElement>) -> Bool {
+        let start = context.consuming
+        let nodes = Self.parseInline(&context, stopAt: stopAt)
+        for node in nodes { context.current.append(node) }
+        return context.consuming > start
+    }
+
     /// Parse inline content until one of the `stopAt` tokens is encountered.
     /// - Parameters:
     ///   - context: Construction context providing tokens and current state.
     ///   - stopAt: Tokens that terminate inline parsing.
     /// - Returns: Array of parsed inline nodes.
-    static func parseInline(
+    private static func parseInline(
         _ context: inout CodeConstructContext<MarkdownNodeElement, MarkdownTokenElement>,
-        stopAt: Set<MarkdownTokenElement> = [.newline, .eof]
+        stopAt: Set<MarkdownTokenElement>
     ) -> [MarkdownNodeBase] {
         var nodes: [MarkdownNodeBase] = []
         var delimiters: [Delimiter] = []

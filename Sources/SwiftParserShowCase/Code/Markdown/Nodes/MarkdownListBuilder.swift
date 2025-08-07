@@ -86,8 +86,15 @@ public class MarkdownListBuilder: CodeNodeBuilder {
         } else {
             item = ListItemNode(marker: markerText)
         }
-        let children = MarkdownInlineParser.parseInline(&context)
-        for child in children { item.append(child) }
+        var inlineCtx = CodeConstructContext(
+            current: item,
+            tokens: context.tokens,
+            consuming: context.consuming,
+            state: context.state
+        )
+        let inlineBuilder = MarkdownInlineBuilder()
+        _ = inlineBuilder.build(from: &inlineCtx)
+        context.consuming = inlineCtx.consuming
         listNode.append(item)
 
         if context.consuming < context.tokens.count,

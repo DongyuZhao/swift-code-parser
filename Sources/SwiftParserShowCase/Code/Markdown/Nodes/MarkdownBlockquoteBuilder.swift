@@ -16,10 +16,16 @@ public class MarkdownBlockquoteBuilder: CodeNodeBuilder {
            space.element == .space {
             context.consuming += 1
         }
-        // Parse inline content until a newline or EOF inside the blockquote
-        let children = MarkdownInlineParser.parseInline(&context)
         let node = BlockquoteNode()
-        for child in children { node.append(child) }
+        var inlineCtx = CodeConstructContext(
+            current: node,
+            tokens: context.tokens,
+            consuming: context.consuming,
+            state: context.state
+        )
+        let inlineBuilder = MarkdownInlineBuilder()
+        _ = inlineBuilder.build(from: &inlineCtx)
+        context.consuming = inlineCtx.consuming
         context.current.append(node)
         if context.consuming < context.tokens.count,
            let nl = context.tokens[context.consuming] as? MarkdownToken,
