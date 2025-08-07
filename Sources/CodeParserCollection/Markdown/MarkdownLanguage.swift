@@ -32,7 +32,6 @@ public class MarkdownLanguage: CodeLanguage {
       MarkdownHTMLBlockBuilder(),
       MarkdownDefinitionListBuilder(),
       MarkdownAdmonitionBuilder(),
-      MarkdownCustomContainerBuilder(),
       MarkdownTableBuilder(),
       MarkdownListBuilder(),
       MarkdownBlockquoteBuilder(),
@@ -42,11 +41,9 @@ public class MarkdownLanguage: CodeLanguage {
     ]
     self.tokens = [
       MarkdownCodeTokenBuilder(),
-      MarkdownFormulaTokenBuilder(),
       MarkdownWhitespaceTokenBuilder(),
       MarkdownURLTokenBuilder(),
       MarkdownHTMLTokenBuilder(),
-      MarkdownCustomContainerTokenBuilder(),
       MarkdownSingleCharacterTokenBuilder(),
       MarkdownNumberTokenBuilder(),
       MarkdownTextTokenBuilder(singleCharacterMap: MarkdownSingleCharacterTokenBuilder.mapping),

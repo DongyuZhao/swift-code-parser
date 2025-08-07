@@ -67,7 +67,6 @@ public enum MarkdownTokenElement: String, CaseIterable, CodeTokenElement {
   case htmlEntity = "html_entity"
   case htmlBlock = "html_block"  // Closed HTML block
   case htmlUnclosedBlock = "html_unclosed_block"  // Unclosed HTML block
-  case customContainer = "custom_container"  // ::: custom container block
 
 }
 
@@ -248,11 +247,6 @@ public class MarkdownToken: CodeToken {
   public static func email(_ email: String, at range: Range<String.Index>) -> MarkdownToken {
     return MarkdownToken(element: .email, text: email, range: range)
   }
-
-  public static func customContainer(_ text: String, at range: Range<String.Index>) -> MarkdownToken
-  {
-    return MarkdownToken(element: .customContainer, text: text, range: range)
-  }
 }
 
 // MARK: - Token Utilities
@@ -286,7 +280,7 @@ extension MarkdownToken {
   public var canStartBlock: Bool {
     switch element {
     case .hash, .gt, .dash, .plus, .asterisk, .tilde, .number, .inlineCode, .fencedCodeBlock,
-      .indentedCodeBlock, .autolink, .customContainer:
+      .indentedCodeBlock, .autolink:
       return true
     default:
       return false

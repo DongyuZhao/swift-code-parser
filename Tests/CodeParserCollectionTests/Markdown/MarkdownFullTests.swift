@@ -23,18 +23,14 @@ struct MarkdownFullTests {
       > [!NOTE]
       > Admonition content
 
-      ::: custom
-      Custom container
-      :::
-
       > Quote line one
       > Quote line two
 
       1. First ordered
       1. Second ordered
-         - Nested item
-         - [ ] Task item
-         - [x] Done item
+        - Nested item
+        - [ ] Task item
+        - [x] Done item
 
       - Unordered item
       - Another item
@@ -79,7 +75,6 @@ struct MarkdownFullTests {
     verifyHeadingStructure(result.root)
     verifyParagraphWithInlineElements(result.root)
     verifyAdmonitionStructure(result.root)
-    verifyCustomContainerStructure(result.root)
     verifyBlockquoteStructure(result.root)
     verifyListStructures(result.root)
     verifyDefinitionListStructure(result.root)
@@ -143,18 +138,6 @@ struct MarkdownFullTests {
     }
     #expect(admonitionNode.kind == "note", "Admonition should be of type note")
     #expect(admonitionNode.children.count > 0, "Admonition should have content")
-  }
-
-  private func verifyCustomContainerStructure(_ root: CodeNode<MarkdownNodeElement>) {
-    guard
-      let containerNode = root.first(where: { $0.element == .customContainer })
-        as? CustomContainerNode
-    else {
-      Issue.record("Should find a custom container node")
-      return
-    }
-    #expect(containerNode.name == "custom", "Container name should match")
-    #expect(!containerNode.content.isEmpty, "Container should have content")
   }
 
   private func verifyBlockquoteStructure(_ root: CodeNode<MarkdownNodeElement>) {
