@@ -6,7 +6,7 @@ public class MarkdownListBuilder: CodeNodeBuilder {
 
     public func build(from context: inout CodeConstructContext<MarkdownNodeElement, MarkdownTokenElement>) -> Bool {
         guard context.consuming < context.tokens.count else { return false }
-        let state = context.state as? MarkdownContextState ?? MarkdownContextState()
+        let state = context.state as? MarkdownConstructState ?? MarkdownConstructState()
         if context.state == nil { context.state = state }
 
         var idx = context.consuming

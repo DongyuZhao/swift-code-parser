@@ -21,9 +21,9 @@ public protocol CodeLanguage<Node, Token> where Node: CodeNodeElement, Token: Co
 
     /// Provide an EOF token if the language requires one.
     /// - Parameter range: The range where the EOF token should be inserted.
-    func eofToken(at range: Range<String.Index>) -> (any CodeToken<Token>)?
+    func eof(at range: Range<String.Index>) -> (any CodeToken<Token>)?
 }
 
 extension CodeLanguage {
-    public func eofToken(at range: Range<String.Index>) -> (any CodeToken<Token>)? { nil }
+    public func eof(at range: Range<String.Index>) -> (any CodeToken<Token>)? { nil }
 }

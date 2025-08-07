@@ -8,16 +8,16 @@
 public class CodeTokenizer<Token> where Token: CodeTokenElement {
     private let builders: [any CodeTokenBuilder<Token>]
     private var state: () -> (any CodeTokenState<Token>)?
-    private let eofTokenFactory: ((Range<String.Index>) -> (any CodeToken<Token>)?)?
+    private let eof: ((Range<String.Index>) -> (any CodeToken<Token>)?)?
 
     public init(
         builders: [any CodeTokenBuilder<Token>],
         state: @escaping () -> (any CodeTokenState<Token>)?,
-        eofTokenFactory: ((Range<String.Index>) -> (any CodeToken<Token>)?)? = nil
+        eof: ((Range<String.Index>) -> (any CodeToken<Token>)?)? = nil
     ) {
         self.builders = builders
         self.state = state
-        self.eofTokenFactory = eofTokenFactory
+        self.eof = eof
     }
 
     public func tokenize(_ input: String) -> ([any CodeToken<Token>], [CodeError]) {
@@ -49,7 +49,7 @@ public class CodeTokenizer<Token> where Token: CodeTokenElement {
         }
 
         // Append EOF token if provided by the language
-        if let token = eofTokenFactory?(input.endIndex..<input.endIndex) {
+        if let token = eof?(input.endIndex..<input.endIndex) {
             context.tokens.append(token)
         }
 

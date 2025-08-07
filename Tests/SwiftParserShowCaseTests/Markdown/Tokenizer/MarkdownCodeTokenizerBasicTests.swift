@@ -8,7 +8,7 @@ final class MarkdownCodeTokenizerBasicTests: XCTestCase {
         let tokenizer = CodeTokenizer(
             builders: language.tokens,
             state: language.state,
-            eofTokenFactory: { language.eofToken(at: $0) }
+            eof: { language.eof(at: $0) }
         )
         let (tokens, _) = tokenizer.tokenize("# Title")
         XCTAssertEqual(tokens.count, 4)
@@ -23,7 +23,7 @@ final class MarkdownCodeTokenizerBasicTests: XCTestCase {
         let tokenizer = CodeTokenizer(
             builders: language.tokens,
             state: language.state,
-            eofTokenFactory: { language.eofToken(at: $0) }
+            eof: { language.eof(at: $0) }
         )
         let (tokens, _) = tokenizer.tokenize("<https://example.com>")
         XCTAssertEqual(tokens.count, 2)
@@ -37,7 +37,7 @@ final class MarkdownCodeTokenizerBasicTests: XCTestCase {
         let tokenizer = CodeTokenizer(
             builders: language.tokens,
             state: language.state,
-            eofTokenFactory: { language.eofToken(at: $0) }
+            eof: { language.eof(at: $0) }
         )
         let (tokens, _) = tokenizer.tokenize("https://example.com")
         XCTAssertEqual(tokens.count, 2)
@@ -50,7 +50,7 @@ final class MarkdownCodeTokenizerBasicTests: XCTestCase {
         let tokenizer = CodeTokenizer(
             builders: language.tokens,
             state: language.state,
-            eofTokenFactory: { language.eofToken(at: $0) }
+            eof: { language.eof(at: $0) }
         )
         let (tokens, _) = tokenizer.tokenize("user@example.com")
         XCTAssertEqual(tokens.count, 2)

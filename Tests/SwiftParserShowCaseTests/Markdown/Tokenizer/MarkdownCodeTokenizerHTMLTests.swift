@@ -8,7 +8,7 @@ final class MarkdownCodeTokenizerHTMLTests: XCTestCase {
         let tokenizer = CodeTokenizer(
             builders: language.tokens,
             state: language.state,
-            eofTokenFactory: { language.eofToken(at: $0) }
+            eof: { language.eof(at: $0) }
         )
         let (tokens, _) = tokenizer.tokenize(input)
         return tokens
@@ -98,4 +98,3 @@ final class MarkdownCodeTokenizerHTMLTests: XCTestCase {
         XCTAssertEqual(tokens.map { $0.element }, expected)
     }
 }
-

@@ -1,7 +1,7 @@
 import Foundation
 import SwiftParser
 
-public class MarkdownContextState: CodeConstructState {
+public class MarkdownConstructState: CodeConstructState {
     public typealias Node = MarkdownNodeElement
     public typealias Token = MarkdownTokenElement
 
