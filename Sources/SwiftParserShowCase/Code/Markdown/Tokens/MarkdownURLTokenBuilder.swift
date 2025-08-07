@@ -57,7 +57,7 @@ public class MarkdownURLTokenBuilder: CodeTokenBuilder {
         return false
     }
 
-    @preconcurrency nonisolated(unsafe) static let urlRegex = /^(https?:\/\/[^\s<>\[\]]+)/
+    @preconcurrency nonisolated(unsafe) static let urlRegex = /^(https?:\/\/[^\s<>\[\]()]+)/
     @preconcurrency nonisolated(unsafe) static let emailRegex = /^([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/
 
     private static func isValidAutolinkContent(_ content: String) -> Bool {

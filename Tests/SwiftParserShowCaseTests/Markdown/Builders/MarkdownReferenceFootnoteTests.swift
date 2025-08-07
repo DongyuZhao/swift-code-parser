@@ -38,6 +38,6 @@ final class MarkdownReferenceFootnoteTests: XCTestCase {
         guard let paragraph = result.root.children.last as? ParagraphNode else {
             return XCTFail("Expected ParagraphNode")
         }
-        XCTAssertTrue(paragraph.children.contains { $0 is FootnoteNode })
+        XCTAssertTrue(paragraph.children.contains { $0 is FootnoteReferenceNode })
     }
 }

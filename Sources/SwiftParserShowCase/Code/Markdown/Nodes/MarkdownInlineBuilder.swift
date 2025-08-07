@@ -312,10 +312,10 @@ public class MarkdownInlineBuilder: CodeNodeBuilder {
                   let rb = context.tokens[context.consuming] as? MarkdownToken,
                   rb.element == .rightBracket else { context.consuming = start; return nil }
             context.consuming += 1
-            return FootnoteNode(identifier: ident, content: "", referenceText: nil, range: rb.range)
+            return FootnoteReferenceNode(identifier: ident)
         } else if context.consuming < context.tokens.count,
                   let at = context.tokens[context.consuming] as? MarkdownToken,
-                  at.element == .text, at.text == "@" {
+                  at.element == .atSign {
             context.consuming += 1
             var ident = ""
             while context.consuming < context.tokens.count,

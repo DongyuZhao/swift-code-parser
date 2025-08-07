@@ -19,7 +19,7 @@ public class MarkdownReferenceDefinitionBuilder: CodeNodeBuilder {
             idx += 1
         } else if idx < context.tokens.count,
                   let at = context.tokens[idx] as? MarkdownToken,
-                  at.element == .text, at.text == "@" {
+                  at.element == .atSign {
             isCitation = true
             idx += 1
         }
