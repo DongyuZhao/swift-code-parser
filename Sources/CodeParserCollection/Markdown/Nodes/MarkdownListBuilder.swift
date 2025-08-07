@@ -55,7 +55,33 @@ public class MarkdownListBuilder: CodeNodeBuilder {
 
     while let last = state.listStack.last, last.level > indent {
       state.listStack.removeLast()
-      context.current = last.parent ?? context.current
+      if let remainingList = state.listStack.last {
+        context.current = remainingList
+      } else {
+        var current: CodeNode<MarkdownNodeElement> = context.current
+        while current.element != .document {
+          if let parent = current.parent {
+            current = parent
+          } else {
+            break
+          }
+        }
+        context.current = current
+      }
+    }
+    
+    if let last = state.listStack.last, 
+       last.level == indent && last.element != type {
+      state.listStack.removeAll()
+      var current: CodeNode<MarkdownNodeElement> = context.current
+      while current.element != .document {
+        if let parent = current.parent {
+          current = parent
+        } else {
+          break
+        }
+      }
+      context.current = current
     }
 
     var listNode: ListNode
@@ -67,9 +93,21 @@ public class MarkdownListBuilder: CodeNodeBuilder {
       } else {
         listNode = OrderedListNode(start: startNum, level: indent)
       }
-      context.current.append(listNode)
+      
+      if indent > 0, let parentList = state.listStack.last, indent > parentList.level {
+        if let lastListItem = parentList.children.last as? MarkdownNodeBase {
+          lastListItem.append(listNode)
+        } else {
+          context.current.append(listNode)
+        }
+      } else {
+        context.current.append(listNode)
+      }
+      
       state.listStack.append(listNode)
     }
+
+    // Keep building inside the list node for now; will switch to the list item after creation
     context.current = listNode
 
     var isTask = false
@@ -110,8 +148,8 @@ public class MarkdownListBuilder: CodeNodeBuilder {
     let inlineBuilder = MarkdownInlineBuilder()
     _ = inlineBuilder.build(from: &inlineCtx)
     context.consuming = inlineCtx.consuming
-    item.append(paragraph)
-    listNode.append(item)
+  item.append(paragraph)
+  listNode.append(item)
 
     if context.consuming < context.tokens.count,
       let nl = context.tokens[context.consuming] as? MarkdownToken,
@@ -119,6 +157,9 @@ public class MarkdownListBuilder: CodeNodeBuilder {
     {
       context.consuming += 1
     }
-    return true
+  // After finishing initial paragraph of the list item, set current to the list item
+  // so that subsequent paragraphs (continuations) can be correctly attached.
+  context.current = item
+  return true
   }
 }

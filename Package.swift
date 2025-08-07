@@ -36,7 +36,7 @@ let package = Package(
         ),
         .executableTarget(
             name: "CodeParserShowCase",
-            dependencies: []
+            dependencies: ["CodeParserCore", "CodeParserCollection"]
         ),
         .testTarget(
             name: "CodeParserCoreTests",
