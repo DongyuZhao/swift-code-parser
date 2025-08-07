@@ -23,8 +23,8 @@ public class MarkdownLanguage: CodeLanguage {
     /// - Parameter consumers: Node builders to be used when constructing the
     ///   document AST. Passing a custom set allows features to be enabled or
     ///   disabled.
-    public init(
-        consumers: [any CodeNodeBuilder<MarkdownNodeElement, MarkdownTokenElement>] = [
+    public init() {
+        self.nodes = [
             MarkdownReferenceDefinitionBuilder(),
             MarkdownHeadingBuilder(),
             MarkdownThematicBreakBuilder(),
@@ -41,8 +41,6 @@ public class MarkdownLanguage: CodeLanguage {
             MarkdownNewlineBuilder(),
             MarkdownEOFBuilder()
         ]
-    ) {
-        self.nodes = consumers
         self.tokens = [
             MarkdownCodeTokenBuilder(),
             MarkdownFormulaTokenBuilder(),
