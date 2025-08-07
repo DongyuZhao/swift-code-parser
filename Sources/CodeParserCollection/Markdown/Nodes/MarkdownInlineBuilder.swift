@@ -97,8 +97,13 @@ public class MarkdownInlineBuilder: CodeNodeBuilder {
         context.consuming += 1
       }
       if marker == .tilde && count < 2 {
-        let text = String(repeating: "~", count: count)
-        nodes.append(TextNode(content: text))
+        // Single tilde is literal; merge into previous text node if possible
+        if let last = nodes.last as? TextNode, !delimiters.contains(where: { $0.index == nodes.count - 1 }) {
+          last.content += String(repeating: "~", count: count)
+        } else {
+          let text = String(repeating: "~", count: count)
+          nodes.append(TextNode(content: text))
+        }
       } else {
         handleDelimiter(marker: marker, count: count, nodes: &nodes, stack: &delimiters)
       }
@@ -130,13 +135,86 @@ public class MarkdownInlineBuilder: CodeNodeBuilder {
       delimiters: inout [Delimiter]
     ) -> Bool {
       guard context.consuming < context.tokens.count,
-        let token = context.tokens[context.consuming] as? MarkdownToken,
-        token.element == .formula
+        let token = context.tokens[context.consuming] as? MarkdownToken
       else { return false }
 
-      nodes.append(FormulaNode(expression: trimFormula(token.text)))
-      context.consuming += 1
-      return true
+      // Inline $...$
+      if token.element == .text, token.text == "$" {
+        let startIndex = context.consuming
+        var i = startIndex + 1
+        var closeAt: Int? = nil
+        var valid = true
+        // $ must not be followed by whitespace; and closing $ must not be preceded by whitespace
+        if i < context.tokens.count, let t = context.tokens[i] as? MarkdownToken,
+          t.isWhitespace
+        { valid = false }
+        while valid && i < context.tokens.count {
+          guard let t = context.tokens[i] as? MarkdownToken else { break }
+          if t.element == .text && t.text == "$" {
+            if i > startIndex + 1,
+              let prev = context.tokens[i - 1] as? MarkdownToken
+            {
+              if prev.element == .backslash {
+                // escaped $, treat as literal and continue scanning
+                i += 1
+                continue
+              }
+              if !prev.isWhitespace {
+                closeAt = i + 1
+                break
+              } else {
+                valid = false
+                break
+              }
+            } else {
+              valid = false
+              break
+            }
+          }
+          if t.element == .newline { valid = false; break }
+          i += 1
+        }
+        if valid, let end = closeAt {
+          let raw = joinText(context.tokens, from: startIndex, to: end)
+          context.consuming = end
+          nodes.append(FormulaNode(expression: trimFormula(raw)))
+          return true
+        }
+        return false
+      }
+
+      // Inline \(...\)
+      if token.element == .backslash,
+        context.consuming + 1 < context.tokens.count,
+        let lp = context.tokens[context.consuming + 1] as? MarkdownToken,
+        lp.element == .leftParen
+      {
+        let startIndex = context.consuming
+        var i = startIndex + 2
+        var closeAt: Int? = nil
+        while i < context.tokens.count {
+          guard let t = context.tokens[i] as? MarkdownToken else { break }
+          if t.element == .backslash,
+            i + 1 < context.tokens.count,
+            let rp = context.tokens[i + 1] as? MarkdownToken, rp.element == .rightParen
+          {
+            closeAt = i + 2
+            break
+          }
+          if t.element == .newline { break }
+          i += 1
+        }
+        if let end = closeAt {
+          let raw = joinText(context.tokens, from: startIndex, to: end)
+          context.consuming = end
+          // keep raw for backslash-variant (tests expect delimiters retained)
+          nodes.append(FormulaNode(expression: raw))
+          return true
+        }
+        return false
+      }
+
+      return false
     }
   }
 
@@ -491,6 +569,20 @@ public class MarkdownInlineBuilder: CodeNodeBuilder {
     if t.hasPrefix("$") { t.removeFirst() }
     if t.hasSuffix("$") { t.removeLast() }
     return t
+  }
+
+  private static func joinText(
+    _ tokens: [any CodeToken<MarkdownTokenElement>], from: Int, to: Int
+  ) -> String {
+    var s = ""
+    var i = from
+    while i < to {
+      if let t = tokens[i] as? MarkdownToken {
+        s += t.text
+      }
+      i += 1
+    }
+    return s
   }
 
   private static func trimAutolink(_ text: String) -> String {

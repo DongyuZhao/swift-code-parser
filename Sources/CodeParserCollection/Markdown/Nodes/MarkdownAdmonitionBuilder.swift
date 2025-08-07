@@ -13,12 +13,11 @@ public class MarkdownAdmonitionBuilder: CodeNodeBuilder {
       gt.element == .gt
     else { return false }
     var idx = context.consuming + 1
-    if idx < context.tokens.count,
-      let space = context.tokens[idx] as? MarkdownToken,
-      space.element == .space
-    {
-      idx += 1
-    }
+    // Optional whitespace after '>' (one or more space/tab)
+    while idx < context.tokens.count,
+      let ws = context.tokens[idx] as? MarkdownToken,
+      (ws.element == .space || ws.element == .tab)
+    { idx += 1 }
     guard idx + 3 < context.tokens.count,
       let lb = context.tokens[idx] as? MarkdownToken, lb.element == .leftBracket,
       let ex = context.tokens[idx + 1] as? MarkdownToken, ex.element == .exclamation,
@@ -27,41 +26,64 @@ public class MarkdownAdmonitionBuilder: CodeNodeBuilder {
     else { return false }
     let kind = text.text.lowercased()
     idx += 4
+
+    // Allow optional title or trailing text on the header line (we treat it as no-op here).
+    // Consume until end of line.
+    guard idx < context.tokens.count else { return false }
+    while idx < context.tokens.count,
+      let tk = context.tokens[idx] as? MarkdownToken,
+      tk.element != .newline
+    { idx += 1 }
+    // Expect a newline to end the header line
     guard idx < context.tokens.count,
       let nl = context.tokens[idx] as? MarkdownToken,
       nl.element == .newline
     else { return false }
     idx += 1
+
+    // At least one following blockquote content line is required
     guard idx < context.tokens.count,
       isStartOfLine(index: idx, tokens: context.tokens),
       let gt2 = context.tokens[idx] as? MarkdownToken,
       gt2.element == .gt
     else { return false }
-    idx += 1
-    if idx < context.tokens.count,
-      let sp = context.tokens[idx] as? MarkdownToken,
-      sp.element == .space
-    {
-      idx += 1
-    }
-    context.consuming = idx
+
     let node = AdmonitionNode(kind: kind)
-    var inlineCtx = CodeConstructContext(
-      current: node,
-      tokens: context.tokens,
-      consuming: context.consuming,
-      state: context.state
-    )
     let inlineBuilder = MarkdownInlineBuilder()
-    _ = inlineBuilder.build(from: &inlineCtx)
-    context.consuming = inlineCtx.consuming
-    context.current.append(node)
-    if context.consuming < context.tokens.count,
-      let nl2 = context.tokens[context.consuming] as? MarkdownToken,
-      nl2.element == .newline
-    {
-      context.consuming += 1
+
+    // Loop over consecutive lines that continue the same blockquote with '>'
+    contentLoop: while idx < context.tokens.count {
+      // Start-of-line '>'
+      guard isStartOfLine(index: idx, tokens: context.tokens),
+        let q = context.tokens[idx] as? MarkdownToken, q.element == .gt
+      else { break contentLoop }
+      idx += 1
+      // Optional whitespace after '>' on content line
+      while idx < context.tokens.count,
+        let sp = context.tokens[idx] as? MarkdownToken,
+        (sp.element == .space || sp.element == .tab)
+      { idx += 1 }
+
+      // Build inline contents for the remainder of this line
+      var inlineCtx = CodeConstructContext(
+        current: node,
+        tokens: context.tokens,
+        consuming: idx,
+        state: context.state
+      )
+      _ = inlineBuilder.build(from: &inlineCtx)
+      idx = inlineCtx.consuming
+      // Consume a trailing newline if present and continue; if not, break
+      if idx < context.tokens.count,
+        let nlt = context.tokens[idx] as? MarkdownToken,
+        nlt.element == .newline
+      { idx += 1 } else { break }
+      // Continue the loop; next iteration will verify starting with '>' again
     }
+
+    // Commit consumption and append node once we've captured lines
+    context.consuming = idx
+    context.current.append(node)
     return true
   }
 

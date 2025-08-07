@@ -2,6 +2,7 @@ import CodeParserCore
 import Foundation
 
 public class MarkdownTableBuilder: CodeNodeBuilder {
+  private var columnAlignments: [TableCellNode.Alignment] = []
   public init() {}
 
   public func build(
@@ -12,7 +13,50 @@ public class MarkdownTableBuilder: CodeNodeBuilder {
       first.element == .pipe
     else { return false }
 
-    let table = TableNode(range: first.range)
+    // Pre-scan to ensure this is a valid GFM table: need a header row then a separator row
+    let original = context.consuming
+    var scanIdx = original
+    var firstLine: [MarkdownToken] = []
+    while scanIdx < context.tokens.count, let tok = context.tokens[scanIdx] as? MarkdownToken {
+      if tok.element == .newline { scanIdx += 1; break }
+      firstLine.append(tok); scanIdx += 1
+    }
+    // Collect second line tokens
+    var secondLine: [MarkdownToken] = []
+    while scanIdx < context.tokens.count, let tok = context.tokens[scanIdx] as? MarkdownToken {
+      if tok.element == .newline { break }
+      secondLine.append(tok); scanIdx += 1
+    }
+    // Must have a potential separator line per GFM: only pipes, colons, dashes, spaces and at least one dash
+    let isSeparatorLine = !secondLine.isEmpty && secondLine.allSatisfy { t in
+      let trimmed = t.text.trimmingCharacters(in: .whitespaces)
+      return t.element == .pipe || t.element == .space || trimmed.isEmpty || trimmed.allSatisfy { ch in ch == "-" || ch == ":" }
+    } && secondLine.contains(where: { $0.text.contains("-") })
+    if !isSeparatorLine { return false }
+
+    // Derive column alignments from the separator line now
+    var processedSep = secondLine.filter { $0.element != .eof }
+    if let first = processedSep.first, first.element == .pipe { processedSep.removeFirst() }
+    if let last = processedSep.last, last.element == .pipe { processedSep.removeLast() }
+    var segments: [[MarkdownToken]] = [[]]
+    for tok in processedSep {
+      if tok.element == .pipe {
+        segments.append([])
+      } else {
+        segments[segments.count - 1].append(tok)
+      }
+    }
+    columnAlignments = segments.map { seg in
+      let text = seg.map { $0.text }.joined().trimmingCharacters(in: .whitespaces)
+      if text.hasPrefix(":") && text.hasSuffix(":") { return .center }
+      if text.hasPrefix(":") { return .left }
+      if text.hasSuffix(":") { return .right }
+      return .none
+    }
+    // Reset to original for actual parsing
+    context.consuming = original
+
+  let table = TableNode(range: first.range)
     context.current.append(table)
 
     var isFirstRow = true
@@ -62,11 +106,8 @@ public class MarkdownTableBuilder: CodeNodeBuilder {
         || text.allSatisfy { char in char == "-" || char == ":" }
     }
 
-    // Skip separator rows - they define table structure but aren't content
-    if isSeparatorRow {
-      foundSeparator = true
-      return true  // Continue parsing but don't create a row node
-    }
+  // Skip separator rows - they define table structure but aren't content
+  if isSeparatorRow { foundSeparator = true; table.alignments = columnAlignments; return true }
 
     // Determine if this row is a header:
     // - First row is header if we haven't found separator yet
@@ -87,8 +128,14 @@ public class MarkdownTableBuilder: CodeNodeBuilder {
 
     for tok in processedTokens {
       if tok.element == .pipe {
+        // Escaped pipe: if previous token in cellTokens is a backslash, treat as literal
+        if let last = cellTokens.last, last.element == .backslash {
+          cellTokens.append(tok) // keep literal pipe in same cell
+          continue
+        }
         // Create cell from accumulated tokens (even if empty, to maintain column count)
-        let cell = TableCellNode(range: start.range)
+  let alignment = columnAlignments.indices.contains(row.children.count) ? columnAlignments[row.children.count] : .none
+  let cell = TableCellNode(range: start.range, alignment: alignment)
 
         // Trim leading and trailing whitespace tokens from cell content
         var trimmedCellTokens = cellTokens
@@ -111,8 +158,9 @@ public class MarkdownTableBuilder: CodeNodeBuilder {
     }
 
     // Process final cell if we have remaining tokens
-    if !cellTokens.isEmpty {
-      let cell = TableCellNode(range: start.range)
+  if !cellTokens.isEmpty {
+  let alignment = columnAlignments.indices.contains(row.children.count) ? columnAlignments[row.children.count] : .none
+  let cell = TableCellNode(range: start.range, alignment: alignment)
 
       // Trim leading and trailing whitespace tokens from cell content
       var trimmedCellTokens = cellTokens

@@ -23,13 +23,13 @@ public enum MarkdownNodeElement: String, CaseIterable, CodeNodeElement {
   case definitionTerm = "definition_term"
   case definitionDescription = "definition_description"
   case admonition = "admonition"
-  case customContainer = "custom_container"
 
   // MARK: - Inline Elements (CommonMark)
   case text = "text"
   case emphasis = "emphasis"
   case strong = "strong"
-  case strike = "striket"
+  // GFM Strikethrough (should be exposed as "strike")
+  case strike = "strike"
   case code = "code"
   case link = "link"
   case image = "image"
@@ -289,22 +289,6 @@ public class AdmonitionNode: MarkdownNodeBase {
   }
 }
 
-public class CustomContainerNode: MarkdownNodeBase {
-  public var name: String
-  public var content: String
-
-  public init(name: String, content: String) {
-    self.name = name
-    self.content = content
-    super.init(element: .customContainer)
-  }
-
-  public override func hash(into hasher: inout Hasher) {
-    super.hash(into: &hasher)
-    hasher.combine(name)
-    hasher.combine(content)
-  }
-}
 
 // MARK: - Inline Elements
 public class TextNode: MarkdownNodeBase {
@@ -437,6 +421,7 @@ public class CommentNode: MarkdownNodeBase {
 
 // MARK: - GFM Extensions
 public class TableNode: MarkdownNodeBase {
+  public var alignments: [TableCellNode.Alignment] = []
   public init(range: Range<String.Index>) {
     super.init(element: .table)
   }
@@ -463,8 +448,18 @@ public class TableRowNode: MarkdownNodeBase {
 }
 
 public class TableCellNode: MarkdownNodeBase {
+  public enum Alignment: Hashable { case none, left, center, right }
+  public var alignment: Alignment = .none
   public init(range: Range<String.Index>) {
     super.init(element: .tableCell)
+  }
+  public init(range: Range<String.Index>, alignment: Alignment) {
+    self.alignment = alignment
+    super.init(element: .tableCell)
+  }
+  public override func hash(into hasher: inout Hasher) {
+    super.hash(into: &hasher)
+    hasher.combine(alignment)
   }
 }
 

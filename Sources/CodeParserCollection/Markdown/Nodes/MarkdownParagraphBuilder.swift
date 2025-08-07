@@ -157,6 +157,51 @@ public class MarkdownParagraphBuilder: CodeNodeBuilder {
     target.append(node)
     context.current = target
 
+    // Setext heading detection (only when paragraph is a direct child of container, not list item continuation)
+    if target.element != .listItem { // list item continuation paragraphs shouldn't form setext headings
+      if context.consuming < context.tokens.count,
+        let nl = context.tokens[context.consuming] as? MarkdownToken, nl.element == .newline
+      {
+        var idx = context.consuming + 1
+        var underline: [MarkdownToken] = []
+        while idx < context.tokens.count, let t = context.tokens[idx] as? MarkdownToken, t.element != .newline {
+          underline.append(t); idx += 1
+        }
+        if !underline.isEmpty {
+          let hasEquals = underline.contains { $0.element == .equals }
+          let hasDashes = underline.contains { $0.element == .dash }
+            // Must not mix '=' and '-' per spec for simple detection (mixed would be thematic break or invalid)
+          if (hasEquals != hasDashes) { // exactly one kind
+            // Ensure only spaces and that marker type present
+            let invalid = underline.contains { tok in
+              !(tok.element == .space || tok.element == .equals || tok.element == .dash)
+            }
+            if !invalid {
+              // Determine heading level
+              let level = hasEquals ? 1 : 2
+              // Consume underline line including trailing newline (if present)
+              if idx < context.tokens.count, let endNl = context.tokens[idx] as? MarkdownToken, endNl.element == .newline {
+                // We'll consume both the separating newline and underline line newline
+                // current position at first newline before underline; keep it to allow header replacing paragraph position
+              }
+              // Remove paragraph we just appended and replace with header
+              if let paraIndex = target.children.lastIndex(where: { $0 === node }) {
+                let header = HeaderNode(level: level)
+                for child in node.children { header.append(child) }
+                target.children[paraIndex] = header
+              }
+              // Advance consuming pointer over separating newline + underline line + optional ending newline
+              // Currently context.consuming at underline separating newline
+              context.consuming = idx
+              if context.consuming < context.tokens.count, let endNl = context.tokens[context.consuming] as? MarkdownToken, endNl.element == .newline {
+                context.consuming += 1
+              }
+            }
+          }
+        }
+      }
+    }
+
     if context.consuming < context.tokens.count,
       let nl = context.tokens[context.consuming] as? MarkdownToken,
       nl.element == .newline
