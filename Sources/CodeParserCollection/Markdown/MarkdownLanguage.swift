@@ -27,6 +27,7 @@ public class MarkdownLanguage: CodeLanguage {
       MarkdownReferenceDefinitionBuilder(),
       MarkdownHeadingBuilder(),
       MarkdownThematicBreakBuilder(),
+      MarkdownIndentedCodeBuilder(),
       MarkdownFencedCodeBuilder(),
       MarkdownFormulaBlockBuilder(),
       MarkdownHTMLBlockBuilder(),

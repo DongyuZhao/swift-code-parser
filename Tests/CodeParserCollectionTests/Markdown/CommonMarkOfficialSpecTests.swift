@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 import Testing
 
 @testable import CodeParserCollection
@@ -33,10 +36,19 @@ struct CommonMarkOfficialSpecTests {
     if !fileManager.fileExists(atPath: url.deletingLastPathComponent().path) {
       try fileManager.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
     }
+    // First look for a bundled spec.json alongside this test file to avoid
+    // network flakiness in environments without outbound access.
+    let local = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+      .appendingPathComponent("spec.json")
+    if let localData = try? Data(contentsOf: local) {
+      return try JSONDecoder().decode(Spec.self, from: localData)
+    }
+
     // Download if not cached (simple heuristic: size < 1KB -> redownload)
     var data: Data
     if let attrs = try? fileManager.attributesOfItem(atPath: url.path),
-       let size = attrs[.size] as? NSNumber, size.intValue > 1024, let cached = try? Data(contentsOf: url) {
+       let size = attrs[.size] as? NSNumber, size.intValue > 1024,
+       let cached = try? Data(contentsOf: url) {
       data = cached
     } else {
       let remote = URL(string: "https://raw.githubusercontent.com/commonmark/commonmark-spec/master/spec.json")!

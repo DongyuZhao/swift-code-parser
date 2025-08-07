@@ -78,6 +78,9 @@ public class MarkdownReferenceDefinitionBuilder: CodeNodeBuilder {
     } else {
       let node = ReferenceNode(identifier: identifier, url: value, title: "")
       context.current.append(node)
+      var root = context.current
+      while let parent = root.parent { root = parent }
+      MarkdownReferenceResolver.resolve(in: root)
     }
     return true
   }
