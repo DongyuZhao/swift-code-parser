@@ -26,10 +26,16 @@ public class MarkdownHeadingBuilder: CodeNodeBuilder {
         idx += 1
 
         context.consuming = idx
-        // Parse inline content until a newline or EOF
-        let children = MarkdownInlineParser.parseInline(&context)
         let node = HeaderNode(level: level)
-        for child in children { node.append(child) }
+        var inlineCtx = CodeConstructContext(
+            current: node,
+            tokens: context.tokens,
+            consuming: context.consuming,
+            state: context.state
+        )
+        let inlineBuilder = MarkdownInlineBuilder()
+        _ = inlineBuilder.build(from: &inlineCtx)
+        context.consuming = inlineCtx.consuming
         context.current.append(node)
 
         if context.consuming < context.tokens.count,

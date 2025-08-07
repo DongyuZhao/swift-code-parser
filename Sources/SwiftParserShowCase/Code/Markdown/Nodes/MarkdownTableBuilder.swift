@@ -42,8 +42,8 @@ public class MarkdownTableBuilder: CodeNodeBuilder {
             if tok.element == .pipe {
                 let cell = TableCellNode(range: start.range)
                 var subCtx = CodeConstructContext(current: cell, tokens: cellTokens, state: context.state)
-                let children = MarkdownInlineParser.parseInline(&subCtx, stopAt: [])
-                for child in children { cell.append(child) }
+                let inlineBuilder = MarkdownInlineBuilder(stopAt: [])
+                _ = inlineBuilder.build(from: &subCtx)
                 row.append(cell)
                 cellTokens.removeAll()
             } else {

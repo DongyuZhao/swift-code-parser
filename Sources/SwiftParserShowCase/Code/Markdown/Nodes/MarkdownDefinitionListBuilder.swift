@@ -51,16 +51,17 @@ public class MarkdownDefinitionListBuilder: CodeNodeBuilder {
             context.consuming += 1
         }
 
-        var termContext = CodeConstructContext(current: DocumentNode(), tokens: termTokens)
-        let termChildren = MarkdownInlineParser.parseInline(&termContext)
-        var defContext = CodeConstructContext(current: DocumentNode(), tokens: defTokens)
-        let defChildren = MarkdownInlineParser.parseInline(&defContext)
+        let termNode = DefinitionTermNode()
+        var termContext = CodeConstructContext(current: termNode, tokens: termTokens, state: context.state)
+        let inlineBuilder = MarkdownInlineBuilder(stopAt: [])
+        _ = inlineBuilder.build(from: &termContext)
+
+        let descNode = DefinitionDescriptionNode()
+        var defContext = CodeConstructContext(current: descNode, tokens: defTokens, state: context.state)
+        let inlineBuilder2 = MarkdownInlineBuilder(stopAt: [])
+        _ = inlineBuilder2.build(from: &defContext)
 
         let item = DefinitionItemNode()
-        let termNode = DefinitionTermNode()
-        for c in termChildren { termNode.append(c) }
-        let descNode = DefinitionDescriptionNode()
-        for c in defChildren { descNode.append(c) }
         item.append(termNode)
         item.append(descNode)
 

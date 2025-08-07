@@ -35,9 +35,16 @@ public class MarkdownAdmonitionBuilder: CodeNodeBuilder {
            let sp = context.tokens[idx] as? MarkdownToken,
            sp.element == .space { idx += 1 }
         context.consuming = idx
-        let children = MarkdownInlineParser.parseInline(&context)
         let node = AdmonitionNode(kind: kind)
-        for c in children { node.append(c) }
+        var inlineCtx = CodeConstructContext(
+            current: node,
+            tokens: context.tokens,
+            consuming: context.consuming,
+            state: context.state
+        )
+        let inlineBuilder = MarkdownInlineBuilder()
+        _ = inlineBuilder.build(from: &inlineCtx)
+        context.consuming = inlineCtx.consuming
         context.current.append(node)
         if context.consuming < context.tokens.count,
            let nl2 = context.tokens[context.consuming] as? MarkdownToken,
