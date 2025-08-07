@@ -1,6 +1,6 @@
-name: SwiftParser
+name: CodeParser
 options:
-  bundleIdPrefix: com.swiftparser
+  bundleIdPrefix: com.codeparser
   deploymentTarget:
     iOS: "17.0"
     macOS: "14.0"
@@ -13,19 +13,19 @@ settings:
   MACOSX_DEPLOYMENT_TARGET: "14.0"
 
 targets:
-  SwiftParser:
+  CodeParser:
     type: framework
     supportedDestinations: [iOS, macOS]
     sources:
-      - path: Sources/SwiftParser
+      - path: Sources/CodeParser
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.swiftparser.SwiftParser
+        PRODUCT_BUNDLE_IDENTIFIER: com.codeparser.CodeParser
         MARKETING_VERSION: "1.0.0"
         CURRENT_PROJECT_VERSION: "1"
         SWIFT_VERSION: "6.0"
         GENERATE_INFOPLIST_FILE: true
-        INFOPLIST_KEY_CFBundleDisplayName: SwiftParser
+        INFOPLIST_KEY_CFBundleDisplayName: CodeParser
         DEFINES_MODULE: true
       configs:
         Debug:
@@ -33,26 +33,26 @@ targets:
         Release:
           SWIFT_COMPILATION_MODE: wholemodule
 
-  SwiftParserShowCase:
+  CodeParserShowCase:
     type: application
     platform: auto
     supportedDestinations: [iOS, macOS]
     sources:
-      - path: Sources/SwiftParserShowCase
+      - path: Sources/CodeParserShowCase
     dependencies:
-      - target: SwiftParser
+      - target: CodeParser
         destinationFilter: [iOS, macOS]
     schemes:
       run:
         config: Debug
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.swiftparser.SwiftParserShowCase
+        PRODUCT_BUNDLE_IDENTIFIER: com.codeparser.CodeParserShowCase
         MARKETING_VERSION: "1.0.0"
         CURRENT_PROJECT_VERSION: "1"
         SWIFT_VERSION: "6.0"
         GENERATE_INFOPLIST_FILE: true
-        INFOPLIST_KEY_CFBundleDisplayName: SwiftParser ShowCase
+        INFOPLIST_KEY_CFBundleDisplayName: CodeParser ShowCase
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.developer-tools
       configs:
         Debug:
@@ -60,34 +60,34 @@ targets:
         Release:
           SWIFT_COMPILATION_MODE: wholemodule
 
-  SwiftParserTests:
+  CodeParserTests:
     type: bundle.unit-test
     supportedDestinations: [iOS, macOS]
     sources:
-      - path: Tests/SwiftParserTests
+      - path: Tests/CodeParserTests
     dependencies:
-      - target: SwiftParser
+      - target: CodeParser
         destinationFilter: [iOS, macOS]
-      - target: SwiftParserShowCase
+      - target: CodeParserShowCase
         destinationFilter: [iOS, macOS]
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.swiftparser.SwiftParserTests
+        PRODUCT_BUNDLE_IDENTIFIER: com.codeparser.CodeParserTests
         SWIFT_VERSION: "6.0"
         GENERATE_INFOPLIST_FILE: true
 
-  SwiftParserShowCaseTests:
+  CodeParserShowCaseTests:
     type: bundle.unit-test
     supportedDestinations: [iOS, macOS]
     sources:
-      - path: Tests/SwiftParserShowCaseTests
+      - path: Tests/CodeParserShowCaseTests
     dependencies:
-      - target: SwiftParser
+      - target: CodeParser
         destinationFilter: [iOS, macOS]
-      - target: SwiftParserShowCase
+      - target: CodeParserShowCase
         destinationFilter: [iOS, macOS]
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.swiftparser.SwiftParserShowCaseTests
+        PRODUCT_BUNDLE_IDENTIFIER: com.codeparser.CodeParserShowCaseTests
         SWIFT_VERSION: "6.0"
         GENERATE_INFOPLIST_FILE: true
