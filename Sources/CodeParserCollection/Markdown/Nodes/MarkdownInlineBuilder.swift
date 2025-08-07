@@ -172,7 +172,21 @@ public class MarkdownInlineBuilder: CodeNodeBuilder {
       if let image = parseImage(&context) {
         nodes.append(image)
       } else {
-        nodes.append(TextNode(content: token.text))
+        let shouldMerge: Bool
+        if let lastIndex = nodes.indices.last,
+          let _ = nodes[lastIndex] as? TextNode,
+          !delimiters.contains(where: { $0.index == lastIndex })
+        {
+          shouldMerge = true
+        } else {
+          shouldMerge = false
+        }
+
+        if shouldMerge, let last = nodes.last as? TextNode {
+          last.content += token.text
+        } else {
+          nodes.append(TextNode(content: token.text))
+        }
         context.consuming += 1
       }
       return true
