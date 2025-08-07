@@ -258,9 +258,11 @@ public class MarkdownInlineBuilder: CodeNodeBuilder {
   ) {
     var remaining = count
 
-    while remaining > 0, let openIdx = stack.lastIndex(where: { $0.marker == marker }) {
+    while remaining > 0,
+      let openIdx = stack.lastIndex(where: { $0.marker == marker && $0.count <= remaining })
+    {
       let open = stack.remove(at: openIdx)
-      var closeCount = min(open.count, remaining)
+      var closeCount = open.count
       if marker == .tilde {
         guard open.count >= 2 && remaining >= 2 else {
           stack.append(open)
