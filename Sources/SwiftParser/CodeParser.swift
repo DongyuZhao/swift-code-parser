@@ -33,7 +33,7 @@ public class CodeParser<Node: CodeNodeElement, Token: CodeTokenElement> where No
         self.tokenizer = CodeTokenizer(
             builders: language.tokens,
             state: language.state,
-            eofTokenFactory: { language.eofToken(at: $0) }
+            eof: { language.eof(at: $0) }
         )
         self.constructor = CodeConstructor(
             builders: language.nodes,

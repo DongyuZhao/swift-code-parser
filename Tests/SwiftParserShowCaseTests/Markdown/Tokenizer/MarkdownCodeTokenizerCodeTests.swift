@@ -8,7 +8,7 @@ final class MarkdownCodeTokenizerCodeTests: XCTestCase {
         let tokenizer = CodeTokenizer(
             builders: language.tokens,
             state: language.state,
-            eofTokenFactory: { language.eofToken(at: $0) }
+            eof: { language.eof(at: $0) }
         )
         let (tokens, _) = tokenizer.tokenize(input)
         return tokens
