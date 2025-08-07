@@ -18,6 +18,10 @@ let package = Package(
             name: "CodeParserCollection",
             targets: ["CodeParserCollection"]
         ),
+        .executable(
+            name: "CodeParserShowCase",
+            targets: ["CodeParserShowCase"]
+        ),
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-format.git", from: "510.1.0")
@@ -29,6 +33,10 @@ let package = Package(
         ),
         .target(name: "CodeParserCollection",
             dependencies: ["CodeParserCore"]
+        ),
+        .executableTarget(
+            name: "CodeParserShowCase",
+            dependencies: []
         ),
         .testTarget(
             name: "CodeParserCoreTests",
