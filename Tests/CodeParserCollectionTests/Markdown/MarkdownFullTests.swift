@@ -117,10 +117,14 @@ struct MarkdownFullTests {
     }
 
     #expect(paragraphNode.children.count > 5, "Paragraph should have multiple inline elements")
-    #expect(paragraphNode.first(where: { $0.element == .emphasis }) != nil, "Should contain emphasis")
+    #expect(
+      paragraphNode.first(where: { $0.element == .emphasis }) != nil, "Should contain emphasis"
+    )
     #expect(paragraphNode.first(where: { $0.element == .strong }) != nil, "Should contain strong")
     #expect(paragraphNode.first(where: { $0.element == .strike }) != nil, "Should contain strike")
-    #expect(paragraphNode.first(where: { $0.element == .code }) != nil, "Should contain inline code")
+    #expect(
+      paragraphNode.first(where: { $0.element == .code }) != nil, "Should contain inline code"
+    )
     #expect(paragraphNode.first(where: { $0.element == .formula }) != nil, "Should contain formula")
 
     if let codeNode = paragraphNode.first(where: { $0.element == .code }) as? InlineCodeNode {
@@ -279,7 +283,9 @@ struct MarkdownFullTests {
       Issue.record("Should find an HTML block node")
       return
     }
-    #expect(htmlBlockNode.content.contains("HTML block"), "HTML block should contain expected content")
+    #expect(
+      htmlBlockNode.content.contains("HTML block"), "HTML block should contain expected content"
+    )
     #expect(htmlBlockNode.content.contains("<div>"), "HTML block should contain div tag")
   }
 
@@ -321,19 +327,25 @@ struct MarkdownFullTests {
     #expect(footnoteWithContent != nil, "Should find footnote with content (definition)")
     if let footnoteNode = footnoteWithContent as? FootnoteNode {
       #expect(footnoteNode.identifier == "1", "Footnote definition identifier should match")
-      #expect(footnoteNode.content.contains("Footnote text"), "Footnote should contain expected text")
+      #expect(
+        footnoteNode.content.contains("Footnote text"), "Footnote should contain expected text"
+      )
     }
     let citationRefNodes = root.nodes(where: { $0.element == .citationReference })
     #expect(citationRefNodes.count > 0, "Should find citation reference nodes")
     if let citationRefNode = citationRefNodes.first as? CitationReferenceNode {
-      #expect(citationRefNode.identifier == "smith2023", "Citation reference identifier should match")
+      #expect(
+        citationRefNode.identifier == "smith2023", "Citation reference identifier should match"
+      )
     }
     let citationNodes = root.nodes(where: { $0.element == .citation })
     #expect(citationNodes.count > 0, "Should find citation definition nodes")
     if let citationNode = citationNodes.first as? CitationNode {
       #expect(citationNode.identifier == "smith2023", "Citation definition identifier should match")
-      #expect(citationNode.content.contains("Smith, J. (2023). Example."),
-              "Citation should contain expected content")
+      #expect(
+        citationNode.content.contains("Smith, J. (2023). Example."),
+        "Citation should contain expected content"
+      )
     }
     let textNodes = root.nodes(where: { $0.element == .text })
     let hasFootnoteText = textNodes.contains { node in
@@ -345,4 +357,3 @@ struct MarkdownFullTests {
     #expect(hasFootnoteText, "Should contain footnote reference text")
   }
 }
-

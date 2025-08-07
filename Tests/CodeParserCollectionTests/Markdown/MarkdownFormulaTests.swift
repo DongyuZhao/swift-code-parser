@@ -33,4 +33,3 @@ struct MarkdownFormulaTests {
     #expect(result.root.children.first is FormulaBlockNode)
   }
 }
-
