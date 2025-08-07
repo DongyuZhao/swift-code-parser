@@ -63,15 +63,32 @@ struct MarkdownInlineBuilderTests {
     let result = parser.parse(input, language: language)
 
     #expect(result.errors.isEmpty)
-    // Ensure parsing succeeded
+    #expect(result.root.children.count == 1)
     guard let para = result.root.children.first as? ParagraphNode else {
       Issue.record("Expected ParagraphNode")
       return
     }
-    #expect(para.children.count == 3)
-    #expect(para.children[0] is EmphasisNode)
-    #expect(para.children[1] is TextNode)
-    #expect(para.children[2] is TextNode)
+    #expect(para.children.count == 1)
+    guard let strong = para.children.first as? StrongNode else {
+      Issue.record("Expected StrongNode")
+      return
+    }
+    #expect(strong.children.count == 2)
+    if let text = strong.children.first as? TextNode {
+      #expect(text.content == "bold ")
+    } else {
+      Issue.record("Expected TextNode inside StrongNode")
+    }
+    guard let innerEmphasis = strong.children.last as? EmphasisNode else {
+      Issue.record("Expected nested EmphasisNode")
+      return
+    }
+    #expect(innerEmphasis.children.count == 1)
+    if let innerText = innerEmphasis.children.first as? TextNode {
+      #expect(innerText.content == "and italic")
+    } else {
+      Issue.record("Expected TextNode inside EmphasisNode")
+    }
   }
 
   @Test("Inline code parsing")
