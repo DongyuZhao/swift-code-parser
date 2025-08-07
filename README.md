@@ -1,10 +1,30 @@
-# swift-parser
+# swift-code-parser
 
-This project uses [XcodeGen](https://github.com/yonaskolb/XcodeGen) to generate the Xcode project from `project.yml`.
-To create the `CodeParser.xcodeproj`, run:
+A powerful Swift framework for parsing and analyzing code syntax with support for multiple languages, with a focus on Markdown parsing.
 
+## Getting Started
+
+### Requirements
+- Swift 6.0 or later  
+- iOS 17.0+ / macOS 14.0+
+- Xcode 15.0+ (for iOS/macOS development)
+
+### Opening in Xcode
 ```bash
-xcodegen
+# Open the Swift Package in Xcode
+open Package.swift
+```
+
+### Building and Running
+```bash
+# Build the project
+swift build
+
+# Run the showcase application
+swift run CodeParserShowCase
+
+# Run tests
+swift test
 ```
 
 ## Code Formatting

@@ -6,13 +6,17 @@ import PackageDescription
 let package = Package(
     name: "CodeParser",
     platforms: [
-        .iOS(.v17),
-        .macOS(.v14)
+        .iOS(.v16),      // iOS 16 and 17 (最近两个大版本)
+        .macOS(.v13)     // macOS 13 and 14 (最近两个大版本)
     ],
     products: [
         .library(
             name: "CodeParser",
             targets: ["CodeParser"]
+        ),
+        .executable(
+            name: "CodeParserShowCase",
+            targets: ["CodeParserShowCase"]
         ),
     ],
     dependencies: [
@@ -23,7 +27,7 @@ let package = Package(
             name: "CodeParser",
             dependencies: []
         ),
-        .target(name: "CodeParserShowCase",
+        .executableTarget(name: "CodeParserShowCase",
             dependencies: ["CodeParser"]
         ),
         .testTarget(

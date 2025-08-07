@@ -68,7 +68,7 @@ This document provides an overview of the Markdown parser built on top of the Co
 Add to your `Package.swift`:
 ```swift
 dependencies: [
-    .package(url: "https://github.com/your-username/swift-parser.git", from: "1.0.0")
+    .package(url: "https://github.com/your-username/swift-code-parser.git", from: "1.0.0")
 ]
 ```
 
