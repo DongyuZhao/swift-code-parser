@@ -48,6 +48,7 @@ public enum MarkdownNodeElement: String, CaseIterable, CodeNodeElement {
     case taskListItem = "task_list_item"
     case reference = "reference"
     case footnote = "footnote"
+    case footnoteReference = "footnote_reference"
     case citation = "citation"
     case citationReference = "citation_reference"
 
@@ -100,6 +101,7 @@ public class DocumentNode: MarkdownNodeBase {
             hasher.combine(String(describing: value))
         }
     }
+
 }
 
 // MARK: - Block Elements
@@ -107,6 +109,7 @@ public class ParagraphNode: MarkdownNodeBase {
     public init(range: Range<String.Index>) {
         super.init(element: .paragraph)
     }
+
 }
 
 public class HeaderNode: MarkdownNodeBase {
@@ -135,6 +138,7 @@ public class ThematicBreakNode: MarkdownNodeBase {
         super.hash(into: &hasher)
         hasher.combine(marker)
     }
+
 }
 
 public class BlockquoteNode: MarkdownNodeBase {
@@ -149,6 +153,7 @@ public class BlockquoteNode: MarkdownNodeBase {
         super.hash(into: &hasher)
         hasher.combine(level)
     }
+
 }
 
 public class ListNode: MarkdownNodeBase {
@@ -177,12 +182,14 @@ public class OrderedListNode: ListNode {
         super.hash(into: &hasher)
         hasher.combine(start)
     }
+
 }
 
 public class UnorderedListNode: ListNode {
     public init(level: Int = 1) {
         super.init(element: .unorderedList, level: level)
     }
+
 }
 
 public class ListItemNode: MarkdownNodeBase {
@@ -197,6 +204,7 @@ public class ListItemNode: MarkdownNodeBase {
         super.hash(into: &hasher)
         hasher.combine(marker)
     }
+
 }
 
 public class CodeBlockNode: MarkdownNodeBase {
@@ -214,6 +222,7 @@ public class CodeBlockNode: MarkdownNodeBase {
         hasher.combine(language)
         hasher.combine(source)
     }
+
 }
 
 public class HTMLBlockNode: MarkdownNodeBase {
@@ -231,6 +240,7 @@ public class HTMLBlockNode: MarkdownNodeBase {
         hasher.combine(name)
         hasher.combine(content)
     }
+
 }
 
 public class ImageBlockNode: MarkdownNodeBase {
@@ -248,30 +258,35 @@ public class ImageBlockNode: MarkdownNodeBase {
         hasher.combine(url)
         hasher.combine(alt)
     }
+
 }
 
 public class DefinitionListNode: MarkdownNodeBase {
     public init() {
         super.init(element: .definitionList)
     }
+
 }
 
 public class DefinitionItemNode: MarkdownNodeBase {
     public init() {
         super.init(element: .definitionItem)
     }
+
 }
 
 public class DefinitionTermNode: MarkdownNodeBase {
     public init() {
         super.init(element: .definitionTerm)
     }
+
 }
 
 public class DefinitionDescriptionNode: MarkdownNodeBase {
     public init() {
         super.init(element: .definitionDescription)
     }
+
 }
 
 public class AdmonitionNode: MarkdownNodeBase {
@@ -286,6 +301,7 @@ public class AdmonitionNode: MarkdownNodeBase {
         super.hash(into: &hasher)
         hasher.combine(kind)
     }
+
 }
 
 public class CustomContainerNode: MarkdownNodeBase {
@@ -303,6 +319,7 @@ public class CustomContainerNode: MarkdownNodeBase {
         hasher.combine(name)
         hasher.combine(content)
     }
+
 }
 
 // MARK: - Inline Elements
@@ -318,24 +335,28 @@ public class TextNode: MarkdownNodeBase {
         super.hash(into: &hasher)
         hasher.combine(content)
     }
+
 }
 
 public class EmphasisNode: MarkdownNodeBase {
     public init(content: String) {
         super.init(element: .emphasis)
     }
+
 }
 
 public class StrongNode: MarkdownNodeBase {
     public init(content: String) {
         super.init(element: .strong)
     }
+
 }
 
 public class StrikeNode: MarkdownNodeBase {
     public init(content: String) {
         super.init(element: .strike)
     }
+
 }
 
 public class InlineCodeNode: MarkdownNodeBase {
@@ -350,6 +371,7 @@ public class InlineCodeNode: MarkdownNodeBase {
         super.hash(into: &hasher)
         hasher.combine(code)
     }
+
 }
 
 public class LinkNode: MarkdownNodeBase {
@@ -367,6 +389,7 @@ public class LinkNode: MarkdownNodeBase {
         hasher.combine(url)
         hasher.combine(title)
     }
+
 }
 
 public class ImageNode: MarkdownNodeBase {
@@ -384,6 +407,7 @@ public class ImageNode: MarkdownNodeBase {
         hasher.combine(url)
         hasher.combine(alt)
     }
+
 }
 
 public class HTMLNode: MarkdownNodeBase {
@@ -398,6 +422,7 @@ public class HTMLNode: MarkdownNodeBase {
         super.hash(into: &hasher)
         hasher.combine(content)
     }
+
 }
 
 public class LineBreakNode: MarkdownNodeBase {
@@ -417,6 +442,7 @@ public class LineBreakNode: MarkdownNodeBase {
         super.hash(into: &hasher)
         hasher.combine(variant)
     }
+
 }
 
 // MARK: - Components
@@ -432,6 +458,7 @@ public class CommentNode: MarkdownNodeBase {
         super.hash(into: &hasher)
         hasher.combine(content)
     }
+
 }
 
 // MARK: - GFM Extensions
@@ -439,6 +466,7 @@ public class TableNode: MarkdownNodeBase {
     public init(range: Range<String.Index>) {
         super.init(element: .table)
     }
+
 }
 
 public class TableHeaderNode: MarkdownNodeBase {
@@ -448,15 +476,25 @@ public class TableHeaderNode: MarkdownNodeBase {
 }
 
 public class TableRowNode: MarkdownNodeBase {
-    public init(range: Range<String.Index>) {
+    public var isHeader: Bool
+
+    public init(range: Range<String.Index>, isHeader: Bool = false) {
+        self.isHeader = isHeader
         super.init(element: .tableRow)
     }
+
+    public override func hash(into hasher: inout Hasher) {
+        super.hash(into: &hasher)
+        hasher.combine(isHeader)
+    }
+
 }
 
 public class TableCellNode: MarkdownNodeBase {
     public init(range: Range<String.Index>) {
         super.init(element: .tableCell)
     }
+
 }
 
 public class TaskListNode: MarkdownNodeBase {
@@ -477,6 +515,7 @@ public class TaskListItemNode: MarkdownNodeBase {
         super.hash(into: &hasher)
         hasher.combine(checked)
     }
+
 }
 
 public class ReferenceNode: MarkdownNodeBase {
@@ -539,6 +578,21 @@ public class CitationNode: MarkdownNodeBase {
     }
 }
 
+public class FootnoteReferenceNode: MarkdownNodeBase {
+    public var identifier: String
+
+    public init(identifier: String) {
+        self.identifier = identifier
+        super.init(element: .footnoteReference)
+    }
+
+    public override func hash(into hasher: inout Hasher) {
+        super.hash(into: &hasher)
+        hasher.combine(identifier)
+    }
+
+}
+
 public class CitationReferenceNode: MarkdownNodeBase {
     public var identifier: String
 
@@ -551,6 +605,7 @@ public class CitationReferenceNode: MarkdownNodeBase {
         super.hash(into: &hasher)
         hasher.combine(identifier)
     }
+
 }
 
 // MARK: - Math Elements
@@ -566,6 +621,7 @@ public class FormulaNode: MarkdownNodeBase {
         super.hash(into: &hasher)
         hasher.combine(expression)
     }
+
 }
 
 public class FormulaBlockNode: MarkdownNodeBase {

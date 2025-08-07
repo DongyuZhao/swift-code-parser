@@ -12,16 +12,20 @@ public class MarkdownTableBuilder: CodeNodeBuilder {
         let table = TableNode(range: first.range)
         context.current.append(table)
 
+        var isFirstRow = true
+        var foundSeparator = false
+
         while true {
-            guard parseRow(into: table, context: &context) else { break }
+            guard parseRow(into: table, context: &context, isFirstRow: isFirstRow, foundSeparator: &foundSeparator) else { break }
             if context.consuming >= context.tokens.count { break }
             guard let next = context.tokens[context.consuming] as? MarkdownToken,
                   next.element == .pipe else { break }
+            isFirstRow = false
         }
         return true
     }
 
-    private func parseRow(into table: TableNode, context: inout CodeConstructContext<MarkdownNodeElement, MarkdownTokenElement>) -> Bool {
+    private func parseRow(into table: TableNode, context: inout CodeConstructContext<MarkdownNodeElement, MarkdownTokenElement>, isFirstRow: Bool, foundSeparator: inout Bool) -> Bool {
         guard context.consuming < context.tokens.count,
               let start = context.tokens[context.consuming] as? MarkdownToken,
               start.element == .pipe else { return false }
@@ -36,10 +40,41 @@ public class MarkdownTableBuilder: CodeNodeBuilder {
            let nl = context.tokens[context.consuming] as? MarkdownToken,
            nl.element == .newline { context.consuming += 1 }
 
-        let row = TableRowNode(range: start.range)
+        // Check if this is a separator row (contains only |, -, :, and spaces)
+        let isSeparatorRow = rowTokens.allSatisfy { token in
+            let text = token.text.trimmingCharacters(in: .whitespaces)
+            return token.element == .pipe ||
+                   token.element == .space ||
+                   text.isEmpty ||
+                   text.allSatisfy { char in char == "-" || char == ":" }
+        }
+
+        // Skip separator rows - they define table structure but aren't content
+        if isSeparatorRow {
+            foundSeparator = true
+            return true  // Continue parsing but don't create a row node
+        }
+
+        // Determine if this row is a header:
+        // - First row is header if we haven't found separator yet
+        // - OR if this is the first row and no separator exists
+        let isHeader = isFirstRow && !foundSeparator
+
+        let row = TableRowNode(range: start.range, isHeader: isHeader)
         var cellTokens: [MarkdownToken] = []
-        for tok in rowTokens + [MarkdownToken.pipe(at: start.range)] {
+
+        // Remove leading and trailing pipes, and EOF tokens
+        var processedTokens = rowTokens.filter { $0.element != .eof }
+        if let first = processedTokens.first, first.element == .pipe {
+            processedTokens.removeFirst()
+        }
+        if let last = processedTokens.last, last.element == .pipe {
+            processedTokens.removeLast()
+        }
+
+        for tok in processedTokens {
             if tok.element == .pipe {
+                // Create cell from accumulated tokens (even if empty, to maintain column count)
                 let cell = TableCellNode(range: start.range)
                 var subCtx = CodeConstructContext(current: cell, tokens: cellTokens, state: context.state)
                 let inlineBuilder = MarkdownInlineBuilder(stopAt: [])
@@ -49,6 +84,15 @@ public class MarkdownTableBuilder: CodeNodeBuilder {
             } else {
                 cellTokens.append(tok)
             }
+        }
+
+        // Process final cell if we have remaining tokens
+        if !cellTokens.isEmpty {
+            let cell = TableCellNode(range: start.range)
+            var subCtx = CodeConstructContext(current: cell, tokens: cellTokens, state: context.state)
+            let inlineBuilder = MarkdownInlineBuilder(stopAt: [])
+            _ = inlineBuilder.build(from: &subCtx)
+            row.append(cell)
         }
         table.append(row)
         return true
