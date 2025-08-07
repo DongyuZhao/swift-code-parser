@@ -1,6 +1,6 @@
 import XCTest
-@testable import SwiftParser
-@testable import SwiftParserShowCase
+@testable import CodeParser
+@testable import CodeParserShowCase
 
 final class MarkdownCodeTokenizerFormulaTests: XCTestCase {
     private func tokenize(_ input: String) -> [any CodeToken<MarkdownTokenElement>] {

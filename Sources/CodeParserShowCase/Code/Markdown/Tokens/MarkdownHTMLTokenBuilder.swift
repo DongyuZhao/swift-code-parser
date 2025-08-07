@@ -1,5 +1,5 @@
 import Foundation
-import SwiftParser
+import CodeParser
 
 public class MarkdownHTMLTokenBuilder: CodeTokenBuilder {
     public typealias Token = MarkdownTokenElement
@@ -135,4 +135,3 @@ public class MarkdownHTMLTokenBuilder: CodeTokenBuilder {
         "ucirc", "uuml", "yacute", "thorn", "yuml"
     ]
 }
-

@@ -1,5 +1,5 @@
 import Foundation
-import SwiftParser
+import CodeParser
 
 // MARK: - Markdown Language Implementation
 /// Default Markdown language implementation following CommonMark with optional

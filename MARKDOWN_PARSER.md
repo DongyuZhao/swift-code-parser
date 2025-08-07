@@ -1,6 +1,6 @@
 # Markdown Parser
 
-This document provides an overview of the Markdown parser built on top of the SwiftParser core. The parser follows the CommonMark specification and uses configurable builders to generate different node types while handling prefix ambiguities.
+This document provides an overview of the Markdown parser built on top of the CodeParser core. The parser follows the CommonMark specification and uses configurable builders to generate different node types while handling prefix ambiguities.
 
 ## Features
 
@@ -97,7 +97,7 @@ swift build -c release
 1. Clone the repository
 2. Install dependencies: `swift package resolve`
 3. Generate Xcode project: `xcodegen`
-4. Open `SwiftParser.xcodeproj`
+4. Open `CodeParser.xcodeproj`
 
 ### Code Style
 - Follow Swift API Design Guidelines

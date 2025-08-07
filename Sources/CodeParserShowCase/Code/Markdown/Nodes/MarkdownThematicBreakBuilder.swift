@@ -1,5 +1,5 @@
 import Foundation
-import SwiftParser
+import CodeParser
 
 public class MarkdownThematicBreakBuilder: CodeNodeBuilder {
     public init() {}

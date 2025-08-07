@@ -1,7 +1,7 @@
 # swift-parser
 
 This project uses [XcodeGen](https://github.com/yonaskolb/XcodeGen) to generate the Xcode project from `project.yml`.
-To create the `SwiftParser.xcodeproj`, run:
+To create the `CodeParser.xcodeproj`, run:
 
 ```bash
 xcodegen
@@ -9,7 +9,7 @@ xcodegen
 
 ## Code Formatting
 
-This project uses [apple/swift-format](https://github.com/apple/swift-format) for code formatting. 
+This project uses [apple/swift-format](https://github.com/apple/swift-format) for code formatting.
 
 ### Setup
 The project already includes swift-format as a dependency in `Package.swift`.

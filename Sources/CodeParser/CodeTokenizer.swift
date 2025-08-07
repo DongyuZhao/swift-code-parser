@@ -1,6 +1,6 @@
 //
 //  CodeTokenizer.swift
-//  SwiftParser
+//  CodeParser
 //
 //  Created by Dongyu Zhao on 7/21/25.
 //

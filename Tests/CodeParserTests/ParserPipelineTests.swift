@@ -1,5 +1,5 @@
 import XCTest
-@testable import SwiftParser
+@testable import CodeParser
 
 final class ParserPipelineTests: XCTestCase {
     enum SimpleTokenElement: String, CaseIterable, CodeTokenElement {
@@ -153,4 +153,3 @@ final class ParserPipelineTests: XCTestCase {
         XCTAssertNotNil(error.range)
     }
 }
-

@@ -1,5 +1,5 @@
 import Foundation
-import SwiftParser
+import CodeParser
 
 /// Inline node builder that parses Markdown inline elements.
 /// Each inline element is handled by a dedicated sub-builder and a composite

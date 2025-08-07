@@ -1,6 +1,6 @@
 import XCTest
-@testable import SwiftParser
-@testable import SwiftParserShowCase
+@testable import CodeParser
+@testable import CodeParserShowCase
 
 final class MarkdownInlineBuilderTests: XCTestCase {
     private var parser: CodeParser<MarkdownNodeElement, MarkdownTokenElement>!
@@ -151,7 +151,7 @@ final class MarkdownInlineBuilderTests: XCTestCase {
         // Name is not used for inline HTML
         XCTAssertEqual(tag?.content, "<b>bold</b>")
     }
-    
+
     func testBlockquoteBuilderParsesBlockquote() {
         let input = "> hello"
         let result = parser.parse(input, language: language)
