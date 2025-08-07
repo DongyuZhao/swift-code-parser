@@ -44,8 +44,8 @@ public enum MarkdownTokenElement: String, CaseIterable, CodeTokenElement {
   case eof = ""
 
   // MARK: - Text and Numbers
-  case text = "text"  // 连续的文本字符
-  case number = "number"  // 连续的数字
+  case text = "text"  // consecutive text characters
+  case number = "number"  // consecutive digit characters
 
   // MARK: - Code Blocks and Inline Code
   case inlineCode = "inline_code"  // `code` - inline code span
