@@ -18,20 +18,28 @@ public class MarkdownTableBuilder: CodeNodeBuilder {
     var scanIdx = original
     var firstLine: [MarkdownToken] = []
     while scanIdx < context.tokens.count, let tok = context.tokens[scanIdx] as? MarkdownToken {
-      if tok.element == .newline { scanIdx += 1; break }
-      firstLine.append(tok); scanIdx += 1
+      if tok.element == .newline {
+        scanIdx += 1
+        break
+      }
+      firstLine.append(tok)
+      scanIdx += 1
     }
     // Collect second line tokens
     var secondLine: [MarkdownToken] = []
     while scanIdx < context.tokens.count, let tok = context.tokens[scanIdx] as? MarkdownToken {
       if tok.element == .newline { break }
-      secondLine.append(tok); scanIdx += 1
+      secondLine.append(tok)
+      scanIdx += 1
     }
     // Must have a potential separator line per GFM: only pipes, colons, dashes, spaces and at least one dash
-    let isSeparatorLine = !secondLine.isEmpty && secondLine.allSatisfy { t in
-      let trimmed = t.text.trimmingCharacters(in: .whitespaces)
-      return t.element == .pipe || t.element == .space || trimmed.isEmpty || trimmed.allSatisfy { ch in ch == "-" || ch == ":" }
-    } && secondLine.contains(where: { $0.text.contains("-") })
+    let isSeparatorLine =
+      !secondLine.isEmpty
+      && secondLine.allSatisfy { t in
+        let trimmed = t.text.trimmingCharacters(in: .whitespaces)
+        return t.element == .pipe || t.element == .space || trimmed.isEmpty
+          || trimmed.allSatisfy { ch in ch == "-" || ch == ":" }
+      } && secondLine.contains(where: { $0.text.contains("-") })
     if !isSeparatorLine { return false }
 
     // Derive column alignments from the separator line now
@@ -56,7 +64,7 @@ public class MarkdownTableBuilder: CodeNodeBuilder {
     // Reset to original for actual parsing
     context.consuming = original
 
-  let table = TableNode(range: first.range)
+    let table = TableNode(range: first.range)
     context.current.append(table)
 
     var isFirstRow = true
@@ -106,8 +114,12 @@ public class MarkdownTableBuilder: CodeNodeBuilder {
         || text.allSatisfy { char in char == "-" || char == ":" }
     }
 
-  // Skip separator rows - they define table structure but aren't content
-  if isSeparatorRow { foundSeparator = true; table.alignments = columnAlignments; return true }
+    // Skip separator rows - they define table structure but aren't content
+    if isSeparatorRow {
+      foundSeparator = true
+      table.alignments = columnAlignments
+      return true
+    }
 
     // Determine if this row is a header:
     // - First row is header if we haven't found separator yet
@@ -130,12 +142,17 @@ public class MarkdownTableBuilder: CodeNodeBuilder {
       if tok.element == .pipe {
         // Escaped pipe: if previous token in cellTokens is a backslash, treat as literal
         if let last = cellTokens.last, last.element == .backslash {
-          cellTokens.append(tok) // keep literal pipe in same cell
+          // Replace the escaping backslash with a literal pipe character so the
+          // inline builder sees "|" text rather than a table delimiter.
+          cellTokens.removeLast()
+          cellTokens.append(MarkdownToken.text("|", at: tok.range))
           continue
         }
         // Create cell from accumulated tokens (even if empty, to maintain column count)
-  let alignment = columnAlignments.indices.contains(row.children.count) ? columnAlignments[row.children.count] : .none
-  let cell = TableCellNode(range: start.range, alignment: alignment)
+        let alignment =
+          columnAlignments.indices.contains(row.children.count)
+          ? columnAlignments[row.children.count] : .none
+        let cell = TableCellNode(range: start.range, alignment: alignment)
 
         // Trim leading and trailing whitespace tokens from cell content
         var trimmedCellTokens = cellTokens
@@ -158,9 +175,11 @@ public class MarkdownTableBuilder: CodeNodeBuilder {
     }
 
     // Process final cell if we have remaining tokens
-  if !cellTokens.isEmpty {
-  let alignment = columnAlignments.indices.contains(row.children.count) ? columnAlignments[row.children.count] : .none
-  let cell = TableCellNode(range: start.range, alignment: alignment)
+    if !cellTokens.isEmpty {
+      let alignment =
+        columnAlignments.indices.contains(row.children.count)
+        ? columnAlignments[row.children.count] : .none
+      let cell = TableCellNode(range: start.range, alignment: alignment)
 
       // Trim leading and trailing whitespace tokens from cell content
       var trimmedCellTokens = cellTokens
