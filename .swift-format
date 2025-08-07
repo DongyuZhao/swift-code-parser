@@ -25,7 +25,6 @@
     "GroupNumericLiterals" : true,
     "IdentifiersMustBeASCII" : true,
     "NeverForceUnwrap" : false,
-    "NeverUseForceTryOperator" : false,
     "NeverUseImplicitlyUnwrappedOptionals" : false,
     "NoAccessLevelOnExtensionDeclaration" : true,
     "NoAssignmentInExpressions" : true,
