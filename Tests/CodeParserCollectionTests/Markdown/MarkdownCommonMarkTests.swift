@@ -101,25 +101,29 @@ struct MarkdownCommonMarkTests {
   @Test("Consecutive blockquote lines should form one blockquote with multiple paragraphs")
   func consecutiveBlockquoteLines() {
     let input = """
-> Quote line one
-> Quote line two
-"""
+      > Quote line one
+      > Quote line two
+      """
     let result = parser.parse(input, language: language)
     #expect(result.errors.isEmpty)
-    
+
     // Should have exactly one blockquote
     let blockquotes = result.root.children.compactMap { $0 as? BlockquoteNode }
-    #expect(blockquotes.count == 1, "Should have exactly one blockquote, but found \(blockquotes.count)")
-    
+    #expect(
+      blockquotes.count == 1, "Should have exactly one blockquote, but found \(blockquotes.count)"
+    )
+
     guard let blockquote = blockquotes.first else {
       Issue.record("No blockquote found")
       return
     }
-    
+
     // The blockquote should contain two paragraphs
     let paragraphs = blockquote.children.compactMap { $0 as? ParagraphNode }
-    #expect(paragraphs.count == 2, "Blockquote should contain 2 paragraphs, but found \(paragraphs.count)")
-    
+    #expect(
+      paragraphs.count == 2, "Blockquote should contain 2 paragraphs, but found \(paragraphs.count)"
+    )
+
     // Verify paragraph contents
     if paragraphs.count >= 2 {
       if let text1 = paragraphs[0].children.first as? TextNode {
@@ -127,7 +131,7 @@ struct MarkdownCommonMarkTests {
       } else {
         Issue.record("First paragraph should contain text 'Quote line one'")
       }
-      
+
       if let text2 = paragraphs[1].children.first as? TextNode {
         #expect(text2.content == "Quote line two")
       } else {
@@ -258,4 +262,3 @@ struct MarkdownCommonMarkTests {
     }
   }
 }
-

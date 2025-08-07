@@ -75,9 +75,9 @@ struct MarkdownGFMTests {
   @Test("Task list parsing")
   func taskList() {
     let input = """
-- [x] done
-- [ ] todo with `code`
-"""
+      - [x] done
+      - [ ] todo with `code`
+      """
     let result = parser.parse(input, language: language)
     #expect(result.errors.isEmpty)
     guard let list = result.root.children.first as? UnorderedListNode else {
@@ -115,11 +115,11 @@ struct MarkdownGFMTests {
   @Test("Table parsing")
   func table() {
     let input = """
-| A | B |
-|---|---|
-| 1 | `code` |
-| **strong** | 4 |
-"""
+      | A | B |
+      |---|---|
+      | 1 | `code` |
+      | **strong** | 4 |
+      """
     let result = parser.parse(input, language: language)
     #expect(result.errors.isEmpty)
     guard let table = result.root.children.first as? TableNode else {
@@ -144,7 +144,10 @@ struct MarkdownGFMTests {
     // Row 2
     let row2Cells = rows[2].children.compactMap { $0 as? TableCellNode }
     #expect(row2Cells.count == 2)
-    #expect(((row2Cells[0].children.first as? StrongNode)?.children.first as? TextNode)?.content == "strong")
+    #expect(
+      ((row2Cells[0].children.first as? StrongNode)?.children.first as? TextNode)?.content
+        == "strong"
+    )
     #expect((row2Cells[1].children.first as? TextNode)?.content == "4")
   }
 }

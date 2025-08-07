@@ -12,7 +12,7 @@ public class MarkdownBlockquoteBuilder: CodeNodeBuilder {
       token.element == .gt,
       isStartOfLine(context)
     else { return false }
-    
+
     context.consuming += 1
     // optional leading space
     if context.consuming < context.tokens.count,
@@ -21,7 +21,7 @@ public class MarkdownBlockquoteBuilder: CodeNodeBuilder {
     {
       context.consuming += 1
     }
-    
+
     // Check if the last child is already a blockquote that we can continue
     let node: BlockquoteNode
     if let lastChild = context.current.children.last as? BlockquoteNode {
@@ -30,7 +30,7 @@ public class MarkdownBlockquoteBuilder: CodeNodeBuilder {
       node = BlockquoteNode()
       context.current.append(node)
     }
-    
+
     let paragraph = ParagraphNode(range: token.range)
     var inlineCtx = CodeConstructContext(
       current: paragraph,
@@ -42,7 +42,7 @@ public class MarkdownBlockquoteBuilder: CodeNodeBuilder {
     _ = inlineBuilder.build(from: &inlineCtx)
     context.consuming = inlineCtx.consuming
     node.append(paragraph)
-    
+
     if context.consuming < context.tokens.count,
       let nl = context.tokens[context.consuming] as? MarkdownToken,
       nl.element == .newline
