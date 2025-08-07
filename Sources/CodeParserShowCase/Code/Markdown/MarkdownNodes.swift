@@ -1,5 +1,5 @@
 import Foundation
-import SwiftParser
+import CodeParser
 
 // MARK: - Markdown Node Element Definition
 public enum MarkdownNodeElement: String, CaseIterable, CodeNodeElement {

@@ -1,5 +1,5 @@
 import Foundation
-import SwiftParser
+import CodeParser
 
 /// Consumes trailing EOF tokens without modifying the AST.
 public class MarkdownEOFBuilder: CodeNodeBuilder {

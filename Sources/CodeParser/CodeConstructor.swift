@@ -1,6 +1,6 @@
 //
 //  CodeParser.swift
-//  SwiftParser
+//  CodeParser
 //
 //  Created by Dongyu Zhao on 7/21/25.
 //
@@ -11,7 +11,7 @@ public class CodeConstructor<Node, Token> where Node: CodeNodeElement, Token: Co
     private let builders: [any CodeNodeBuilder<Node, Token>]
     /// Factory that provides initial construction state for each parse run.
     private var state: () -> (any CodeConstructState<Node, Token>)?
-    
+
     /// Create a new constructor
     /// - Parameters:
     ///   - builders: The node builders responsible for producing AST nodes.
@@ -23,7 +23,7 @@ public class CodeConstructor<Node, Token> where Node: CodeNodeElement, Token: Co
         self.builders = builders
         self.state = state
     }
-    
+
     /// Build an AST from a token stream
     /// - Parameters:
     ///   - tokens: Token list to consume.
@@ -54,4 +54,3 @@ public class CodeConstructor<Node, Token> where Node: CodeNodeElement, Token: Co
         return (root, context.errors)
     }
 }
-    

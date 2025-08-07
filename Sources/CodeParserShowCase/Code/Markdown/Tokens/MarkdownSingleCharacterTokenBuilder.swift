@@ -1,5 +1,5 @@
 import Foundation
-import SwiftParser
+import CodeParser
 
 @preconcurrency
 public class MarkdownSingleCharacterTokenBuilder: CodeTokenBuilder {

@@ -1,6 +1,6 @@
 import XCTest
-@testable import SwiftParser
-@testable import SwiftParserShowCase
+@testable import CodeParser
+@testable import CodeParserShowCase
 
 /// Comprehensive tests covering all supported Markdown features.
 final class MarkdownAllFeaturesBuilderTests: XCTestCase {

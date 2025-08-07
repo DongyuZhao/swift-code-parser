@@ -1,5 +1,5 @@
 import Foundation
-import SwiftParser
+import CodeParser
 
 public class MarkdownFormulaTokenBuilder: CodeTokenBuilder {
     public typealias Token = MarkdownTokenElement
@@ -155,5 +155,3 @@ public class MarkdownFormulaTokenBuilder: CodeTokenBuilder {
         }
     }
 }
-
-
