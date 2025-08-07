@@ -100,8 +100,9 @@ public class MarkdownListBuilder: CodeNodeBuilder {
     } else {
       item = ListItemNode(marker: markerText)
     }
+    let paragraph = ParagraphNode(range: context.tokens[context.consuming].range)
     var inlineCtx = CodeConstructContext(
-      current: item,
+      current: paragraph,
       tokens: context.tokens,
       consuming: context.consuming,
       state: context.state
@@ -109,6 +110,7 @@ public class MarkdownListBuilder: CodeNodeBuilder {
     let inlineBuilder = MarkdownInlineBuilder()
     _ = inlineBuilder.build(from: &inlineCtx)
     context.consuming = inlineCtx.consuming
+    item.append(paragraph)
     listNode.append(item)
 
     if context.consuming < context.tokens.count,

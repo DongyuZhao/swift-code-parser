@@ -4,7 +4,7 @@ import Testing
 @testable import CodeParserCore
 
 @Suite("Comprehensive Markdown Parsing Tests")
-struct ComprehensiveMarkdownTests {
+struct MarkdownFullTests {
   private let language: MarkdownLanguage
   private let parser: CodeParser<MarkdownNodeElement, MarkdownTokenElement>
 
