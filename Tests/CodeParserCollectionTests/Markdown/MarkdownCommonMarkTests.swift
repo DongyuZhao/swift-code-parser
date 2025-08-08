@@ -325,19 +325,7 @@ struct MarkdownCommonMarkTests {
     let result = parser.parse(input, language: language)
     print("Parse errors: \(result.errors)")
     print("Root children count: \(result.root.children.count)")
-    
-    // Debug print structure
-    func printNode(_ node: CodeNode<MarkdownNodeElement>, indent: String = "") {
-      print("\(indent)\(type(of: node)) - element: \(node.element)")
-      if let text = node as? TextNode {
-        print("\(indent)  content: '\(text.content)'")
-      }
-      for child in node.children {
-        printNode(child, indent: indent + "  ")
-      }
-    }
-    printNode(result.root)
-    
+
     #expect(result.errors.isEmpty)
     #expect(result.root.children.count == 1)
 
