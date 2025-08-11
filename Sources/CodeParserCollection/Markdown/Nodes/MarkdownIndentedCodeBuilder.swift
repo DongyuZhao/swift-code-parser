@@ -13,8 +13,8 @@ public class MarkdownIndentedCodeBuilder: CodeNodeBuilder {
       isStartOfLine(context)
     else { return false }
 
-    context.consuming += 1
-    let node = CodeBlockNode(source: token.text)
+  context.consuming += 1
+  let node = CodeBlockNode(source: stripIndent(token.text))
     // If we're currently positioned at a list container, a blank line has
     // already moved `current` up from the last list item. In this case the
     // indented code block should terminate the list and attach to its parent
@@ -44,5 +44,22 @@ public class MarkdownIndentedCodeBuilder: CodeNodeBuilder {
       return prev.element == .newline
     }
     return false
+  }
+
+  private func stripIndent(_ raw: String) -> String {
+    var result: [String] = []
+    for line in raw.split(separator: "\n", omittingEmptySubsequences: false) {
+      var toDrop = 4
+  let out = String(line)
+      var idx = out.startIndex
+      while toDrop > 0 && idx < out.endIndex {
+        let c = out[idx]
+        if c == " " { toDrop -= 1; idx = out.index(after: idx) }
+        else if c == "\t" { toDrop = 0; idx = out.index(after: idx) }
+        else { break }
+      }
+      result.append(String(out[idx...]))
+    }
+    return result.joined(separator: "\n")
   }
 }

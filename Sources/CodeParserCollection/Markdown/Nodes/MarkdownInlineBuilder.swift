@@ -33,6 +33,7 @@ public class MarkdownInlineBuilder: CodeNodeBuilder {
     var delimiters: [Delimiter] = []
 
     let builders: [InlineBuilder] = [
+  EscapedBuilder(),
       EmphasisBuilder(),
       InlineCodeBuilder(),
       FormulaBuilder(),
@@ -96,27 +97,7 @@ public class MarkdownInlineBuilder: CodeNodeBuilder {
         count += 1
         context.consuming += 1
       }
-
-      // Basic flanking heuristic for single delimiter runs to prevent premature closing
-      if (marker == .asterisk || marker == .underscore) && count == 1 {
-        let runStart = context.consuming - count
-        let prevToken = runStart > 0 ? context.tokens[runStart - 1] as? MarkdownToken : nil
-        let nextToken = context.consuming < context.tokens.count ? context.tokens[context.consuming] as? MarkdownToken : nil
-        let prevIsWhitespace = prevToken?.isWhitespace ?? true
-        let nextIsWhitespace = nextToken?.isWhitespace ?? true
-        let nextIsPunct = nextToken?.isPunctuation ?? false
-        let prevIsPunct = prevToken?.isPunctuation ?? false
-        let isRightFlanking = !prevIsWhitespace && (nextIsWhitespace || nextIsPunct || nextToken == nil)
-        let isLeftFlanking = !nextIsWhitespace && (prevIsWhitespace || prevIsPunct || prevToken == nil)
-        if isLeftFlanking && !isRightFlanking {
-          // Treat as pure opener: push delimiter stack entry without attempting closure
-          nodes.append(TextNode(content: String(marker.rawValue)))
-          delimiters.append(Delimiter(marker: marker, count: 1, index: nodes.count - 1))
-          return true
-        }
-      }
-
-      // Intraword underscore rule (CommonMark): runs of '_' inside a word should be literal
+      // Intraword underscore rule (CommonMark): literal if flanked by alnum both sides
       if marker == .underscore {
         let prevAlphaNum: Bool = {
           if context.consuming - count > 0, let prev = context.tokens[context.consuming - count - 1] as? MarkdownToken, let ch = prev.text.last { return ch.isLetter || ch.isNumber }
@@ -127,85 +108,65 @@ public class MarkdownInlineBuilder: CodeNodeBuilder {
           return false
         }()
         if prevAlphaNum && nextAlphaNum {
-          // Treat as plain text (merge if possible)
           let textRun = String(repeating: "_", count: count)
           if let last = nodes.last as? TextNode, !delimiters.contains(where: { $0.index == nodes.count - 1 }) {
             last.content += textRun
-          } else {
-            nodes.append(TextNode(content: textRun))
-          }
+          } else { nodes.append(TextNode(content: textRun)) }
           return true
         }
       }
-
-      // Special handling for complex asterisk runs to satisfy nested emphasis expectations.
-      if marker == .asterisk {
-        // Decompose **** into two strong delimiters (outer then inner)
-        if count >= 4 {
-          var remaining = count
-            while remaining >= 2 {
-              // append text node for '**'
-              let text = "**"
-              nodes.append(TextNode(content: text))
-              delimiters.append(Delimiter(marker: marker, count: 2, index: nodes.count - 1))
-              remaining -= 2
-            }
-            if remaining == 1 { // leftover single emphasis
-              nodes.append(TextNode(content: "*"))
-              delimiters.append(Delimiter(marker: marker, count: 1, index: nodes.count - 1))
-            }
-            return true
-        } else if count == 3 {
-          // Peek ahead to decide ordering of '**' + '*' vs '*' + '**'
-          var firstSinglePos: Int? = nil
-          var firstDoublePos: Int? = nil
-          var i = context.consuming
-          while i < context.tokens.count {
-            guard let at = context.tokens[i] as? MarkdownToken else { break }
-            if at.element == .newline || at.element == .eof { break }
-            if at.element == .asterisk {
-              var run = 0
-              var j = i
-              while j < context.tokens.count, let tt = context.tokens[j] as? MarkdownToken, tt.element == .asterisk { run += 1; j += 1 }
-              if run >= 2 && firstDoublePos == nil { firstDoublePos = i }
-              if run == 1 && firstSinglePos == nil { firstSinglePos = i }
-              if firstSinglePos != nil && firstDoublePos != nil { break }
-              i = j
-              continue
-            }
-            i += 1
-          }
-          // If single appears before double, open strong then emphasis ( ** then * ) ; else emphasis then strong
-          let singleBeforeDouble: Bool
-          if let s = firstSinglePos, let d = firstDoublePos { singleBeforeDouble = s < d } else if firstSinglePos != nil { singleBeforeDouble = true } else { singleBeforeDouble = false }
-          if singleBeforeDouble {
-            // '**' then '*'
-            nodes.append(TextNode(content: "**"))
-            delimiters.append(Delimiter(marker: marker, count: 2, index: nodes.count - 1))
-            nodes.append(TextNode(content: "*"))
-            delimiters.append(Delimiter(marker: marker, count: 1, index: nodes.count - 1))
-          } else {
-            // '*' then '**'
-            nodes.append(TextNode(content: "*"))
-            delimiters.append(Delimiter(marker: marker, count: 1, index: nodes.count - 1))
-            nodes.append(TextNode(content: "**"))
-            delimiters.append(Delimiter(marker: marker, count: 2, index: nodes.count - 1))
-          }
-          return true
-        }
-      }
-      if marker == .tilde && count < 2 {
-        // Single tilde is literal; merge into previous text node if possible
+      // Single tilde literal
+      if marker == .tilde && count == 1 {
         if let last = nodes.last as? TextNode, !delimiters.contains(where: { $0.index == nodes.count - 1 }) {
-          last.content += String(repeating: "~", count: count)
-        } else {
-          let text = String(repeating: "~", count: count)
-          nodes.append(TextNode(content: text))
-        }
-      } else {
-        handleDelimiter(marker: marker, count: count, nodes: &nodes, stack: &delimiters)
+          last.content += "~"
+        } else { nodes.append(TextNode(content: "~")) }
+        return true
       }
+      handleDelimiter(marker: marker, count: count, nodes: &nodes, stack: &delimiters)
       return true
+    }
+  }
+
+  private struct EscapedBuilder: InlineBuilder {
+    func build(
+      from context: inout CodeConstructContext<MarkdownNodeElement, MarkdownTokenElement>,
+      nodes: inout [MarkdownNodeBase],
+      delimiters: inout [Delimiter]
+    ) -> Bool {
+      guard context.consuming + 1 < context.tokens.count,
+        let bs = context.tokens[context.consuming] as? MarkdownToken, bs.element == .backslash,
+        let next = context.tokens[context.consuming + 1] as? MarkdownToken,
+        isEscapable(next.element)
+      else { return false }
+      // Don't consume if this begins a backslash formula sequence: \( ... \)
+      if next.element == .leftParen {
+        // scan ahead for a backslash + rightParen before newline
+        var i = context.consuming + 2
+        var foundClose = false
+        while i + 1 < context.tokens.count, let tk = context.tokens[i] as? MarkdownToken {
+          if tk.element == .newline || tk.element == .eof { break }
+            if tk.element == .backslash,
+               let rp = context.tokens[i + 1] as? MarkdownToken, rp.element == .rightParen {
+              foundClose = true; break
+            }
+          i += 1
+        }
+        if foundClose { return false }
+      }
+      // Consume both and produce literal next.text
+      context.consuming += 2
+      if let last = nodes.last as? TextNode, !delimiters.contains(where: { $0.index == nodes.count - 1 }) {
+        last.content += next.text
+      } else { nodes.append(TextNode(content: next.text)) }
+      return true
+    }
+
+    private func isEscapable(_ el: MarkdownTokenElement) -> Bool {
+      switch el {
+      case .backslash, .asterisk, .underscore, .tilde, .leftBracket, .rightBracket, .leftParen, .rightParen, .hash, .plus, .dash, .exclamation, .quote, .singleQuote:
+        return true
+      default: return false
+      }
     }
   }
 
@@ -323,14 +284,22 @@ public class MarkdownInlineBuilder: CodeNodeBuilder {
       delimiters: inout [Delimiter]
     ) -> Bool {
       guard context.consuming < context.tokens.count,
-        let token = context.tokens[context.consuming] as? MarkdownToken,
-        token.element == .htmlTag || token.element == .htmlBlock
-          || token.element == .htmlUnclosedBlock || token.element == .htmlEntity
+        let token = context.tokens[context.consuming] as? MarkdownToken
       else { return false }
 
-      nodes.append(HTMLNode(content: token.text))
-      context.consuming += 1
-      return true
+      switch token.element {
+      case .htmlTag, .htmlBlock, .htmlUnclosedBlock, .htmlEntity:
+        nodes.append(HTMLNode(content: token.text))
+        context.consuming += 1
+        return true
+      case .htmlComment:
+        // Represent HTML comments explicitly as CommentNode to distinguish from generic HTML nodes
+        nodes.append(CommentNode(content: token.text))
+        context.consuming += 1
+        return true
+      default:
+        return false
+      }
     }
   }
 
@@ -471,14 +440,25 @@ public class MarkdownInlineBuilder: CodeNodeBuilder {
         }
       }
 
-      let node: MarkdownNodeBase
       if marker == .tilde {
-        node = StrikeNode(content: "")
+        let strike = StrikeNode(content: "")
+        for child in content { strike.append(child) }
+        nodes.append(strike)
+      } else if closeCount == 3 { // produce nested strong + emphasis
+        let strong = StrongNode(content: "")
+        let em = EmphasisNode(content: "")
+        for child in content { em.append(child) }
+        strong.append(em)
+        nodes.append(strong)
+      } else if closeCount >= 2 {
+        let strong = StrongNode(content: "")
+        for child in content { strong.append(child) }
+        nodes.append(strong)
       } else {
-        node = (closeCount >= 2) ? StrongNode(content: "") : EmphasisNode(content: "")
+        let em = EmphasisNode(content: "")
+        for child in content { em.append(child) }
+        nodes.append(em)
       }
-      for child in content { node.append(child) }
-      nodes.append(node)
 
       remaining -= closeCount
     }
@@ -627,32 +607,72 @@ public class MarkdownInlineBuilder: CodeNodeBuilder {
       return nil
     }
     context.consuming += 1
-    guard context.consuming < context.tokens.count,
-      let lp = context.tokens[context.consuming] as? MarkdownToken,
-      lp.element == .leftParen
-    else {
-      context.consuming -= 3
-      return nil
-    }
-    context.consuming += 1
-    var url = ""
-    while context.consuming < context.tokens.count,
-      let t = context.tokens[context.consuming] as? MarkdownToken,
-      t.element != .rightParen
-    {
-      url += t.text
-      context.consuming += 1
-    }
-    guard context.consuming < context.tokens.count,
-      let rp = context.tokens[context.consuming] as? MarkdownToken,
-      rp.element == .rightParen
-    else {
-      context.consuming -= 4
-      return nil
-    }
-    context.consuming += 1
     let alt = altNodes.compactMap { ($0 as? TextNode)?.content }.joined()
-    return ImageNode(url: url, alt: alt)
+    if context.consuming < context.tokens.count,
+      let next = context.tokens[context.consuming] as? MarkdownToken
+    {
+      if next.element == .leftParen { // inline image
+        context.consuming += 1
+        var spec = ""
+        while context.consuming < context.tokens.count,
+          let t = context.tokens[context.consuming] as? MarkdownToken,
+          t.element != .rightParen
+        {
+          spec += t.text
+          context.consuming += 1
+        }
+        guard context.consuming < context.tokens.count,
+          let rp = context.tokens[context.consuming] as? MarkdownToken,
+          rp.element == .rightParen
+        else {
+          context.consuming -= 3
+          return nil
+        }
+        context.consuming += 1
+        let (url, title) = splitLinkAndTitle(spec)
+        return ImageNode(url: url, alt: alt, title: title)
+      } else if next.element == .leftBracket { // reference-style image
+        context.consuming += 1
+        var ident = ""
+        while context.consuming < context.tokens.count,
+          let t = context.tokens[context.consuming] as? MarkdownToken,
+          t.element != .rightBracket
+        {
+          ident += t.text
+          context.consuming += 1
+        }
+        guard context.consuming < context.tokens.count,
+          let rb = context.tokens[context.consuming] as? MarkdownToken,
+          rb.element == .rightBracket
+        else {
+          context.consuming -= 3
+          return nil
+        }
+        context.consuming += 1
+        return ImageNode(url: "", alt: alt, title: ident) // title暂存 identifier
+      }
+    }
+    context.consuming -= 3
+    return nil
+  }
+
+  private static func splitLinkAndTitle(_ raw: String) -> (String, String) {
+    let working = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+    if working.isEmpty { return ("", "") }
+    var url = working
+    var title = ""
+    if let firstQuoteIdx = working.firstIndex(where: { $0 == "\"" || $0 == "'" }) {
+      let quote = working[firstQuoteIdx]
+      let before = working[..<firstQuoteIdx].trimmingCharacters(in: .whitespaces)
+      var search = working.index(after: firstQuoteIdx)
+      while search < working.endIndex && working[search] != quote { search = working.index(after: search) }
+      if search < working.endIndex {
+        title = String(working[working.index(after: firstQuoteIdx)..<search])
+        url = before
+      }
+    }
+    if url.hasPrefix("<"), url.hasSuffix(">") { url = String(url.dropFirst().dropLast()) }
+    return (url, title)
   }
 
   private static func trimBackticks(_ text: String) -> String {

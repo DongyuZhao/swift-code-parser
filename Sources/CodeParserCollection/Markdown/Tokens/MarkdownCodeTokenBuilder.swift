@@ -12,18 +12,31 @@ public class MarkdownCodeTokenBuilder: CodeTokenBuilder {
     let char = context.source[start]
 
     if char == "`" {
-      if let token = buildFencedCode(from: &context, start: start) {
-        context.tokens.append(token)
+      if let fenced = buildFencedCode(from: &context, start: start, fenceChar: char) {
+        context.tokens.append(fenced)
         return true
       }
-      if let token = buildInlineCode(from: &context, start: start) {
-        context.tokens.append(token)
+      if let inline = buildInlineCode(from: &context, start: start) {
+        context.tokens.append(inline)
         return true
       }
-      let next = context.source.index(after: start)
-      context.consuming = next
-      context.tokens.append(MarkdownToken.text("`", at: start..<next))
-      return true
+      // fallthrough: let single char builder / text builder handle stray backtick
+      return false
+    } else if char == "~" {
+      // Only treat as fenced code if run >=3; otherwise let single char builder capture tildes
+      var count = 0
+      var idx = start
+      while idx < context.source.endIndex && context.source[idx] == "~" {
+        count += 1
+        idx = context.source.index(after: idx)
+      }
+      if count >= 3 { // fenced code
+        if let fenced = buildFencedCode(from: &context, start: start, fenceChar: "~") {
+          context.tokens.append(fenced)
+          return true
+        }
+      }
+      return false
     }
 
     if (char == " " || char == "\t") && isLineStart(source: context.source, index: start) {
@@ -44,11 +57,11 @@ public class MarkdownCodeTokenBuilder: CodeTokenBuilder {
   }
 
   private func buildFencedCode(
-    from context: inout CodeTokenContext<MarkdownTokenElement>, start: String.Index
+    from context: inout CodeTokenContext<MarkdownTokenElement>, start: String.Index, fenceChar: Character
   ) -> MarkdownToken? {
     var tickCount = 0
     var idx = start
-    while idx < context.source.endIndex && context.source[idx] == "`" {
+    while idx < context.source.endIndex && context.source[idx] == fenceChar {
       tickCount += 1
       idx = context.source.index(after: idx)
     }
@@ -78,10 +91,10 @@ public class MarkdownCodeTokenBuilder: CodeTokenBuilder {
     var search = idx
     var closingStart: String.Index? = nil
     while search < context.source.endIndex {
-      if context.source[search] == "`" {
+      if context.source[search] == fenceChar {
         let fenceStart = search
         var count = 0
-        while search < context.source.endIndex && context.source[search] == "`" {
+        while search < context.source.endIndex && context.source[search] == fenceChar {
           count += 1
           search = context.source.index(after: search)
         }
@@ -104,34 +117,45 @@ public class MarkdownCodeTokenBuilder: CodeTokenBuilder {
     }
 
     let range = start..<end
-    let text = String(context.source[range])
+  let text = String(context.source[range])
     return MarkdownToken.fencedCodeBlock(text, at: range)
   }
 
   private func buildInlineCode(
     from context: inout CodeTokenContext<MarkdownTokenElement>, start: String.Index
   ) -> MarkdownToken? {
-    var idx = context.source.index(after: start)
-    while idx < context.source.endIndex {
-      if context.source[idx] == "`" {
-        let end = context.source.index(after: idx)
-        let range = start..<end
-        context.consuming = end
-        let text = String(context.source[range])
-        return MarkdownToken.inlineCode(text, at: range)
-      }
-      if context.source[idx] == "\\" {
-        let next = context.source.index(after: idx)
-        if next < context.source.endIndex {
-          idx = context.source.index(after: next)
-        } else {
-          idx = next
+    // Determine opening run length
+    var openingLen = 0
+    var i = start
+    while i < context.source.endIndex && context.source[i] == "`" {
+      openingLen += 1
+      i = context.source.index(after: i)
+    }
+    if openingLen == 0 { return nil }
+    let contentStart = i
+    // Search for matching closing run
+    var search = contentStart
+    var closingStart: String.Index? = nil
+    while search < context.source.endIndex {
+      if context.source[search] == "`" {
+        var run = 0
+        var runIdx = search
+        while runIdx < context.source.endIndex && context.source[runIdx] == "`" {
+          run += 1
+          runIdx = context.source.index(after: runIdx)
         }
+        if run == openingLen { closingStart = search; break }
+        search = runIdx
       } else {
-        idx = context.source.index(after: idx)
+        search = context.source.index(after: search)
       }
     }
-    return nil
+    guard let close = closingStart else { return nil }
+    let end = context.source.index(close, offsetBy: openingLen)
+    let range = start..<end
+    context.consuming = end
+    let text = String(context.source[range])
+    return MarkdownToken.inlineCode(text, at: range)
   }
 
   private func buildIndentedCode(

@@ -76,7 +76,8 @@ public class MarkdownReferenceDefinitionBuilder: CodeNodeBuilder {
       let node = CitationNode(identifier: identifier, content: value)
       context.current.append(node)
     } else {
-      let node = ReferenceNode(identifier: identifier, url: value, title: "")
+  let (url, title) = splitLinkAndTitle(value)
+  let node = ReferenceNode(identifier: identifier, url: url, title: title)
       context.current.append(node)
       var root = context.current
       while let parent = root.parent { root = parent }
@@ -93,5 +94,34 @@ public class MarkdownReferenceDefinitionBuilder: CodeNodeBuilder {
       return prev.element == .newline
     }
     return false
+  }
+
+  private func splitLinkAndTitle(_ raw: String) -> (String, String) {
+    // Expected patterns:
+    // URL "Title"
+    // URL 'Title'
+    // <URL> "Title"
+    let trimmed = raw.trimmingCharacters(in: .whitespaces)
+    if trimmed.isEmpty { return ("", "") }
+    var urlPart = trimmed
+    var titlePart = ""
+    // Find first quote (single or double) after a space
+    if let quoteIndex = trimmed.firstIndex(where: { $0 == "\"" || $0 == "'" }) {
+      let before = trimmed[..<quoteIndex].trimmingCharacters(in: .whitespaces)
+      let quoteChar = trimmed[quoteIndex]
+      var endIdx = trimmed.index(after: quoteIndex)
+      while endIdx < trimmed.endIndex && trimmed[endIdx] != quoteChar {
+        endIdx = trimmed.index(after: endIdx)
+      }
+      if endIdx < trimmed.endIndex { // found closing
+        titlePart = String(trimmed[trimmed.index(after: quoteIndex)..<endIdx])
+        urlPart = before
+      }
+    }
+    // Remove surrounding < > for autolink style definitions
+    if urlPart.hasPrefix("<"), urlPart.hasSuffix(">") {
+      urlPart = String(urlPart.dropFirst().dropLast())
+    }
+    return (urlPart, titlePart)
   }
 }

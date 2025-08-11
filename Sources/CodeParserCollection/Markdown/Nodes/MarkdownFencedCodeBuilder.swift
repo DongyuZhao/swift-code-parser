@@ -13,8 +13,7 @@ public class MarkdownFencedCodeBuilder: CodeNodeBuilder {
       isStartOfLine(context)
     else { return false }
     context.consuming += 1
-    let code = trimFence(token.text)
-    let language = extractLanguage(token.text)
+  let (code, language) = extractCodeAndLanguage(token.text)
     let node = CodeBlockNode(source: code, language: language)
     context.current.append(node)
     if context.consuming < context.tokens.count,
@@ -26,26 +25,35 @@ public class MarkdownFencedCodeBuilder: CodeNodeBuilder {
     return true
   }
 
-  private func trimFence(_ text: String) -> String {
-    var lines = text.split(separator: "\n")
-    guard lines.count >= 2 else { return text }
+  private func extractCodeAndLanguage(_ text: String) -> (String, String?) {
+    var lines = text.split(separator: "\n", omittingEmptySubsequences: false)
+    guard !lines.isEmpty else { return (text, nil) }
+    let fenceLine = String(lines.first!)
+  let fenceChar = fenceLine.first ?? "`"
+    let fenceCount = fenceLine.prefix { $0 == fenceChar }.count
+    // language part: chars after opening fence run up to space or end
+    var lang: String? = nil
+  let afterFenceSub = fenceLine.dropFirst(fenceCount)
+    if !afterFenceSub.isEmpty {
+      let trimmed = String(afterFenceSub).trimmingCharacters(in: .whitespaces)
+      if let stop = trimmed.firstIndex(where: { $0.isWhitespace || $0 == "{" }) {
+        let candidate = trimmed[..<stop]
+        lang = candidate.isEmpty ? nil : String(candidate)
+      } else {
+        lang = trimmed.isEmpty ? nil : trimmed
+      }
+    }
+    // remove first fence line
     lines.removeFirst()
-    if let last = lines.last, last.starts(with: "```") {
-      lines.removeLast()
+    // remove closing fence if present
+    if let last = lines.last {
+      let trimmed = last.trimmingCharacters(in: .whitespaces)
+      let closingCount = trimmed.prefix { $0 == fenceChar }.count
+      if closingCount >= fenceCount && trimmed.allSatisfy({ $0 == fenceChar }) {
+        lines.removeLast()
+      }
     }
-    return lines.joined(separator: "\n")
-  }
-
-  private func extractLanguage(_ text: String) -> String? {
-    guard let firstLine = text.split(separator: "\n", maxSplits: 1).first else {
-      return nil
-    }
-    var cleaned = firstLine.trimmingCharacters(in: .whitespaces)
-    while cleaned.starts(with: "`") {
-      cleaned.removeFirst()
-    }
-    let lang = cleaned.trimmingCharacters(in: .whitespaces)
-    return lang.isEmpty ? nil : lang
+    return (lines.joined(separator: "\n"), lang)
   }
 
   private func isStartOfLine(
