@@ -42,23 +42,35 @@ struct MarkdownCommonMarkTests {
       Issue.record("Expected ParagraphNode")
       return
     }
-    // Relax exact child shape; just assert presence and order of emphasis/strong segments.
-    let children = para.children
-    // Find emphasis and strong nodes
-    guard let emphasisIdx = children.firstIndex(where: { $0 is EmphasisNode }),
-          let strongIdx = children.firstIndex(where: { $0 is StrongNode }) else {
-      Issue.record("Expected emphasis and strong nodes")
+
+    // Expect: <p>This is <em>italic</em> and <strong>bold</strong>.</p>
+    // Structure: Text, Emphasis, Text, Strong, Text
+    #expect(para.children.count == 5)
+    guard para.children.count == 5 else { return }
+
+    #expect((para.children[0] as? TextNode)?.content == "This is ")
+
+    guard let emphasis = para.children[1] as? EmphasisNode,
+      let emText = emphasis.children.first as? TextNode,
+      emphasis.children.count == 1
+    else {
+      Issue.record("Expected EmphasisNode with single text child")
       return
     }
-    #expect(emphasisIdx < strongIdx)
-    if let emphasis = children[emphasisIdx] as? EmphasisNode,
-       let text = emphasis.children.first as? TextNode {
-      #expect(text.content == "italic")
-    } else { Issue.record("Emphasis text mismatch") }
-    if let strong = children[strongIdx] as? StrongNode,
-       let text = strong.children.first as? TextNode {
-      #expect(text.content == "bold")
-    } else { Issue.record("Strong text mismatch") }
+    #expect(emText.content == "italic")
+
+    #expect((para.children[2] as? TextNode)?.content == " and ")
+
+    guard let strong = para.children[3] as? StrongNode,
+      let strongText = strong.children.first as? TextNode,
+      strong.children.count == 1
+    else {
+      Issue.record("Expected StrongNode with single text child")
+      return
+    }
+    #expect(strongText.content == "bold")
+
+    #expect((para.children[4] as? TextNode)?.content == ".")
   }
 
   @Test("Blockquote parsing")
@@ -838,5 +850,185 @@ struct MarkdownCommonMarkTests {
     let t0 = tokens.first as? MarkdownToken
     #expect(t0?.element == .text)
     #expect(t0?.text == "123abc")
+  }
+
+  @Test("Nested emphasis strong+em inside sentence")
+  func nestedEmphasisMixed() {
+    let input = "This is a **demo** of the ***CodeParser* framework**."
+    let result = parser.parse(input, language: language)
+    #expect(result.errors.isEmpty)
+    guard let para = result.root.children.first as? ParagraphNode else {
+      Issue.record("Expected ParagraphNode")
+      return
+    }
+
+    // Expect: <p>This is a <strong>demo</strong> of the <strong><em>CodeParser</em> framework</strong>.</p>
+    // Structure: Text, Strong, Text, Strong, Text
+    #expect(para.children.count == 5)
+    guard para.children.count == 5 else { return }
+
+    #expect((para.children[0] as? TextNode)?.content == "This is a ")
+
+    guard let strong1 = para.children[1] as? StrongNode,
+      let strong1Text = strong1.children.first as? TextNode,
+      strong1.children.count == 1
+    else {
+      Issue.record("Expected first StrongNode with single text child")
+      return
+    }
+    #expect(strong1Text.content == "demo")
+
+    #expect((para.children[2] as? TextNode)?.content == " of the ")
+
+    guard let outerStrong = para.children[3] as? StrongNode else {
+      Issue.record("Expected outer StrongNode for framework part")
+      return
+    }
+    // Inside outer strong: Emphasis, Text
+    #expect(outerStrong.children.count == 2)
+    guard outerStrong.children.count == 2 else { return }
+
+    guard let innerEmphasis = outerStrong.children[0] as? EmphasisNode,
+      let innerEmphasisText = innerEmphasis.children.first as? TextNode,
+      innerEmphasis.children.count == 1
+    else {
+      Issue.record("Expected inner EmphasisNode with single text child")
+      return
+    }
+    #expect(innerEmphasisText.content == "CodeParser")
+    #expect((outerStrong.children[1] as? TextNode)?.content == " framework")
+
+    #expect((para.children[4] as? TextNode)?.content == ".")
+  }
+
+  @Test("Nested emphasis variant strong then strong+em close pattern")
+  func nestedEmphasisVariant() {
+    let input = "This is a **demo** of the ***CodeParser** framework*."
+    let result = parser.parse(input, language: language)
+    #expect(result.errors.isEmpty)
+    guard let para = result.root.children.first as? ParagraphNode else {
+      Issue.record("Expected paragraph")
+      return
+    }
+
+    // Expect: <p>This is a <strong>demo</strong> of the <em><strong>CodeParser</strong> framework</em>.</p>
+    // Structure: Text, Strong, Text, Emphasis, Text
+    #expect(para.children.count == 5)
+    guard para.children.count == 5 else { return }
+
+    #expect((para.children[0] as? TextNode)?.content == "This is a ")
+
+    guard let strong1 = para.children[1] as? StrongNode,
+      let strong1Text = strong1.children.first as? TextNode,
+      strong1.children.count == 1
+    else {
+      Issue.record("Expected first StrongNode with single text child")
+      return
+    }
+    #expect(strong1Text.content == "demo")
+
+    #expect((para.children[2] as? TextNode)?.content == " of the ")
+
+    guard let emphasis = para.children[3] as? EmphasisNode else {
+      Issue.record("Expected EmphasisNode")
+      return
+    }
+    // Inside emphasis: Strong, Text
+    #expect(emphasis.children.count == 2)
+    guard emphasis.children.count == 2 else { return }
+
+    guard let strongInside = emphasis.children[0] as? StrongNode,
+      let strongInsideText = strongInside.children.first as? TextNode,
+      strongInside.children.count == 1
+    else {
+      Issue.record("Expected StrongNode inside EmphasisNode with single text child")
+      return
+    }
+    #expect(strongInsideText.content == "CodeParser")
+    #expect((emphasis.children[1] as? TextNode)?.content == " framework")
+
+    #expect((para.children[4] as? TextNode)?.content == ".")
+  }
+
+  @Test("Strikethrough with nested emphasis GFM")
+  func gfm_strikeWithEmphasis() {
+    let input = "~~This *very* old~~ text"
+    let result = parser.parse(input, language: language)
+    #expect(result.errors.isEmpty)
+    guard let para = result.root.children.first as? ParagraphNode else { return }
+
+    // Expect: <p><del>This <em>very</em> old</del> text</p>
+    // Structure: StrikeNode, TextNode
+    #expect(para.children.count == 2)
+    guard para.children.count == 2 else { return }
+
+    guard let strike = para.children[0] as? StrikeNode else {
+      Issue.record("Expected StrikeNode")
+      return
+    }
+    #expect((para.children[1] as? TextNode)?.content == " text")
+
+    // Inside strike: Text, Emphasis, Text
+    #expect(strike.children.count == 3)
+    guard strike.children.count == 3 else { return }
+    #expect((strike.children[0] as? TextNode)?.content == "This ")
+    guard let em = strike.children[1] as? EmphasisNode,
+      let emText = em.children.first as? TextNode,
+      em.children.count == 1
+    else {
+      Issue.record("Expected EmphasisNode inside StrikeNode with single text child")
+      return
+    }
+    #expect(emText.content == "very")
+    #expect((strike.children[2] as? TextNode)?.content == " old")
+  }
+
+  @Test("Intraword underscore does not create emphasis")
+  func intrawordUnderscoreNoEmphasis() {
+    let input = "foo_bar_baz"
+    let result = parser.parse(input, language: language)
+    #expect(result.errors.isEmpty)
+    guard let para = result.root.children.first as? ParagraphNode else { return }
+    let hasEm = para.children.contains { $0 is EmphasisNode }
+    #expect(!hasEm)
+    #expect(para.children.count == 1)
+    let text = para.children.first as? TextNode
+    #expect(text?.content == "foo_bar_baz")
+  }
+
+  @Test("Multiple mixed delimiter runs")
+  func mixedDelimiterRuns() {
+    let input = "****a** b**"  // Expect <p><strong><strong>a</strong> b</strong></p>
+    let result = parser.parse(input, language: language)
+    #expect(result.errors.isEmpty)
+    guard let para = result.root.children.first as? ParagraphNode else {
+      Issue.record("Expected ParagraphNode")
+      return
+    }
+    // Expect one outer strong node
+    #expect(para.children.count == 1)
+    guard let outerStrong = para.children.first as? StrongNode else {
+      Issue.record("Expected outer StrongNode")
+      return
+    }
+
+    // Inside outer strong: inner strong, text
+    #expect(outerStrong.children.count == 2)
+    guard outerStrong.children.count == 2 else { return }
+
+    guard let innerStrong = outerStrong.children[0] as? StrongNode,
+      let innerText = innerStrong.children.first as? TextNode,
+      innerStrong.children.count == 1
+    else {
+      Issue.record("Expected inner StrongNode with single text child")
+      return
+    }
+    #expect(innerText.content == "a")
+
+    guard let outerText = outerStrong.children[1] as? TextNode else {
+      Issue.record("Expected TextNode inside outer StrongNode")
+      return
+    }
+    #expect(outerText.content == " b")
   }
 }

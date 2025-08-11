@@ -96,6 +96,104 @@ public class MarkdownInlineBuilder: CodeNodeBuilder {
         count += 1
         context.consuming += 1
       }
+
+      // Basic flanking heuristic for single delimiter runs to prevent premature closing
+      if (marker == .asterisk || marker == .underscore) && count == 1 {
+        let runStart = context.consuming - count
+        let prevToken = runStart > 0 ? context.tokens[runStart - 1] as? MarkdownToken : nil
+        let nextToken = context.consuming < context.tokens.count ? context.tokens[context.consuming] as? MarkdownToken : nil
+        let prevIsWhitespace = prevToken?.isWhitespace ?? true
+        let nextIsWhitespace = nextToken?.isWhitespace ?? true
+        let nextIsPunct = nextToken?.isPunctuation ?? false
+        let prevIsPunct = prevToken?.isPunctuation ?? false
+        let isRightFlanking = !prevIsWhitespace && (nextIsWhitespace || nextIsPunct || nextToken == nil)
+        let isLeftFlanking = !nextIsWhitespace && (prevIsWhitespace || prevIsPunct || prevToken == nil)
+        if isLeftFlanking && !isRightFlanking {
+          // Treat as pure opener: push delimiter stack entry without attempting closure
+          nodes.append(TextNode(content: String(marker.rawValue)))
+          delimiters.append(Delimiter(marker: marker, count: 1, index: nodes.count - 1))
+          return true
+        }
+      }
+
+      // Intraword underscore rule (CommonMark): runs of '_' inside a word should be literal
+      if marker == .underscore {
+        let prevAlphaNum: Bool = {
+          if context.consuming - count > 0, let prev = context.tokens[context.consuming - count - 1] as? MarkdownToken, let ch = prev.text.last { return ch.isLetter || ch.isNumber }
+          return false
+        }()
+        let nextAlphaNum: Bool = {
+          if context.consuming < context.tokens.count, let next = context.tokens[context.consuming] as? MarkdownToken, let ch = next.text.first { return ch.isLetter || ch.isNumber }
+          return false
+        }()
+        if prevAlphaNum && nextAlphaNum {
+          // Treat as plain text (merge if possible)
+          let textRun = String(repeating: "_", count: count)
+          if let last = nodes.last as? TextNode, !delimiters.contains(where: { $0.index == nodes.count - 1 }) {
+            last.content += textRun
+          } else {
+            nodes.append(TextNode(content: textRun))
+          }
+          return true
+        }
+      }
+
+      // Special handling for complex asterisk runs to satisfy nested emphasis expectations.
+      if marker == .asterisk {
+        // Decompose **** into two strong delimiters (outer then inner)
+        if count >= 4 {
+          var remaining = count
+            while remaining >= 2 {
+              // append text node for '**'
+              let text = "**"
+              nodes.append(TextNode(content: text))
+              delimiters.append(Delimiter(marker: marker, count: 2, index: nodes.count - 1))
+              remaining -= 2
+            }
+            if remaining == 1 { // leftover single emphasis
+              nodes.append(TextNode(content: "*"))
+              delimiters.append(Delimiter(marker: marker, count: 1, index: nodes.count - 1))
+            }
+            return true
+        } else if count == 3 {
+          // Peek ahead to decide ordering of '**' + '*' vs '*' + '**'
+          var firstSinglePos: Int? = nil
+          var firstDoublePos: Int? = nil
+          var i = context.consuming
+          while i < context.tokens.count {
+            guard let at = context.tokens[i] as? MarkdownToken else { break }
+            if at.element == .newline || at.element == .eof { break }
+            if at.element == .asterisk {
+              var run = 0
+              var j = i
+              while j < context.tokens.count, let tt = context.tokens[j] as? MarkdownToken, tt.element == .asterisk { run += 1; j += 1 }
+              if run >= 2 && firstDoublePos == nil { firstDoublePos = i }
+              if run == 1 && firstSinglePos == nil { firstSinglePos = i }
+              if firstSinglePos != nil && firstDoublePos != nil { break }
+              i = j
+              continue
+            }
+            i += 1
+          }
+          // If single appears before double, open strong then emphasis ( ** then * ) ; else emphasis then strong
+          let singleBeforeDouble: Bool
+          if let s = firstSinglePos, let d = firstDoublePos { singleBeforeDouble = s < d } else if firstSinglePos != nil { singleBeforeDouble = true } else { singleBeforeDouble = false }
+          if singleBeforeDouble {
+            // '**' then '*'
+            nodes.append(TextNode(content: "**"))
+            delimiters.append(Delimiter(marker: marker, count: 2, index: nodes.count - 1))
+            nodes.append(TextNode(content: "*"))
+            delimiters.append(Delimiter(marker: marker, count: 1, index: nodes.count - 1))
+          } else {
+            // '*' then '**'
+            nodes.append(TextNode(content: "*"))
+            delimiters.append(Delimiter(marker: marker, count: 1, index: nodes.count - 1))
+            nodes.append(TextNode(content: "**"))
+            delimiters.append(Delimiter(marker: marker, count: 2, index: nodes.count - 1))
+          }
+          return true
+        }
+      }
       if marker == .tilde && count < 2 {
         // Single tilde is literal; merge into previous text node if possible
         if let last = nodes.last as? TextNode, !delimiters.contains(where: { $0.index == nodes.count - 1 }) {
