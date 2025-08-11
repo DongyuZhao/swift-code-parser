@@ -40,6 +40,11 @@ public class MarkdownHeadingBuilder: CodeNodeBuilder {
     let inlineBuilder = MarkdownInlineBuilder()
     _ = inlineBuilder.build(from: &inlineCtx)
     context.consuming = inlineCtx.consuming
+    // Trim trailing # and spaces from final text child
+    if let last = node.children.last as? TextNode {
+      let trimmed = last.content.replacingOccurrences(of: "[ #]+$", with: "", options: .regularExpression)
+      last.content = trimmed
+    }
     context.current.append(node)
 
     if context.consuming < context.tokens.count,

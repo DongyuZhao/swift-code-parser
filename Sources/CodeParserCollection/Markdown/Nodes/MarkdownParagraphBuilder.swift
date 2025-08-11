@@ -88,6 +88,106 @@ public class MarkdownParagraphBuilder: CodeNodeBuilder {
     _ = inlineBuilder.build(from: &inlineCtx)
     context.consuming = inlineCtx.consuming
 
+    // Early Setext heading detection (before line merging). Only when paragraph is not list item continuation.
+    if target.element != .listItem,
+       context.consuming < context.tokens.count,
+       let nlTok = context.tokens[context.consuming] as? MarkdownToken,
+       nlTok.element == .newline {
+      // Look ahead to gather underline line tokens
+      var idx = context.consuming + 1
+      var underline: [MarkdownToken] = []
+      while idx < context.tokens.count,
+            let t = context.tokens[idx] as? MarkdownToken,
+            t.element != .newline, t.element != .eof {
+        underline.append(t)
+        idx += 1
+      }
+      if !underline.isEmpty {
+        let hasEquals = underline.contains { $0.element == .equals }
+        let hasDashes = underline.contains { $0.element == .dash }
+        if hasEquals != hasDashes { // not mixed
+          let invalid = underline.contains { tok in !(tok.element == .space || tok.element == .equals || tok.element == .dash) }
+          if !invalid {
+            let level = hasEquals ? 1 : 2
+            // Replace paragraph with header
+            let header = HeaderNode(level: level)
+            for child in node.children { header.append(child) }
+            target.append(header)
+            context.current = target
+            // Advance consuming over newline + underline + optional trailing newline
+            context.consuming = idx
+            if context.consuming < context.tokens.count,
+               let endNl = context.tokens[context.consuming] as? MarkdownToken,
+               endNl.element == .newline { context.consuming += 1 }
+            // Consume terminator newline if present
+            if context.consuming < context.tokens.count,
+               let termNl = context.tokens[context.consuming] as? MarkdownToken,
+               termNl.element == .newline { context.consuming += 1 }
+            return true
+          }
+        }
+      }
+    }
+
+    // Merge successive non-blank lines into same paragraph (soft line breaks)
+    // Stop on blank line (double newline), EOF, or a token that can start a new block.
+    lineJoin: while context.consuming < context.tokens.count {
+      guard let nl = context.tokens[context.consuming] as? MarkdownToken, nl.element == .newline else { break }
+      // Peek next token to decide termination
+      if context.consuming + 1 < context.tokens.count,
+         let next = context.tokens[context.consuming + 1] as? MarkdownToken {
+        // Blank line => terminate paragraph (consume one newline leaving following newline for outer loop to skip)
+        if next.element == .newline { break }
+        // Block-starting token (e.g., heading, list, blockquote, code fence) should end paragraph
+        if next.canStartBlock { break }
+      }
+      // We will merge the next line into same paragraph
+      // Determine hard vs soft line break based on trailing spaces or backslash before newline
+      var isHard = false
+      if let last = node.children.last as? TextNode, !last.content.isEmpty {
+        if last.content.hasSuffix("\\") { // backslash hard break
+          isHard = true
+          last.content.removeLast()
+        } else {
+          // Count trailing spaces
+          var spaceCount = 0
+          var i = last.content.endIndex
+          while i > last.content.startIndex {
+            let prev = last.content.index(before: i)
+            if last.content[prev] == " " { spaceCount += 1; i = prev } else { break }
+          }
+          if spaceCount >= 2 { // hard break
+            isHard = true
+            // trim trailing spaces used for hard break
+            last.content = String(last.content.dropLast(spaceCount))
+          }
+        }
+      }
+      // Consume newline
+      context.consuming += 1
+      if isHard {
+        node.append(LineBreakNode(variant: .hard))
+      } else {
+        // For soft break, collapse to a single space if last text node does not already end with space
+        if let last = node.children.last as? TextNode {
+          if !last.content.hasSuffix(" ") { last.content += " " }
+        } else {
+          node.append(TextNode(content: " "))
+        }
+      }
+      // Parse next line inline content and append
+      var moreCtx = CodeConstructContext(
+        current: node,
+        tokens: context.tokens,
+        consuming: context.consuming,
+        state: context.state
+      )
+      _ = inlineBuilder.build(from: &moreCtx)
+      // If no progress, break to avoid infinite loop
+      if moreCtx.consuming == context.consuming { break lineJoin }
+      context.consuming = moreCtx.consuming
+    }
+
     // Merge following soft-wrapped lines (single newline + indentation) into same paragraph for list items
     if isListItemTarget {
       lineLoop: while context.consuming < context.tokens.count {
@@ -225,12 +325,10 @@ public class MarkdownParagraphBuilder: CodeNodeBuilder {
       }
     }
 
-    if context.consuming < context.tokens.count,
-      let nl = context.tokens[context.consuming] as? MarkdownToken,
-      nl.element == .newline
-    {
-      context.consuming += 1
-    }
+  // Consume a single trailing newline (paragraph terminator) if present
+  if context.consuming < context.tokens.count,
+     let nl = context.tokens[context.consuming] as? MarkdownToken,
+     nl.element == .newline { context.consuming += 1 }
     return true
   }
 }

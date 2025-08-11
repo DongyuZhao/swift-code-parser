@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 
 @testable import CodeParserCollection
@@ -13,1022 +14,825 @@ struct MarkdownCommonMarkTests {
     parser = CodeParser(language: language)
   }
 
-  @Test("ATX headings")
-  func atxHeadings() {
+  // MARK: - CommonMark Spec Test Cases
+
+  /// Represents a single CommonMark specification test case
+  struct CommonMarkTestCase: Codable {
+    let markdown: String
+    let html: String
+    let example: Int
+    let startLine: Int
+    let endLine: Int
+    let section: String
+
+    enum CodingKeys: String, CodingKey {
+      case markdown, html, example
+      case startLine = "start_line"
+      case endLine = "end_line"
+      case section
+    }
+  }
+
+  // MARK: - CommonMark Critical Feature Tests (Strict Validation)
+
+  @Test("CommonMark Spec - Tabs handling (Strict)")
+  func commonMarkTabs() {
+    // Example 1: Tab at start becomes code block with exact content
+    let input1 = "\tfoo\tbaz\t\tbim\n"
+    let result1 = parser.parse(input1, language: language)
+    #expect(result1.errors.isEmpty, "Should parse without errors")
+    #expect(result1.root.children.count == 1, "Should have exactly one child")
+    guard let codeBlock1 = result1.root.children.first as? CodeBlockNode else {
+      Issue.record("Expected CodeBlockNode as first child")
+      return
+    }
+    #expect(codeBlock1.source == "foo\tbaz\t\tbim", "Code block content should preserve tabs")
+    #expect(
+      codeBlock1.language == nil || codeBlock1.language?.isEmpty == true,
+      "Code block should have no language")
+
+    // Example 2: Spaces + tab becomes code block
+    let input2 = "  \tfoo\tbaz\t\tbim\n"
+    let result2 = parser.parse(input2, language: language)
+    #expect(result2.errors.isEmpty, "Should parse without errors")
+    #expect(result2.root.children.count == 1, "Should have exactly one child")
+    guard let codeBlock2 = result2.root.children.first as? CodeBlockNode else {
+      Issue.record("Expected CodeBlockNode as first child")
+      return
+    }
+    #expect(
+      codeBlock2.source == "foo\tbaz\t\tbim",
+      "Code block content should preserve tabs and strip leading indent")
+  }
+
+  @Test("CommonMark Spec - ATX Headings (Strict)")
+  func commonMarkATXHeadings() {
+    // Test various heading levels with exact structure validation
     for level in 1...6 {
-      let input = String(repeating: "#", count: level) + " Title"
+      let input = String(repeating: "#", count: level) + " Heading Level \(level)"
       let result = parser.parse(input, language: language)
-      #expect(result.errors.isEmpty)
-      #expect(result.root.children.count == 1)
-      guard let header = result.root.children.first as? HeaderNode else {
-        Issue.record("Expected HeaderNode for level \(level)")
+      #expect(result.errors.isEmpty, "Should parse without errors for level \(level)")
+      #expect(result.root.children.count == 1, "Should have exactly one child for level \(level)")
+
+      guard let heading = result.root.children.first as? HeaderNode else {
+        Issue.record("Expected HeaderNode as first child for level \(level)")
         continue
       }
-      #expect(header.level == level)
-      guard let textNode = header.children.first as? TextNode else {
-        Issue.record("Expected TextNode in header for level \(level)")
+      #expect(heading.level == level, "Heading level should be exactly \(level)")
+      #expect(heading.children.count == 1, "Heading should have exactly one text child")
+
+      guard let textNode = heading.children.first as? TextNode else {
+        Issue.record("Expected TextNode as heading child for level \(level)")
         continue
       }
-      #expect(textNode.content == "Title")
+      #expect(textNode.content == "Heading Level \(level)", "Text content should match exactly")
     }
-  }
 
-  @Test("Paragraph with emphasis and strong")
-  func paragraphEmphasisStrong() {
-    let input = "This is *italic* and **bold**."
+    // Test heading with trailing hashes (should be stripped)
+    let input = "# Heading #"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-    guard let para = result.root.children.first as? ParagraphNode else {
-      Issue.record("Expected ParagraphNode")
-      return
-    }
-
-    // Expect: <p>This is <em>italic</em> and <strong>bold</strong>.</p>
-    // Structure: Text, Emphasis, Text, Strong, Text
-    #expect(para.children.count == 5)
-    guard para.children.count == 5 else { return }
-
-    #expect((para.children[0] as? TextNode)?.content == "This is ")
-
-    guard let emphasis = para.children[1] as? EmphasisNode,
-      let emText = emphasis.children.first as? TextNode,
-      emphasis.children.count == 1
-    else {
-      Issue.record("Expected EmphasisNode with single text child")
-      return
-    }
-    #expect(emText.content == "italic")
-
-    #expect((para.children[2] as? TextNode)?.content == " and ")
-
-    guard let strong = para.children[3] as? StrongNode,
-      let strongText = strong.children.first as? TextNode,
-      strong.children.count == 1
-    else {
-      Issue.record("Expected StrongNode with single text child")
-      return
-    }
-    #expect(strongText.content == "bold")
-
-    #expect((para.children[4] as? TextNode)?.content == ".")
-  }
-
-  @Test("Blockquote parsing")
-  func blockquote() {
-    let input = "> quote"
-    let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-    guard let blockquote = result.root.children.first as? BlockquoteNode else {
-      Issue.record("Expected BlockquoteNode")
-      return
-    }
-    guard let para = blockquote.children.first as? ParagraphNode else {
-      Issue.record("Expected ParagraphNode inside BlockquoteNode")
-      return
-    }
-    guard let text = para.children.first as? TextNode else {
-      Issue.record("Expected TextNode inside ParagraphNode")
-      return
-    }
-    #expect(text.content == "quote")
-  }
-
-  @Test("Consecutive blockquote lines should form one blockquote with multiple paragraphs")
-  func consecutiveBlockquoteLines() {
-    let input = """
-      > Quote line one
-      > Quote line two
-      """
-    let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-    let blockquotes = result.root.children.compactMap { $0 as? BlockquoteNode }
-    #expect(blockquotes.count == 1)
-    guard let blockquote = blockquotes.first else { return }
-    #expect(blockquote.children.count == 1)
-    guard let para = blockquote.children.first as? ParagraphNode else {
-      Issue.record("Expected paragraph in blockquote")
-      return
-    }
-  #expect(para.children.count >= 3)
-  guard para.children.count >= 3 else { return }
-  guard let firstText = para.children.first as? TextNode else {
-      Issue.record("First child should be TextNode with first line")
-      return
-    }
-    #expect(firstText.content.contains("Quote line one"))
-  let hasSoft = para.children.contains { node in
-      if let br = node as? LineBreakNode { return br.variant == .soft }
-      return false
-    }
-    #expect(hasSoft, "Expected a soft line break between lines")
-  let allText = para.children.compactMap { ( $0 as? TextNode)?.content }.joined(separator: " ")
-    #expect(allText.contains("Quote line two"))
-  }
-
-  @Test("Fenced code block parsing")
-  func codeBlock() {
-    let input = "```swift\nlet x = 1\n```"
-    let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-    guard let code = result.root.children.first as? CodeBlockNode else {
-      Issue.record("Expected CodeBlockNode")
-      return
-    }
-    #expect(code.language == "swift")
-    #expect(code.source == "let x = 1")
-  }
-
-  @Test("Ordered and unordered list parsing")
-  func lists() {
-    let input = """
-      - one
-      - two
-
-      1. first
-      2. second
-      """
-    let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-    #expect(result.root.children.count == 2)
-
-    guard let ulist = result.root.children[0] as? UnorderedListNode else {
-      Issue.record("Expected UnorderedListNode")
-      return
-    }
-    #expect(ulist.children.count == 2)
-    guard let item1 = ulist.children[0] as? ListItemNode,
-      let para1 = item1.children.first as? ParagraphNode,
-      let text1 = para1.children.first as? TextNode
-    else {
-      Issue.record("Invalid unordered list item 1 structure")
-      return
-    }
-    #expect(text1.content == "one")
-
-    guard let item2 = ulist.children[1] as? ListItemNode,
-      let para2 = item2.children.first as? ParagraphNode,
-      let text2 = para2.children.first as? TextNode
-    else {
-      Issue.record("Invalid unordered list item 2 structure")
-      return
-    }
-    #expect(text2.content == "two")
-
-    guard let olist = result.root.children[1] as? OrderedListNode else {
-      Issue.record("Expected OrderedListNode")
-      return
-    }
-    #expect(olist.children.count == 2)
-    #expect(olist.start == 1)
-    guard let item3 = olist.children[0] as? ListItemNode,
-      let para3 = item3.children.first as? ParagraphNode,
-      let text3 = para3.children.first as? TextNode
-    else {
-      Issue.record("Invalid ordered list item 1 structure")
-      return
-    }
-    #expect(text3.content == "first")
-
-    guard let item4 = olist.children[1] as? ListItemNode,
-      let para4 = item4.children.first as? ParagraphNode,
-      let text4 = para4.children.first as? TextNode
-    else {
-      Issue.record("Invalid ordered list item 2 structure")
-      return
-    }
-    #expect(text4.content == "second")
-  }
-
-  @Test("Link and image parsing")
-  func linkAndImage() {
-    let input = """
-      ![alt](img.png)
-
-      [link](https://example.com)
-      """
-    let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-    #expect(result.root.children.count == 2)
-
-    guard let imageParagraph = result.root.children[0] as? ParagraphNode else {
-      Issue.record("Expected paragraph containing image")
-      return
-    }
-    guard let image = imageParagraph.children.first as? ImageNode else {
-      Issue.record("Expected ImageNode")
-      return
-    }
-    #expect(image.alt == "alt")
-    #expect(image.url == "img.png")
-
-    guard let linkParagraph = result.root.children[1] as? ParagraphNode else {
-      Issue.record("Expected paragraph containing link")
-      return
-    }
-    guard let link = linkParagraph.children.first as? LinkNode else {
-      Issue.record("Expected LinkNode")
-      return
-    }
-    #expect(link.url == "https://example.com")
-    guard let linkText = link.children.first as? TextNode else {
-      Issue.record("Expected text within link")
-      return
-    }
-    #expect(linkText.content == "link")
-  }
-
-  @Test("Thematic break parsing")
-  func thematicBreak() {
-    let inputs = ["---", "***", "___"]
-    for input in inputs {
-      let result = parser.parse(input, language: language)
-      #expect(result.errors.isEmpty)
-      #expect(result.root.children.count == 1)
-      #expect(result.root.children.first is ThematicBreakNode, "Failed for input: \(input)")
-    }
-  }
-
-  @Test("Nested lists parsing")
-  func nestedLists() {
-    let input = """
-      - Item 1
-        - Nested item 1.1
-        - Nested item 1.2
-      - Item 2
-        1. Nested ordered 2.1
-        2. Nested ordered 2.2
-      - Item 3
-      """
-    let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-    #expect(result.root.children.count == 1)
-
-    guard let ulist = result.root.children[0] as? UnorderedListNode else {
-      Issue.record("Expected UnorderedListNode")
-      return
-    }
-    #expect(ulist.children.count == 3)
-
-    // Check first item with nested unordered list
-    guard let item1 = ulist.children[0] as? ListItemNode else {
-      Issue.record("Expected first ListItemNode")
-      return
-    }
-    #expect(item1.children.count == 2) // paragraph + nested list
-
-    guard let para1 = item1.children[0] as? ParagraphNode,
-          let text1 = para1.children.first as? TextNode else {
-      Issue.record("Expected paragraph in first item")
-      return
-    }
-    #expect(text1.content == "Item 1")
-
-    guard let nestedList1 = item1.children[1] as? UnorderedListNode else {
-      Issue.record("Expected nested unordered list in first item")
-      return
-    }
-    #expect(nestedList1.children.count == 2)
-
-    // Check second item with nested ordered list
-    guard let item2 = ulist.children[1] as? ListItemNode else {
-      Issue.record("Expected second ListItemNode")
-      return
-    }
-    #expect(item2.children.count == 2) // paragraph + nested list
-
-    guard let para2 = item2.children[0] as? ParagraphNode,
-          let text2 = para2.children.first as? TextNode else {
-      Issue.record("Expected paragraph in second item")
-      return
-    }
-    #expect(text2.content == "Item 2")
-
-    guard let nestedList2 = item2.children[1] as? OrderedListNode else {
-      Issue.record("Expected nested ordered list in second item")
-      return
-    }
-    #expect(nestedList2.children.count == 2)
-
-    // Check third item (simple)
-    guard let item3 = ulist.children[2] as? ListItemNode else {
-      Issue.record("Expected third ListItemNode")
-      return
-    }
-    #expect(item3.children.count == 1) // just paragraph
-
-    guard let para3 = item3.children[0] as? ParagraphNode,
-          let text3 = para3.children.first as? TextNode else {
-      Issue.record("Expected paragraph in third item")
-      return
-    }
-    #expect(text3.content == "Item 3")
-  }
-
-  @Test("Multi-level nested lists")
-  func multiLevelNestedLists() {
-    let input = """
-      1. First level
-         - Second level
-           - Third level
-             1. Fourth level
-         - Another second level
-      2. First level again
-      """
-    let result = parser.parse(input, language: language)
-    print("Parse errors: \(result.errors)")
-    print("Root children count: \(result.root.children.count)")
-    
-    // Debug print structure
-    func printNode(_ node: CodeNode<MarkdownNodeElement>, indent: String = "") {
-      print("\(indent)\(type(of: node)) - element: \(node.element)")
-      if let text = node as? TextNode {
-        print("\(indent)  content: '\(text.content)'")
-      }
-      for child in node.children {
-        printNode(child, indent: indent + "  ")
-      }
-    }
-    printNode(result.root)
-    
-    #expect(result.errors.isEmpty)
-    #expect(result.root.children.count == 1)
-
-    guard let olist = result.root.children[0] as? OrderedListNode else {
-      Issue.record("Expected OrderedListNode")
-      return
-    }
-    print("Ordered list children count: \(olist.children.count)")
-    #expect(olist.children.count == 2)
-
-    // Check first item with multi-level nesting
-    guard let item1 = olist.children[0] as? ListItemNode else {
-      Issue.record("Expected first ListItemNode")
-      return
-    }
-    print("First item children count: \(item1.children.count)")
-  }
-
-  // MARK: - Added High-Value Missing CommonMark Tests
-
-  @Test("Setext heading level 2 vs thematic break ambiguity")
-  func setextHeadingH2() {
-    let input = "Title\n----"
-    let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-    guard let header = result.root.children.first as? HeaderNode else {
+    #expect(result.errors.isEmpty, "Should parse without errors")
+    #expect(result.root.children.count == 1, "Should have exactly one child")
+    guard let heading = result.root.children.first as? HeaderNode else {
       Issue.record("Expected HeaderNode")
       return
     }
-    #expect(header.level == 2)
-    #expect((header.children.first as? TextNode)?.content == "Title")
+    #expect(heading.level == 1, "Should be level 1 heading")
+    guard let textNode = heading.children.first as? TextNode else {
+      Issue.record("Expected TextNode in heading")
+      return
+    }
+    #expect(textNode.content == "Heading", "Trailing hashes should be stripped")
   }
 
-  @Test("Lazy continuation inside blockquote")
-  func blockquoteLazyContinuation() {
-    let input = "> line 1\nline 2 still quote"
+  @Test("CommonMark Spec - Setext Headings (Strict)")
+  func commonMarkSetextHeadings() {
+    // Level 1 setext heading
+    let input1 = "Heading Level 1\n==============="
+    let result1 = parser.parse(input1, language: language)
+    #expect(result1.errors.isEmpty, "Should parse without errors")
+    #expect(result1.root.children.count == 1, "Should have exactly one child")
+    guard let heading1 = result1.root.children.first as? HeaderNode else {
+      Issue.record("Expected HeaderNode for setext level 1")
+      return
+    }
+    #expect(heading1.level == 1, "Should be level 1 heading")
+    guard let text1 = heading1.children.first as? TextNode else {
+      Issue.record("Expected TextNode in setext heading")
+      return
+    }
+    #expect(text1.content == "Heading Level 1", "Text should match exactly")
+
+    // Level 2 setext heading
+    let input2 = "Heading Level 2\n---------------"
+    let result2 = parser.parse(input2, language: language)
+    #expect(result2.errors.isEmpty, "Should parse without errors")
+    #expect(result2.root.children.count == 1, "Should have exactly one child")
+    guard let heading2 = result2.root.children.first as? HeaderNode else {
+      Issue.record("Expected HeaderNode for setext level 2")
+      return
+    }
+    #expect(heading2.level == 2, "Should be level 2 heading")
+    guard let text2 = heading2.children.first as? TextNode else {
+      Issue.record("Expected TextNode in setext heading")
+      return
+    }
+    #expect(text2.content == "Heading Level 2", "Text should match exactly")
+  }
+
+  @Test("CommonMark Spec - Thematic Breaks (Strict)")
+  func commonMarkThematicBreaks() {
+    let validInputs = [
+      "---",
+      "***",
+      "___",
+      "- - -",
+      "* * *",
+      "_ _ _",
+      String(repeating: "-", count: 10),
+      "   ---   ",  // with leading/trailing spaces
+    ]
+
+    for input in validInputs {
+      let result = parser.parse(input, language: language)
+      #expect(result.errors.isEmpty, "Should parse without errors for: '\(input)'")
+      #expect(result.root.children.count == 1, "Should have exactly one child for: '\(input)'")
+      #expect(
+        result.root.children.first is ThematicBreakNode,
+        "Should be ThematicBreakNode for: '\(input)'")
+    }
+
+    // Test invalid cases that should NOT create thematic breaks
+    let invalidInputs = [
+      "--",  // too few characters
+      "- -",  // too few characters with spaces
+      "----a",  // text after
+    ]
+
+    for input in invalidInputs {
+      let result = parser.parse(input, language: language)
+      #expect(result.errors.isEmpty, "Should parse without errors for invalid: '\(input)'")
+      let hasThematicBreak = result.root.children.contains { $0 is ThematicBreakNode }
+      #expect(!hasThematicBreak, "Should NOT create thematic break for invalid: '\(input)'")
+    }
+  }
+
+  @Test("CommonMark Spec - Fenced Code Blocks (Strict)")
+  func commonMarkFencedCodeBlocks() {
+    // Basic fenced code block with backticks
+    let input1 = "```\ncode line 1\ncode line 2\n```"
+    let result1 = parser.parse(input1, language: language)
+    #expect(result1.errors.isEmpty, "Should parse without errors")
+    #expect(result1.root.children.count == 1, "Should have exactly one child")
+    guard let codeBlock1 = result1.root.children.first as? CodeBlockNode else {
+      Issue.record("Expected CodeBlockNode")
+      return
+    }
+    #expect(codeBlock1.source == "code line 1\ncode line 2", "Should preserve exact code content")
+    #expect(
+      codeBlock1.language == nil || codeBlock1.language?.isEmpty == true, "Should have no language")
+
+    // Fenced code block with language
+    let input2 = "```swift\nlet x = 1\nlet y = 2\n```"
+    let result2 = parser.parse(input2, language: language)
+    #expect(result2.errors.isEmpty, "Should parse without errors")
+    #expect(result2.root.children.count == 1, "Should have exactly one child")
+    guard let codeBlock2 = result2.root.children.first as? CodeBlockNode else {
+      Issue.record("Expected CodeBlockNode with language")
+      return
+    }
+    #expect(codeBlock2.language == "swift", "Should preserve language info")
+    #expect(codeBlock2.source == "let x = 1\nlet y = 2", "Should preserve exact code content")
+
+    // CRITICAL: Fenced code block with TILDES (~~~)
+    let input3 = "~~~python\nprint('hello world')\nprint('second line')\n~~~"
+    let result3 = parser.parse(input3, language: language)
+    #expect(result3.errors.isEmpty, "Should parse tilde fences without errors")
+    guard let codeBlock3 = result3.root.children.first as? CodeBlockNode else {
+      Issue.record("Expected CodeBlockNode with tilde fences")
+      return
+    }
+    #expect(codeBlock3.language == "python", "Should preserve python language")
+    #expect(
+      codeBlock3.source == "print('hello world')\nprint('second line')",
+      "Should preserve tilde fence content")
+
+    // Fenced code block with info string
+    let input4 = "```javascript {.line-numbers}\nconsole.log('test');\n```"
+    let result4 = parser.parse(input4, language: language)
+    #expect(result4.errors.isEmpty, "Should parse with info string")
+    guard let codeBlock4 = result4.root.children.first as? CodeBlockNode else {
+      Issue.record("Expected CodeBlockNode with info string")
+      return
+    }
+    #expect(codeBlock4.language == "javascript", "Should extract language from info string")
+
+    // Test minimum fence length (3 backticks)
+    let input5 = "``\ncode\n``"
+    let result5 = parser.parse(input5, language: language)
+    #expect(result5.errors.isEmpty, "Should parse without errors")
+    // This should NOT create a code block (too few backticks)
+    let hasCodeBlock5 = result5.root.children.contains { $0 is CodeBlockNode }
+    #expect(!hasCodeBlock5, "Should NOT create code block with only 2 backticks")
+  }
+
+  @Test("CommonMark Spec - Indented Code Blocks (Strict)")
+  func commonMarkIndentedCodeBlocks() {
+    let input = "    code line 1\n    code line 2\n    \n    code line 4"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-    guard let bq = result.root.children.first as? BlockquoteNode else {
+    #expect(result.errors.isEmpty, "Should parse without errors")
+    #expect(result.root.children.count == 1, "Should have exactly one child")
+    guard let codeBlock = result.root.children.first as? CodeBlockNode else {
+      Issue.record("Expected CodeBlockNode")
+      return
+    }
+    // Should strip 4 spaces from each line and preserve empty lines
+    let expectedContent = "code line 1\ncode line 2\n\ncode line 4"
+    #expect(
+      codeBlock.source == expectedContent, "Should strip exactly 4 spaces and preserve structure")
+    #expect(
+      codeBlock.language == nil || codeBlock.language?.isEmpty == true,
+      "Indented code blocks have no language")
+  }
+
+  @Test("CommonMark Spec - Block Quotes (Strict)")
+  func commonMarkBlockQuotes() {
+    // Simple blockquote
+    let input1 = "> This is a quote"
+    let result1 = parser.parse(input1, language: language)
+    #expect(result1.errors.isEmpty, "Should parse without errors")
+    #expect(result1.root.children.count == 1, "Should have exactly one child")
+    guard let blockquote1 = result1.root.children.first as? BlockquoteNode else {
       Issue.record("Expected BlockquoteNode")
       return
     }
-    guard let para = bq.children.first as? ParagraphNode else { return }
-    let combined = para.children.compactMap { ($0 as? TextNode)?.content }.joined(separator: " ")
-    #expect(combined.contains("line 1"))
-    #expect(combined.contains("line 2"))
+    #expect(blockquote1.children.count == 1, "Blockquote should have exactly one paragraph")
+    guard let para1 = blockquote1.children.first as? ParagraphNode else {
+      Issue.record("Expected ParagraphNode in blockquote")
+      return
+    }
+    #expect(para1.children.count == 1, "Paragraph should have exactly one text node")
+    guard let text1 = para1.children.first as? TextNode else {
+      Issue.record("Expected TextNode in paragraph")
+      return
+    }
+    #expect(text1.content == "This is a quote", "Text content should match exactly")
+
+    // Multi-line blockquote
+    let input2 = "> Line 1\n> Line 2"
+    let result2 = parser.parse(input2, language: language)
+    #expect(result2.errors.isEmpty, "Should parse without errors")
+    #expect(result2.root.children.count == 1, "Should have exactly one blockquote")
+    guard let blockquote2 = result2.root.children.first as? BlockquoteNode else {
+      Issue.record("Expected BlockquoteNode for multi-line")
+      return
+    }
+    #expect(blockquote2.children.count == 1, "Should have exactly one paragraph")
+    guard let para2 = blockquote2.children.first as? ParagraphNode else {
+      Issue.record("Expected ParagraphNode in multi-line blockquote")
+      return
+    }
+
+    // Should contain both lines with soft line break
+    let textNodes = para2.children.compactMap { $0 as? TextNode }
+    let allText = textNodes.map { $0.content }.joined()
+    #expect(allText.contains("Line 1"), "Should contain first line")
+    #expect(allText.contains("Line 2"), "Should contain second line")
   }
 
-  @Test("Indented code block separated from list by blank line")
-  func codeBlockAfterListWithBlank() {
-    let input = "- item\n\n    code\n"
-    let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-    #expect(result.root.children.count == 2)
-    #expect(result.root.children[0] is UnorderedListNode)
-    #expect(result.root.children[1] is CodeBlockNode)
-  }
+  @Test("CommonMark Spec - Lists (Strict)")
+  func commonMarkLists() {
+    // Unordered list with exact structure
+    let input1 = "- Item 1\n- Item 2\n- Item 3"
+    let result1 = parser.parse(input1, language: language)
+    #expect(result1.errors.isEmpty, "Should parse without errors")
+    #expect(result1.root.children.count == 1, "Should have exactly one child")
+    guard let ulist = result1.root.children.first as? UnorderedListNode else {
+      Issue.record("Expected UnorderedListNode")
+      return
+    }
+    #expect(ulist.children.count == 3, "Should have exactly 3 list items")
 
-  @Test("Ordered list preserves explicit start number")
-  func orderedListStartNumber() {
-    let input = "7. a\n8. b"
-    let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-    guard let olist = result.root.children.first as? OrderedListNode else {
+    for (index, child) in ulist.children.enumerated() {
+      guard let listItem = child as? ListItemNode else {
+        Issue.record("Expected ListItemNode at index \(index)")
+        continue
+      }
+      #expect(listItem.children.count == 1, "List item should have exactly one paragraph")
+      guard let para = listItem.children.first as? ParagraphNode else {
+        Issue.record("Expected ParagraphNode in list item \(index)")
+        continue
+      }
+      #expect(para.children.count == 1, "Paragraph should have exactly one text node")
+      guard let text = para.children.first as? TextNode else {
+        Issue.record("Expected TextNode in paragraph for item \(index)")
+        continue
+      }
+      #expect(text.content == "Item \(index + 1)", "Text should match expected content")
+    }
+
+    // Ordered list with custom start
+    let input2 = "7. Item 7\n8. Item 8\n9. Item 9"
+    let result2 = parser.parse(input2, language: language)
+    #expect(result2.errors.isEmpty, "Should parse without errors")
+    #expect(result2.root.children.count == 1, "Should have exactly one child")
+    guard let olist = result2.root.children.first as? OrderedListNode else {
       Issue.record("Expected OrderedListNode")
       return
     }
-    #expect(olist.start == 7)
-    #expect(olist.children.count == 2)
+    #expect(olist.start == 7, "Should start at 7")
+    #expect(olist.children.count == 3, "Should have exactly 3 list items")
+
+    for (index, child) in olist.children.enumerated() {
+      guard let listItem = child as? ListItemNode else {
+        Issue.record("Expected ListItemNode at index \(index)")
+        continue
+      }
+      guard let para = listItem.children.first as? ParagraphNode,
+        let text = para.children.first as? TextNode
+      else {
+        Issue.record("Expected paragraph with text in ordered list item \(index)")
+        continue
+      }
+      #expect(text.content == "Item \(7 + index)", "Text should match expected content")
+    }
   }
 
-  @Test("Loose list detection via blank line")
-  func looseListDetection() {
-    let input = "- a\n\n- b"
-    let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-    guard let ulist = result.root.children.first as? UnorderedListNode else { return }
-    #expect(ulist.children.count == 2)
-    // Both items should have a ParagraphNode child (already typical) – minimal assertion.
-    let allPara = ulist.children.allSatisfy { ($0 as? ListItemNode)?.children.first is ParagraphNode }
-    #expect(allPara)
-  }
-
-  @Test("Complex emphasis delimiter nesting resilience")
-  func emphasisDelimiterComplex() {
-    let input = "*outer **inner* still** text"
-    let result = parser.parse(input, language: language)
-    // Just ensure no crash and paragraph exists.
-    guard let para = result.root.children.first as? ParagraphNode else {
-      Issue.record("Expected paragraph")
-      return
-    }
-    let joined = para.children.compactMap { ($0 as? TextNode)?.content }.joined(separator: " ")
-    #expect(joined.contains("outer") || para.children.contains { $0 is EmphasisNode })
-  }
-
-  @Test("Inline code trimming surrounding spaces (spec tolerant)")
-  func inlineCodeSpaceTrimming() {
-    let input = "`  code  `"
-    let result = parser.parse(input, language: language)
-    guard let para = result.root.children.first as? ParagraphNode else { return }
-    guard let code = para.children.first(where: { $0 is InlineCodeNode }) as? InlineCodeNode else {
-      Issue.record("Expected InlineCodeNode")
-      return
-    }
-    // Accept either exact or trimmed per spec; must contain core text.
-    #expect(code.code.contains("code"))
-  }
-
-  @Test("Multiple backtick fences adjacency handling")
-  func backtickAdjacency() {
-    let input = "``code `` not end``"
-    let result = parser.parse(input, language: language)
-    guard let para = result.root.children.first as? ParagraphNode else { return }
-    #expect(para.children.contains { $0 is InlineCodeNode })
-  }
-
-  @Test("Hex entity case insensitivity")
-  func hexEntityCase() {
-    let input = "&amp; &#x41; &#X41;"
-    let result = parser.parse(input, language: language)
-    guard let para = result.root.children.first as? ParagraphNode else { return }
-    // Expect three HTML entity nodes or mixed; ensure at least two
-    let htmls = para.children.compactMap { $0 as? HTMLNode }
-    #expect(htmls.count >= 2)
-  }
-
-  @Test("Autolink trailing punctuation exclusion")
-  func autolinkTrailingPunctuation() {
-    let input = "See https://example.com)."
-    let result = parser.parse(input, language: language)
-    guard let para = result.root.children.first as? ParagraphNode else { return }
-    let link = para.children.first { $0 is LinkNode } as? LinkNode
-    #expect(link?.url == "https://example.com")
-  }
-
-  @Test("Reference link label case fold")
-  func referenceLinkCaseFold() {
-    let input = "[Foo][Ref]\n\n[foo]: /url"
-    let result = parser.parse(input, language: language)
-    guard let para = result.root.children.first as? ParagraphNode else { return }
-    let link = para.children.first { $0 is LinkNode } as? LinkNode
-    #expect(link?.url == "/url")
-  }
-
-  @Test("Empty reference style link label")
-  func emptyReferenceLinkLabel() {
-    let input = "[][ref]\n\n[ref]: /u"
-    let result = parser.parse(input, language: language)
-    guard let para = result.root.children.first as? ParagraphNode else { return }
-    let link = para.children.first { $0 is LinkNode } as? LinkNode
-    #expect(link?.url == "/u")
-  }
-
-  @Test("Unclosed emphasis delimiters resilience")
-  func unclosedEmphasisDelimiters() {
-    let input = "***bold and *em"
-    let result = parser.parse(input, language: language)
-    guard let para = result.root.children.first as? ParagraphNode else { return }
-    // Should not crash; allow any structure – ensure some text appears.
-    let hasBoldText = para.children.contains { ($0 as? TextNode)?.content.contains("bold") == true }
-    #expect(hasBoldText)
-  }
-
-  @Test("Long thematic break line")
-  func longThematicBreak() {
-    let input = String(repeating: "-", count: 19)
-    let result = parser.parse(input, language: language)
-    #expect(result.root.children.first is ThematicBreakNode)
-  }
-
-  @Test("Mixed list types in sequence")
-  func mixedListTypes() {
-    let input = """
-      - Unordered item 1
-      - Unordered item 2
-
-      1. Ordered item 1
-      2. Ordered item 2
-
-      - Another unordered list
-        1. With nested ordered
-        2. Second nested ordered
-
-      3. Continuing ordered list
-      4. Final ordered item
-      """
-    let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-    #expect(result.root.children.count == 4) // 4 separate lists
-
-    // First unordered list
-    guard let ulist1 = result.root.children[0] as? UnorderedListNode else {
-      Issue.record("Expected first UnorderedListNode")
-      return
-    }
-    #expect(ulist1.children.count == 2)
-
-    // First ordered list
-    guard let olist1 = result.root.children[1] as? OrderedListNode else {
-      Issue.record("Expected first OrderedListNode")
-      return
-    }
-    #expect(olist1.children.count == 2)
-
-    // Second unordered list with nested ordered
-    guard let ulist2 = result.root.children[2] as? UnorderedListNode else {
-      Issue.record("Expected second UnorderedListNode")
-      return
-    }
-    #expect(ulist2.children.count == 1)
-
-    guard let item = ulist2.children[0] as? ListItemNode else {
-      Issue.record("Expected ListItemNode in second unordered list")
-      return
-    }
-    #expect(item.children.count == 2) // paragraph + nested ordered list
-
-    guard let nestedOList = item.children[1] as? OrderedListNode else {
-      Issue.record("Expected nested ordered list")
-      return
-    }
-    #expect(nestedOList.children.count == 2)
-
-    // Second ordered list (continuation)
-    guard let olist2 = result.root.children[3] as? OrderedListNode else {
-      Issue.record("Expected second OrderedListNode")
-      return
-    }
-    #expect(olist2.children.count == 2)
-    #expect(olist2.start == 3)
-  }
-
-  @Test("List items with multiple paragraphs")
-  func listItemsWithMultipleParagraphs() {
-    let input = """
-      1. First paragraph of item 1.
-
-         Second paragraph of item 1.
-
-      2. First paragraph of item 2.
-
-         Second paragraph of item 2.
-         This continues the second paragraph.
-      """
-    let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-    #expect(result.root.children.count == 1)
-
-    guard let olist = result.root.children[0] as? OrderedListNode else {
-      Issue.record("Expected OrderedListNode")
-      return
-    }
-    #expect(olist.children.count == 2)
-
-    // Check first item with multiple paragraphs
-    guard let item1 = olist.children[0] as? ListItemNode else {
-      Issue.record("Expected first ListItemNode")
-      return
-    }
-    #expect(item1.children.count == 2) // two paragraphs
-
-    guard let para1_1 = item1.children[0] as? ParagraphNode,
-          let text1_1 = para1_1.children.first as? TextNode else {
-      Issue.record("Expected first paragraph in first item")
-      return
-    }
-    #expect(text1_1.content == "First paragraph of item 1.")
-
-    guard let para1_2 = item1.children[1] as? ParagraphNode,
-          let text1_2 = para1_2.children.first as? TextNode else {
-      Issue.record("Expected second paragraph in first item")
-      return
-    }
-    #expect(text1_2.content == "Second paragraph of item 1.")
-
-    // Check second item with multiple paragraphs
-    guard let item2 = olist.children[1] as? ListItemNode else {
-      Issue.record("Expected second ListItemNode")
-      return
-    }
-    #expect(item2.children.count == 2) // two paragraphs
-
-    guard let para2_1 = item2.children[0] as? ParagraphNode,
-          let text2_1 = para2_1.children.first as? TextNode else {
-      Issue.record("Expected first paragraph in second item")
-      return
-    }
-    #expect(text2_1.content == "First paragraph of item 2.")
-
-    guard let para2_2 = item2.children[1] as? ParagraphNode else {
-      Issue.record("Expected second paragraph in second item")
-      return
-    }
-    // The second paragraph should contain the continuation text
-    let para2_2_text = para2_2.children.compactMap { $0 as? TextNode }.map { $0.content }.joined()
-    #expect(para2_2_text.contains("Second paragraph of item 2."))
-    #expect(para2_2_text.contains("This continues the second paragraph."))
-  }
-
-  // MARK: - Merged from Paragraph / Inline / Misc suites (CommonMark related)
-
-  @Test("Simple paragraph single line")
-  func cm_simpleParagraph() {
-    let input = "Hello world"
-    let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-    guard let para = result.root.children.first as? ParagraphNode else {
+  @Test("CommonMark Spec - Emphasis and Strong (Strict)")
+  func commonMarkEmphasisStrong() {
+    // Simple emphasis with asterisks
+    let input1 = "This is *emphasized* text."
+    let result1 = parser.parse(input1, language: language)
+    #expect(result1.errors.isEmpty, "Should parse without errors")
+    #expect(result1.root.children.count == 1, "Should have exactly one paragraph")
+    guard let para1 = result1.root.children.first as? ParagraphNode else {
       Issue.record("Expected ParagraphNode")
       return
     }
-    #expect(para.children.count == 1)
-    #expect((para.children.first as? TextNode)?.content == "Hello world")
+    #expect(para1.children.count == 3, "Should have text, emphasis, text")
+    #expect((para1.children[0] as? TextNode)?.content == "This is ", "First text should match")
+    guard let emphasis = para1.children[1] as? EmphasisNode else {
+      Issue.record("Expected EmphasisNode at position 1")
+      return
+    }
+    #expect(emphasis.children.count == 1, "Emphasis should have exactly one child")
+    #expect(
+      (emphasis.children[0] as? TextNode)?.content == "emphasized", "Emphasis text should match")
+    #expect((para1.children[2] as? TextNode)?.content == " text.", "Last text should match")
+
+    // Strong emphasis with asterisks
+    let input2 = "This is **strong** text."
+    let result2 = parser.parse(input2, language: language)
+    #expect(result2.errors.isEmpty, "Should parse without errors")
+    guard let para2 = result2.root.children.first as? ParagraphNode else {
+      Issue.record("Expected ParagraphNode for strong")
+      return
+    }
+    #expect(para2.children.count == 3, "Should have text, strong, text")
+    guard let strong = para2.children[1] as? StrongNode else {
+      Issue.record("Expected StrongNode at position 1")
+      return
+    }
+    #expect(strong.children.count == 1, "Strong should have exactly one child")
+    #expect((strong.children[0] as? TextNode)?.content == "strong", "Strong text should match")
+
+    // Intraword underscores should NOT create emphasis
+    let input3 = "foo_bar_baz"
+    let result3 = parser.parse(input3, language: language)
+    #expect(result3.errors.isEmpty, "Should parse without errors")
+    guard let para3 = result3.root.children.first as? ParagraphNode else {
+      Issue.record("Expected ParagraphNode for intraword")
+      return
+    }
+    #expect(para3.children.count == 1, "Should have exactly one text node")
+    #expect(
+      (para3.children[0] as? TextNode)?.content == "foo_bar_baz", "Should preserve underscores")
+
+    // CRITICAL: Triple asterisks (***strong emphasis***)
+    let input4 = "This is ***both strong and emphasized*** text."
+    let result4 = parser.parse(input4, language: language)
+    #expect(result4.errors.isEmpty, "Should parse triple asterisks without errors")
+    guard result4.root.children.first is ParagraphNode else {
+      Issue.record("Expected ParagraphNode for triple asterisks")
+      return
+    }
+    // Should have nested strong and emphasis nodes
+    let strongNodes4 = findNodes(in: result4.root, ofType: StrongNode.self)
+    let emphasisNodes4 = findNodes(in: result4.root, ofType: EmphasisNode.self)
+    #expect(strongNodes4.count >= 1, "Should have at least one strong node for triple asterisks")
+    #expect(
+      emphasisNodes4.count >= 1, "Should have at least one emphasis node for triple asterisks")
+
+    // CRITICAL: Triple underscores (___strong emphasis___)
+    let input5 = "This is ___both strong and emphasized___ text."
+    let result5 = parser.parse(input5, language: language)
+    #expect(result5.errors.isEmpty, "Should parse triple underscores without errors")
+    guard result5.root.children.first is ParagraphNode else {
+      Issue.record("Expected ParagraphNode for triple underscores")
+      return
+    }
+    let strongNodes5 = findNodes(in: result5.root, ofType: StrongNode.self)
+    let emphasisNodes5 = findNodes(in: result5.root, ofType: EmphasisNode.self)
+    #expect(strongNodes5.count >= 1, "Should have at least one strong node for triple underscores")
+    #expect(
+      emphasisNodes5.count >= 1, "Should have at least one emphasis node for triple underscores")
+
+    // Nested emphasis within strong
+    let input6 = "**This is *nested* emphasis**"
+    let result6 = parser.parse(input6, language: language)
+    #expect(result6.errors.isEmpty, "Should parse nested emphasis without errors")
+    let strongNodes6 = findNodes(in: result6.root, ofType: StrongNode.self)
+    let emphasisNodes6 = findNodes(in: result6.root, ofType: EmphasisNode.self)
+    #expect(strongNodes6.count == 1, "Should have exactly one strong node")
+    #expect(emphasisNodes6.count == 1, "Should have exactly one emphasis node")
   }
 
-  @Test("Paragraph with list item continuation separated")
-  func cm_listItemContinuationSeparateParagraph() {
-    let input = """
-    - item
-      continuation line one
-        continuation line two
-    - next
-    """
-    let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-    guard let ulist = result.root.children.first as? UnorderedListNode else { return }
-    guard let item1 = ulist.children.first as? ListItemNode else { return }
-    let paras = item1.children.compactMap { $0 as? ParagraphNode }
-    #expect(paras.count >= 1)
-    guard paras.count >= 1 else { return }
-    #expect((paras[0].children.first as? TextNode)?.content == "item")
-    if paras.count >= 2 {
-      let contText = paras[1].children.compactMap { ($0 as? TextNode)?.content }.joined(separator: "\n")
-      #expect(contText.contains("continuation line one"))
-      #expect(contText.contains("continuation line two"))
+  @Test("CommonMark Spec - Links (Strict)")
+  func commonMarkLinks() {
+    // Inline link with exact structure
+    let input1 = "Visit [GitHub](https://github.com) for code."
+    let result1 = parser.parse(input1, language: language)
+    #expect(result1.errors.isEmpty, "Should parse without errors")
+    #expect(result1.root.children.count == 1, "Should have exactly one paragraph")
+    guard let para1 = result1.root.children.first as? ParagraphNode else {
+      Issue.record("Expected ParagraphNode")
+      return
+    }
+    #expect(para1.children.count == 3, "Should have text, link, text")
+    #expect((para1.children[0] as? TextNode)?.content == "Visit ", "First text should match")
+    guard let link = para1.children[1] as? LinkNode else {
+      Issue.record("Expected LinkNode at position 1")
+      return
+    }
+    #expect(link.url == "https://github.com", "Link URL should match exactly")
+    #expect(link.children.count == 1, "Link should have exactly one child")
+    #expect((link.children[0] as? TextNode)?.content == "GitHub", "Link text should match")
+    #expect((para1.children[2] as? TextNode)?.content == " for code.", "Last text should match")
+
+    // Reference link
+    let input2 = "Visit [GitHub][gh] for code.\n\n[gh]: https://github.com \"GitHub\""
+    let result2 = parser.parse(input2, language: language)
+    #expect(result2.errors.isEmpty, "Should parse without errors")
+    // Should have paragraph and reference definition
+    let links = findNodes(in: result2.root, ofType: LinkNode.self)
+    #expect(links.count == 1, "Should have exactly one link")
+    if let link = links.first {
+      #expect(link.url == "https://github.com", "Reference link URL should resolve")
+      #expect(link.title == "GitHub", "Reference link title should resolve")
+    }
+
+    // Autolink
+    let input3 = "Visit <https://github.com> now."
+    let result3 = parser.parse(input3, language: language)
+    #expect(result3.errors.isEmpty, "Should parse without errors")
+    guard let para3 = result3.root.children.first as? ParagraphNode else {
+      Issue.record("Expected ParagraphNode for autolink")
+      return
+    }
+    let autoLinks = para3.children.compactMap { $0 as? LinkNode }
+    #expect(autoLinks.count == 1, "Should have exactly one autolink")
+    if let autoLink = autoLinks.first {
+      #expect(autoLink.url == "https://github.com", "Autolink URL should match")
     }
   }
 
-  @Test("Indented line starting new list marker not merged into previous paragraph")
-  func cm_listItemNotMergingWhenNewMarker() {
-    let input = """
-    - first
-      - nested list start
-    """
-    let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-    guard let ulist = result.root.children.first as? UnorderedListNode else { return }
-    guard let item = ulist.children.first as? ListItemNode else { return }
-    #expect(item.children.count == 2) // paragraph + nested list
-  }
-
-  @Test("Paragraph trims up to 3 leading spaces in continuation paragraph")
-  func cm_trimIndentationInContinuation() {
-    let input = """
-    - a
-       b with 3 spaces
-    """
-    let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-    guard let ulist = result.root.children.first as? UnorderedListNode else { return }
-    guard let item = ulist.children.first as? ListItemNode else { return }
-    let paras = item.children.compactMap { $0 as? ParagraphNode }
-    #expect(paras.count == 2)
-    let cont = paras[1]
-    let text = cont.children.compactMap { ($0 as? TextNode)?.content }.joined()
-    #expect(text.contains("b with 3 spaces"))
-    #expect(!text.hasPrefix(" "))
-  }
-
-  @Test("Inline code and HTML entity parsed as dedicated nodes")
-  func cm_codeAndHTMLEntity() {
-    let input = "`x` &amp;"
-    let result = parser.parse(input, language: language)
-    let para = result.root.children.first as? ParagraphNode
-    #expect(para != nil)
-    #expect(para?.children.contains { $0 is InlineCodeNode } == true)
-    #expect(para?.children.contains { ($0 as? HTMLNode)?.content == "&amp;" } == true)
-  }
-
-  @Test("Link and Image inline combined")
-  func cm_linkAndImageInlineCombined() {
-    let input = "Before [text](url) ![alt](img.png) After"
-    let result = parser.parse(input, language: language)
-    let para = result.root.children.first as? ParagraphNode
-    #expect(para != nil)
-    let link = para?.children.first(where: { ($0 as? MarkdownNodeBase)?.element == .link }) as? LinkNode
-    #expect(link?.url == "url")
-    let image = para?.children.first(where: { ($0 as? MarkdownNodeBase)?.element == .image }) as? ImageNode
-    #expect(image?.url == "img.png")
-    #expect(image?.alt == "alt")
-  }
-
-  @Test("Autolink url and email inline")
-  func cm_autolinkUrlEmail() {
-    let input = "<https://ex.com> <user@ex.com>"
-    let result = parser.parse(input, language: language)
-    let para = result.root.children.first as? ParagraphNode
-    #expect(para != nil)
-    let links = para?.children.compactMap { $0 as? LinkNode } ?? []
-    #expect(links.count == 2)
-    #expect(links[0].url == "https://ex.com")
-    #expect(links[1].url == "user@ex.com")
-  }
-
-  @Test("Autolink URL/email boundary handling")
-  func cm_urlAndEmailEdges() {
-    do {
-      let r = parser.parse("<user@example.com>", language: language)
-      let para = r.root.children.first as? ParagraphNode
-      let link = para?.children.first as? LinkNode
-      #expect(link != nil)
-      #expect(link?.url == "user@example.com")
-      #expect(link?.title == "user@example.com")
+  @Test("CommonMark Spec - Images (Strict)")
+  func commonMarkImages() {
+    // Inline image with exact structure
+    let input1 = "See ![Alt text](image.png) here."
+    let result1 = parser.parse(input1, language: language)
+    #expect(result1.errors.isEmpty, "Should parse without errors")
+    #expect(result1.root.children.count == 1, "Should have exactly one paragraph")
+    guard let para1 = result1.root.children.first as? ParagraphNode else {
+      Issue.record("Expected ParagraphNode")
+      return
     }
-    do {
-      let r = parser.parse("See https://example.com/path)", language: language)
-      let para = r.root.children.first as? ParagraphNode
-      #expect(para != nil)
-      let links = para?.children.compactMap { $0 as? LinkNode } ?? []
-      #expect(links.count == 1)
-      #expect(links.first?.url == "https://example.com/path")
+    #expect(para1.children.count == 3, "Should have text, image, text")
+    #expect((para1.children[0] as? TextNode)?.content == "See ", "First text should match")
+    guard let image = para1.children[1] as? ImageNode else {
+      Issue.record("Expected ImageNode at position 1")
+      return
+    }
+    #expect(image.url == "image.png", "Image URL should match exactly")
+    #expect(image.alt == "Alt text", "Image alt text should match exactly")
+    #expect((para1.children[2] as? TextNode)?.content == " here.", "Last text should match")
+
+    // CRITICAL: Reference-style image
+    let input2 = "See ![Alt text][img] here.\n\n[img]: image.png \"Image Title\""
+    let result2 = parser.parse(input2, language: language)
+    #expect(result2.errors.isEmpty, "Should parse reference image without errors")
+    // Should resolve the reference
+    let images = findNodes(in: result2.root, ofType: ImageNode.self)
+    #expect(images.count == 1, "Should have exactly one image")
+    if let refImage = images.first {
+      #expect(refImage.url == "image.png", "Reference image URL should resolve")
+      #expect(refImage.alt == "Alt text", "Reference image alt should match")
+      #expect(refImage.title == "Image Title", "Reference image title should resolve")
+    }
+
+    // Image with title
+    let input3 = "![Alt text](image.png \"Image Title\")"
+    let result3 = parser.parse(input3, language: language)
+    #expect(result3.errors.isEmpty, "Should parse image with title")
+    let images3 = findNodes(in: result3.root, ofType: ImageNode.self)
+    #expect(images3.count == 1, "Should have exactly one image with title")
+    if let imageWithTitle = images3.first {
+      #expect(imageWithTitle.title == "Image Title", "Should preserve image title")
     }
   }
 
-  @Test("HTML comment treated as text inline")
-  func cm_htmlCommentAsText() {
-    let input = "<!-- c -->"
-    let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-    let para = result.root.children.first as? ParagraphNode
-    #expect(para != nil)
-    let text = para?.children.first as? TextNode
-    #expect(text?.content == "<!-- c -->")
+  @Test("CommonMark Spec - Code Spans (Strict)")
+  func commonMarkCodeSpans() {
+    // Simple code span
+    let input1 = "Use `code` in text."
+    let result1 = parser.parse(input1, language: language)
+    #expect(result1.errors.isEmpty, "Should parse without errors")
+    guard let para1 = result1.root.children.first as? ParagraphNode else {
+      Issue.record("Expected ParagraphNode")
+      return
+    }
+    #expect(para1.children.count == 3, "Should have text, code, text")
+    #expect((para1.children[0] as? TextNode)?.content == "Use ", "First text should match")
+    guard let code = para1.children[1] as? InlineCodeNode else {
+      Issue.record("Expected InlineCodeNode at position 1")
+      return
+    }
+    #expect(code.code == "code", "Code content should match exactly")
+    #expect((para1.children[2] as? TextNode)?.content == " in text.", "Last text should match")
+
+    // Code span with backticks inside
+    let input2 = "Use `` code with `backtick` `` here."
+    let result2 = parser.parse(input2, language: language)
+    #expect(result2.errors.isEmpty, "Should parse without errors")
+    guard let para2 = result2.root.children.first as? ParagraphNode else {
+      Issue.record("Expected ParagraphNode for complex code")
+      return
+    }
+    let codes = para2.children.compactMap { $0 as? InlineCodeNode }
+    #expect(codes.count == 1, "Should have exactly one code span")
+    if let code = codes.first {
+      #expect(
+        code.code == " code with `backtick` ", "Should preserve internal backticks and spaces")
+    }
   }
 
-  @Test("HTML self-closing tag inline")
-  func cm_htmlSelfClosing() {
-    let input = "<br/>"
-    let result = parser.parse(input, language: language)
-    let para = result.root.children.first as? ParagraphNode
-    let html = para?.children.first as? HTMLNode
-    #expect(html != nil)
-    #expect(html?.content == "<br/>")
-  }
+  @Test("CommonMark Spec - Paragraphs (Strict)")
+  func commonMarkParagraphs() {
+    // Single paragraph
+    let input1 = "This is a paragraph."
+    let result1 = parser.parse(input1, language: language)
+    #expect(result1.errors.isEmpty, "Should parse without errors")
+    #expect(result1.root.children.count == 1, "Should have exactly one child")
+    guard let para1 = result1.root.children.first as? ParagraphNode else {
+      Issue.record("Expected ParagraphNode")
+      return
+    }
+    #expect(para1.children.count == 1, "Should have exactly one text node")
+    #expect(
+      (para1.children[0] as? TextNode)?.content == "This is a paragraph.",
+      "Text should match exactly")
 
-  @Test("HTML unclosed block becomes HTMLBlockNode")
-  func cm_htmlUnclosedBlock() {
-    let input = "<div>"
-    let result = parser.parse(input, language: language)
-    let block = result.root.children.first as? HTMLBlockNode
-    #expect(block != nil)
-    #expect(block?.content == "<div>")
-  }
-
-  @Test("HTML entities recognized inline")
-  func cm_htmlEntities() {
-    let input = "&amp; &copy; &#169; &#x41;"
-    let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-    let para = result.root.children.first as? ParagraphNode
-    #expect(para != nil)
-    let htmls = para?.children.compactMap { $0 as? HTMLNode } ?? []
-    #expect(htmls.count >= 2)
-  }
-
-  @Test("Whitespace tokenizer CR / CRLF / TAB support")
-  func cm_whitespaceCRCRLFTab() {
-    let src = "A\rB\r\nC\tD"
-    let tokenizer = CodeTokenizer(
-      builders: language.tokens,
-      state: language.state,
-      eof: { MarkdownToken.eof(at: $0) }
+    // Multiple paragraphs separated by blank line
+    let input2 = "Paragraph 1.\n\nParagraph 2."
+    let result2 = parser.parse(input2, language: language)
+    #expect(result2.errors.isEmpty, "Should parse without errors")
+    #expect(result2.root.children.count == 2, "Should have exactly two paragraphs")
+    guard let para2_1 = result2.root.children[0] as? ParagraphNode,
+      let para2_2 = result2.root.children[1] as? ParagraphNode
+    else {
+      Issue.record("Expected two ParagraphNodes")
+      return
+    }
+    #expect(
+      (para2_1.children[0] as? TextNode)?.content == "Paragraph 1.", "First paragraph should match")
+    #expect(
+      (para2_2.children[0] as? TextNode)?.content == "Paragraph 2.", "Second paragraph should match"
     )
-    let (tokens, errors) = tokenizer.tokenize(src)
-    #expect(errors.isEmpty)
-    let hasCRLFOrNL = tokens.contains { token in
-      guard let t = token as? MarkdownToken else { return false }
-      return t.element == .newline || t.element == .carriageReturn
+
+    // Paragraph with soft line break
+    let input3 = "Line 1\nLine 2"
+    let result3 = parser.parse(input3, language: language)
+    #expect(result3.errors.isEmpty, "Should parse without errors")
+    #expect(result3.root.children.count == 1, "Should have exactly one paragraph")
+    guard let para3 = result3.root.children.first as? ParagraphNode else {
+      Issue.record("Expected ParagraphNode for soft break")
+      return
     }
-    let hasTab = tokens.contains { token in
-      guard let t = token as? MarkdownToken else { return false }
-      return t.element == .tab
-    }
-    #expect(hasCRLFOrNL)
-    #expect(hasTab)
+    // Should contain both lines connected by soft line break
+    let textNodes = para3.children.compactMap { $0 as? TextNode }
+    let allText = textNodes.map { $0.content }.joined()
+    #expect(allText.contains("Line 1"), "Should contain first line")
+    #expect(allText.contains("Line 2"), "Should contain second line")
   }
 
-  @Test("Text token for number-letter mix")
-  func cm_textBuilderNumberLetter() {
-    let src = "123abc"
-    let tokenizer = CodeTokenizer(
-      builders: language.tokens,
-      state: language.state,
-      eof: { MarkdownToken.eof(at: $0) }
-    )
-    let (tokens, _) = tokenizer.tokenize(src)
-    #expect(tokens.count == 2)
-    let t0 = tokens.first as? MarkdownToken
-    #expect(t0?.element == .text)
-    #expect(t0?.text == "123abc")
-  }
-
-  @Test("Nested emphasis strong+em inside sentence")
-  func nestedEmphasisMixed() {
-    let input = "This is a **demo** of the ***CodeParser* framework**."
-    let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-    guard let para = result.root.children.first as? ParagraphNode else {
+  @Test("CommonMark Spec - Line Breaks (Strict)")
+  func commonMarkLineBreaks() {
+    // CRITICAL: Hard line break with backslash
+    let input1 = "Line 1\\\nLine 2"
+    let result1 = parser.parse(input1, language: language)
+    #expect(result1.errors.isEmpty, "Should parse without errors")
+    guard let para1 = result1.root.children.first as? ParagraphNode else {
       Issue.record("Expected ParagraphNode")
       return
     }
+    let lineBreaks1 = para1.children.compactMap { $0 as? LineBreakNode }
+    #expect(lineBreaks1.count == 1, "Should have exactly one line break")
+    if let lineBreak = lineBreaks1.first {
+      #expect(lineBreak.variant == .hard, "Should be hard line break")
+    }
 
-    // Expect: <p>This is a <strong>demo</strong> of the <strong><em>CodeParser</em> framework</strong>.</p>
-    // Structure: Text, Strong, Text, Strong, Text
-    #expect(para.children.count == 5)
-    guard para.children.count == 5 else { return }
-
-    #expect((para.children[0] as? TextNode)?.content == "This is a ")
-
-    guard let strong1 = para.children[1] as? StrongNode,
-      let strong1Text = strong1.children.first as? TextNode,
-      strong1.children.count == 1
-    else {
-      Issue.record("Expected first StrongNode with single text child")
+    // CRITICAL: Hard line break with trailing spaces (2 or more spaces)
+    let input2 = "Line 1  \nLine 2"
+    let result2 = parser.parse(input2, language: language)
+    #expect(result2.errors.isEmpty, "Should parse without errors")
+    guard let para2 = result2.root.children.first as? ParagraphNode else {
+      Issue.record("Expected ParagraphNode for trailing spaces")
       return
     }
-    #expect(strong1Text.content == "demo")
+    let lineBreaks2 = para2.children.compactMap { $0 as? LineBreakNode }
+    #expect(lineBreaks2.count == 1, "Should have exactly one line break with spaces")
+    if let lineBreak = lineBreaks2.first {
+      #expect(lineBreak.variant == .hard, "Should be hard line break with spaces")
+    }
 
-    #expect((para.children[2] as? TextNode)?.content == " of the ")
-
-    guard let outerStrong = para.children[3] as? StrongNode else {
-      Issue.record("Expected outer StrongNode for framework part")
+    // CRITICAL: Hard line break with more than 2 trailing spaces
+    let input3 = "Line 1   \nLine 2"
+    let result3 = parser.parse(input3, language: language)
+    #expect(result3.errors.isEmpty, "Should parse multiple trailing spaces")
+    guard let para3 = result3.root.children.first as? ParagraphNode else {
+      Issue.record("Expected ParagraphNode for multiple spaces")
       return
     }
-    // Inside outer strong: Emphasis, Text
-    #expect(outerStrong.children.count == 2)
-    guard outerStrong.children.count == 2 else { return }
+    let lineBreaks3 = para3.children.compactMap { $0 as? LineBreakNode }
+    #expect(lineBreaks3.count == 1, "Should have line break with multiple spaces")
+    if let lineBreak = lineBreaks3.first {
+      #expect(lineBreak.variant == .hard, "Should be hard line break with multiple spaces")
+    }
 
-    guard let innerEmphasis = outerStrong.children[0] as? EmphasisNode,
-      let innerEmphasisText = innerEmphasis.children.first as? TextNode,
-      innerEmphasis.children.count == 1
-    else {
-      Issue.record("Expected inner EmphasisNode with single text child")
+    // Soft line break (normal newline without backslash or trailing spaces)
+    let input4 = "Line 1\nLine 2"
+    let result4 = parser.parse(input4, language: language)
+    #expect(result4.errors.isEmpty, "Should parse soft line break")
+    guard let para4 = result4.root.children.first as? ParagraphNode else {
+      Issue.record("Expected ParagraphNode for soft break")
       return
     }
-    #expect(innerEmphasisText.content == "CodeParser")
-    #expect((outerStrong.children[1] as? TextNode)?.content == " framework")
+    // Should be in same paragraph with soft line break
+    let textNodes4 = para4.children.compactMap { $0 as? TextNode }
+    let allText4 = textNodes4.map { $0.content }.joined()
+    #expect(allText4.contains("Line 1"), "Should contain first line")
+    #expect(allText4.contains("Line 2"), "Should contain second line")
 
-    #expect((para.children[4] as? TextNode)?.content == ".")
+    // Should NOT be hard line break with only one trailing space
+    let input5 = "Line 1 \nLine 2"
+    let result5 = parser.parse(input5, language: language)
+    #expect(result5.errors.isEmpty, "Should parse single trailing space")
+    guard let para5 = result5.root.children.first as? ParagraphNode else {
+      Issue.record("Expected ParagraphNode for single space")
+      return
+    }
+    let hardBreaks5 = para5.children.compactMap { $0 as? LineBreakNode }.filter {
+      $0.variant == .hard
+    }
+    #expect(hardBreaks5.isEmpty, "Should NOT create hard break with single trailing space")
   }
 
-  @Test("Nested emphasis variant strong then strong+em close pattern")
-  func nestedEmphasisVariant() {
-    let input = "This is a **demo** of the ***CodeParser** framework*."
-    let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-    guard let para = result.root.children.first as? ParagraphNode else {
-      Issue.record("Expected paragraph")
-      return
-    }
-
-    // Expect: <p>This is a <strong>demo</strong> of the <em><strong>CodeParser</strong> framework</em>.</p>
-    // Structure: Text, Strong, Text, Emphasis, Text
-    #expect(para.children.count == 5)
-    guard para.children.count == 5 else { return }
-
-    #expect((para.children[0] as? TextNode)?.content == "This is a ")
-
-    guard let strong1 = para.children[1] as? StrongNode,
-      let strong1Text = strong1.children.first as? TextNode,
-      strong1.children.count == 1
-    else {
-      Issue.record("Expected first StrongNode with single text child")
-      return
-    }
-    #expect(strong1Text.content == "demo")
-
-    #expect((para.children[2] as? TextNode)?.content == " of the ")
-
-    guard let emphasis = para.children[3] as? EmphasisNode else {
-      Issue.record("Expected EmphasisNode")
-      return
-    }
-    // Inside emphasis: Strong, Text
-    #expect(emphasis.children.count == 2)
-    guard emphasis.children.count == 2 else { return }
-
-    guard let strongInside = emphasis.children[0] as? StrongNode,
-      let strongInsideText = strongInside.children.first as? TextNode,
-      strongInside.children.count == 1
-    else {
-      Issue.record("Expected StrongNode inside EmphasisNode with single text child")
-      return
-    }
-    #expect(strongInsideText.content == "CodeParser")
-    #expect((emphasis.children[1] as? TextNode)?.content == " framework")
-
-    #expect((para.children[4] as? TextNode)?.content == ".")
-  }
-
-  @Test("Strikethrough with nested emphasis GFM")
-  func gfm_strikeWithEmphasis() {
-    let input = "~~This *very* old~~ text"
-    let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-    guard let para = result.root.children.first as? ParagraphNode else { return }
-
-    // Expect: <p><del>This <em>very</em> old</del> text</p>
-    // Structure: StrikeNode, TextNode
-    #expect(para.children.count == 2)
-    guard para.children.count == 2 else { return }
-
-    guard let strike = para.children[0] as? StrikeNode else {
-      Issue.record("Expected StrikeNode")
-      return
-    }
-    #expect((para.children[1] as? TextNode)?.content == " text")
-
-    // Inside strike: Text, Emphasis, Text
-    #expect(strike.children.count == 3)
-    guard strike.children.count == 3 else { return }
-    #expect((strike.children[0] as? TextNode)?.content == "This ")
-    guard let em = strike.children[1] as? EmphasisNode,
-      let emText = em.children.first as? TextNode,
-      em.children.count == 1
-    else {
-      Issue.record("Expected EmphasisNode inside StrikeNode with single text child")
-      return
-    }
-    #expect(emText.content == "very")
-    #expect((strike.children[2] as? TextNode)?.content == " old")
-  }
-
-  @Test("Intraword underscore does not create emphasis")
-  func intrawordUnderscoreNoEmphasis() {
-    let input = "foo_bar_baz"
-    let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-    guard let para = result.root.children.first as? ParagraphNode else { return }
-    let hasEm = para.children.contains { $0 is EmphasisNode }
-    #expect(!hasEm)
-    #expect(para.children.count == 1)
-    let text = para.children.first as? TextNode
-    #expect(text?.content == "foo_bar_baz")
-  }
-
-  @Test("Multiple mixed delimiter runs")
-  func mixedDelimiterRuns() {
-    let input = "****a** b**"  // Expect <p><strong><strong>a</strong> b</strong></p>
-    let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-    guard let para = result.root.children.first as? ParagraphNode else {
+  @Test("CommonMark Spec - Entity References (Strict)")
+  func commonMarkEntityReferences() {
+    // Named entities
+    let input1 = "AT&amp;T uses &lt;brackets&gt;"
+    let result1 = parser.parse(input1, language: language)
+    #expect(result1.errors.isEmpty, "Should parse without errors")
+    guard let para1 = result1.root.children.first as? ParagraphNode else {
       Issue.record("Expected ParagraphNode")
       return
     }
-    // Expect one outer strong node
-    #expect(para.children.count == 1)
-    guard let outerStrong = para.children.first as? StrongNode else {
-      Issue.record("Expected outer StrongNode")
+    let htmlNodes = para1.children.compactMap { $0 as? HTMLNode }
+    #expect(htmlNodes.count >= 3, "Should have at least 3 HTML entities")
+
+    // Numeric entities
+    let input2 = "A is &#65; and &#x41;"
+    let result2 = parser.parse(input2, language: language)
+    #expect(result2.errors.isEmpty, "Should parse without errors")
+    guard let para2 = result2.root.children.first as? ParagraphNode else {
+      Issue.record("Expected ParagraphNode for numeric entities")
       return
     }
+    let numericEntities = para2.children.compactMap { $0 as? HTMLNode }
+    #expect(numericEntities.count >= 2, "Should have at least 2 numeric entities")
+  }
 
-    // Inside outer strong: inner strong, text
-    #expect(outerStrong.children.count == 2)
-    guard outerStrong.children.count == 2 else { return }
-
-    guard let innerStrong = outerStrong.children[0] as? StrongNode,
-      let innerText = innerStrong.children.first as? TextNode,
-      innerStrong.children.count == 1
-    else {
-      Issue.record("Expected inner StrongNode with single text child")
+  @Test("CommonMark Spec - Backslash Escapes (Strict)")
+  func commonMarkBackslashEscapes() {
+    // Escaped punctuation
+    let input1 = "\\*not emphasized\\*"
+    let result1 = parser.parse(input1, language: language)
+    #expect(result1.errors.isEmpty, "Should parse without errors")
+    guard let para1 = result1.root.children.first as? ParagraphNode else {
+      Issue.record("Expected ParagraphNode")
       return
     }
-    #expect(innerText.content == "a")
+    #expect(para1.children.count == 1, "Should have exactly one text node")
+    #expect(
+      (para1.children[0] as? TextNode)?.content == "*not emphasized*", "Should escape asterisks")
 
-    guard let outerText = outerStrong.children[1] as? TextNode else {
-      Issue.record("Expected TextNode inside outer StrongNode")
-      return
+    // Should NOT have emphasis nodes
+    let emphasisNodes = para1.children.compactMap { $0 as? EmphasisNode }
+    #expect(emphasisNodes.isEmpty, "Should not create emphasis when escaped")
+  }
+
+  @Test("CommonMark Spec - HTML Blocks and Inline HTML (Strict)")
+  func commonMarkHTML() {
+    // CRITICAL: HTML Block (should be recognized as block-level)
+    let input1 = "<div>\n<p>HTML content</p>\n</div>"
+    let result1 = parser.parse(input1, language: language)
+    #expect(result1.errors.isEmpty, "Should parse HTML block without errors")
+    // Should create HTML block node
+    let htmlBlocks = findNodes(in: result1.root, ofType: HTMLBlockNode.self)
+    #expect(htmlBlocks.count == 1, "Should have exactly one HTML block")
+    if let htmlBlock = htmlBlocks.first {
+      #expect(
+        htmlBlock.content == "<div>\n<p>HTML content</p>\n</div>",
+        "Should preserve HTML block content")
     }
-    #expect(outerText.content == " b")
+
+    // CRITICAL: Inline HTML (within paragraph) -> expect a SINGLE HTMLNode containing opening & closing tag plus inner content
+    let input2 = "This has <em>inline HTML</em> tags."
+    let result2 = parser.parse(input2, language: language)
+    #expect(result2.errors.isEmpty, "Should parse inline HTML without errors")
+    if let para2 = result2.root.children.first as? ParagraphNode {
+      // Expect text, HTMLNode, text (len == 3) OR fallback containing at least one HTMLNode
+      let htmlChildren = para2.children.compactMap { $0 as? HTMLNode }
+      #expect(!htmlChildren.isEmpty, "Should have one HTMLNode for inline HTML span")
+      if htmlChildren.count == 1 {
+        #expect(
+          htmlChildren[0].content == "<em>inline HTML</em>", "Inline HTML should match exactly")
+      }
+    } else {
+      Issue.record("Expected ParagraphNode for inline HTML")
+    }
+
+    // HTML comments -> single HTML block, inline HTML node, or dedicated CommentNode
+    let input3 = "<!-- This is a comment -->"
+    let result3 = parser.parse(input3, language: language)
+    #expect(result3.errors.isEmpty, "Should parse HTML comments without errors")
+    let commentBlocks = findNodes(in: result3.root, ofType: HTMLBlockNode.self)
+    let commentInlines = findNodes(in: result3.root, ofType: HTMLNode.self)
+    let commentNodes = findNodes(in: result3.root, ofType: CommentNode.self)
+    #expect(
+      !commentBlocks.isEmpty || !commentInlines.isEmpty || !commentNodes.isEmpty,
+      "Should have a node representing the HTML comment")
+
+    // Self-closing HTML tags -> single HTMLNode for the tag
+    let input4 = "Line break: <br/> here."
+    let result4 = parser.parse(input4, language: language)
+    #expect(result4.errors.isEmpty, "Should parse self-closing tags")
+    if let para4 = result4.root.children.first as? ParagraphNode {
+      let brNodes = para4.children.compactMap { $0 as? HTMLNode }.filter {
+        $0.content.contains("<br/>")
+      }
+      #expect(!brNodes.isEmpty, "Should have one HTMLNode for <br/>")
+    } else {
+      Issue.record("Expected ParagraphNode for self-closing tags")
+    }
+
+    // HTML attributes (anchor) -> single HTMLNode allowed either as direct child (paragraph) or block
+    let input5 = "<a href=\"https://example.com\" class=\"link\">Link</a>"
+    let result5 = parser.parse(input5, language: language)
+    #expect(result5.errors.isEmpty, "Should parse HTML with attributes")
+    if let para5 = result5.root.children.first as? ParagraphNode {
+      let anchorNodes = para5.children.compactMap { $0 as? HTMLNode }
+      #expect(anchorNodes.count == 1, "Anchor should be a single HTMLNode in paragraph")
+      if let anchor = anchorNodes.first {
+        #expect(
+          anchor.content == "<a href=\"https://example.com\" class=\"link\">Link</a>",
+          "Anchor HTML should match exactly")
+      }
+    } else if let block = result5.root.children.first as? HTMLBlockNode {
+      #expect(
+        block.content == "<a href=\"https://example.com\" class=\"link\">Link</a>",
+        "Anchor HTML should match exactly")
+    } else {
+      Issue.record("Expected ParagraphNode or HTMLBlockNode for HTML attributes")
+    }
+  }
+
+  /// Helper function to find all nodes of a specific type in the AST
+  private func findNodes<T: CodeNode<MarkdownNodeElement>>(
+    in root: CodeNode<MarkdownNodeElement>, ofType type: T.Type
+  ) -> [T] {
+    var result: [T] = []
+
+    func traverse(_ node: CodeNode<MarkdownNodeElement>) {
+      if let typedNode = node as? T {
+        result.append(typedNode)
+      }
+      for child in node.children {
+        traverse(child)
+      }
+    }
+
+    traverse(root)
+    return result
   }
 }

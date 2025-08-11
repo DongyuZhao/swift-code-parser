@@ -357,10 +357,12 @@ public class LinkNode: MarkdownNodeBase {
 public class ImageNode: MarkdownNodeBase {
   public var url: String
   public var alt: String
+  public var title: String
 
-  public init(url: String, alt: String) {
+  public init(url: String, alt: String, title: String) {
     self.url = url
     self.alt = alt
+    self.title = title
     super.init(element: .image)
   }
 
@@ -368,6 +370,7 @@ public class ImageNode: MarkdownNodeBase {
     super.hash(into: &hasher)
     hasher.combine(url)
     hasher.combine(alt)
+    hasher.combine(title)
   }
 }
 
