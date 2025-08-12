@@ -12,6 +12,8 @@ public class MarkdownHTMLTokenBuilder: CodeTokenBuilder {
     let first = context.source[start]
 
     if first == "<" {
+      // Escaped '<' should be treated as literal
+      if MarkdownEscaping.isEscapedByBackslash(in: context.source, at: start) { return false }
       // HTML comment <!-- -->
       if context.source[start...].hasPrefix("<!--") {
         if let endRange = context.source.range(
@@ -85,6 +87,8 @@ public class MarkdownHTMLTokenBuilder: CodeTokenBuilder {
       context.consuming = endIdx
       return true
     } else if first == "&" {
+      // Escaped '&' should be treated as literal, not an entity
+      if MarkdownEscaping.isEscapedByBackslash(in: context.source, at: start) { return false }
       var idx = context.source.index(after: start)
       if idx < context.source.endIndex && context.source[idx] == "#" {
         idx = context.source.index(after: idx)

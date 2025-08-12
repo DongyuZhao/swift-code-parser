@@ -33,7 +33,7 @@ public class MarkdownInlineBuilder: CodeNodeBuilder {
     var delimiters: [Delimiter] = []
 
     let builders: [InlineBuilder] = [
-  EscapedBuilder(),
+      EscapedBuilder(),
       EmphasisBuilder(),
       InlineCodeBuilder(),
       FormulaBuilder(),
@@ -100,26 +100,43 @@ public class MarkdownInlineBuilder: CodeNodeBuilder {
       // Intraword underscore rule (CommonMark): literal if flanked by alnum both sides
       if marker == .underscore {
         let prevAlphaNum: Bool = {
-          if context.consuming - count > 0, let prev = context.tokens[context.consuming - count - 1] as? MarkdownToken, let ch = prev.text.last { return ch.isLetter || ch.isNumber }
+          if context.consuming - count > 0,
+            let prev = context.tokens[context.consuming - count - 1] as? MarkdownToken,
+            let ch = prev.text.last
+          {
+            return ch.isLetter || ch.isNumber
+          }
           return false
         }()
         let nextAlphaNum: Bool = {
-          if context.consuming < context.tokens.count, let next = context.tokens[context.consuming] as? MarkdownToken, let ch = next.text.first { return ch.isLetter || ch.isNumber }
+          if context.consuming < context.tokens.count,
+            let next = context.tokens[context.consuming] as? MarkdownToken, let ch = next.text.first
+          {
+            return ch.isLetter || ch.isNumber
+          }
           return false
         }()
         if prevAlphaNum && nextAlphaNum {
           let textRun = String(repeating: "_", count: count)
-          if let last = nodes.last as? TextNode, !delimiters.contains(where: { $0.index == nodes.count - 1 }) {
+          if let last = nodes.last as? TextNode,
+            !delimiters.contains(where: { $0.index == nodes.count - 1 })
+          {
             last.content += textRun
-          } else { nodes.append(TextNode(content: textRun)) }
+          } else {
+            nodes.append(TextNode(content: textRun))
+          }
           return true
         }
       }
       // Single tilde literal
       if marker == .tilde && count == 1 {
-        if let last = nodes.last as? TextNode, !delimiters.contains(where: { $0.index == nodes.count - 1 }) {
+        if let last = nodes.last as? TextNode,
+          !delimiters.contains(where: { $0.index == nodes.count - 1 })
+        {
           last.content += "~"
-        } else { nodes.append(TextNode(content: "~")) }
+        } else {
+          nodes.append(TextNode(content: "~"))
+        }
         return true
       }
       handleDelimiter(marker: marker, count: count, nodes: &nodes, stack: &delimiters)
@@ -135,37 +152,66 @@ public class MarkdownInlineBuilder: CodeNodeBuilder {
     ) -> Bool {
       guard context.consuming + 1 < context.tokens.count,
         let bs = context.tokens[context.consuming] as? MarkdownToken, bs.element == .backslash,
-        let next = context.tokens[context.consuming + 1] as? MarkdownToken,
-        isEscapable(next.element)
+        let next = context.tokens[context.consuming + 1] as? MarkdownToken
       else { return false }
+      // Only treat as escape if next token is escapable per CommonMark set
+      guard let literal = literalIfEscapable(next) else { return false }
       // Don't consume if this begins a backslash formula sequence: \( ... \)
-      if next.element == .leftParen {
+      // Heuristic: only treat as formula candidate when the immediate token after '(' is not a backslash
+      if next.element == .leftParen,
+        context.consuming + 2 < context.tokens.count,
+        let afterLP = context.tokens[context.consuming + 2] as? MarkdownToken,
+        afterLP.element != .backslash
+      {
         // scan ahead for a backslash + rightParen before newline
         var i = context.consuming + 2
         var foundClose = false
         while i + 1 < context.tokens.count, let tk = context.tokens[i] as? MarkdownToken {
           if tk.element == .newline || tk.element == .eof { break }
-            if tk.element == .backslash,
-               let rp = context.tokens[i + 1] as? MarkdownToken, rp.element == .rightParen {
-              foundClose = true; break
-            }
+          if tk.element == .backslash,
+            let rp = context.tokens[i + 1] as? MarkdownToken, rp.element == .rightParen
+          {
+            foundClose = true
+            break
+          }
           i += 1
         }
         if foundClose { return false }
       }
       // Consume both and produce literal next.text
       context.consuming += 2
-      if let last = nodes.last as? TextNode, !delimiters.contains(where: { $0.index == nodes.count - 1 }) {
-        last.content += next.text
-      } else { nodes.append(TextNode(content: next.text)) }
+      if let last = nodes.last as? TextNode,
+        !delimiters.contains(where: { $0.index == nodes.count - 1 })
+      {
+        last.content += literal
+      } else {
+        nodes.append(TextNode(content: literal))
+      }
       return true
     }
 
-    private func isEscapable(_ el: MarkdownTokenElement) -> Bool {
-      switch el {
-      case .backslash, .asterisk, .underscore, .tilde, .leftBracket, .rightBracket, .leftParen, .rightParen, .hash, .plus, .dash, .exclamation, .quote, .singleQuote:
-        return true
-      default: return false
+    // Return literal to append if token is escapable, else nil
+    private func literalIfEscapable(_ token: MarkdownToken) -> String? {
+      // CommonMark escapable ASCII punctuation
+      let escapableChars: Set<Character> = Set("!\"#$%&'()*+,-./:;<=>?@[]\\^_`{|}~")
+      switch token.element {
+      case .backslash, .asterisk, .underscore, .tilde, .leftBracket, .rightBracket,
+        .leftParen, .rightParen, .hash, .plus, .dash, .exclamation, .quote, .singleQuote,
+        .dot, .comma, .forwardSlash, .colon, .semicolon, .lt, .equals, .gt, .question,
+        .atSign, .leftBrace, .rightBrace, .pipe, .caret:
+        return token.text
+      case .ampersand:
+        return token.text
+      case .htmlTag, .htmlEntity:
+        // Escape should turn parsed HTML tokens into literal text
+        return token.text
+      case .text:
+        if token.text.count == 1, let ch = token.text.first, escapableChars.contains(ch) {
+          return String(ch)
+        }
+        return nil
+      default:
+        return nil
       }
     }
   }
@@ -197,6 +243,11 @@ public class MarkdownInlineBuilder: CodeNodeBuilder {
         let token = context.tokens[context.consuming] as? MarkdownToken
       else { return false }
 
+      // Do not consume emphasis/strike delimiters as plain text; let dedicated builders handle them
+      if token.element == .asterisk || token.element == .underscore || token.element == .tilde {
+        return false
+      }
+
       // Inline $...$
       if token.element == .text, token.text == "$" {
         let startIndex = context.consuming
@@ -206,7 +257,9 @@ public class MarkdownInlineBuilder: CodeNodeBuilder {
         // $ must not be followed by whitespace; and closing $ must not be preceded by whitespace
         if i < context.tokens.count, let t = context.tokens[i] as? MarkdownToken,
           t.isWhitespace
-        { valid = false }
+        {
+          valid = false
+        }
         while valid && i < context.tokens.count {
           guard let t = context.tokens[i] as? MarkdownToken else { break }
           if t.element == .text && t.text == "$" {
@@ -230,7 +283,10 @@ public class MarkdownInlineBuilder: CodeNodeBuilder {
               break
             }
           }
-          if t.element == .newline { valid = false; break }
+          if t.element == .newline {
+            valid = false
+            break
+          }
           i += 1
         }
         if valid, let end = closeAt {
@@ -352,7 +408,14 @@ public class MarkdownInlineBuilder: CodeNodeBuilder {
       if let link = parseLinkOrFootnote(&context) {
         nodes.append(link)
       } else {
-        nodes.append(TextNode(content: token.text))
+        // Fallback: merge '[' as text
+        if let last = nodes.last as? TextNode,
+          !delimiters.contains(where: { $0.index == nodes.count - 1 })
+        {
+          last.content += token.text
+        } else {
+          nodes.append(TextNode(content: token.text))
+        }
         context.consuming += 1
       }
       return true
@@ -417,10 +480,17 @@ public class MarkdownInlineBuilder: CodeNodeBuilder {
   ) {
     var remaining = count
 
-    while remaining > 0,
-      let openIdx = stack.lastIndex(where: { $0.marker == marker && $0.count <= remaining })
-    {
-      let open = stack.remove(at: openIdx)
+    while remaining > 0 {
+      // Find a compatible opener according to marker rules
+      var openIdx: Int?
+      if marker == .tilde {
+        openIdx = stack.lastIndex(where: { $0.marker == marker && $0.count >= 2 })
+      } else {
+        openIdx = stack.lastIndex(where: { $0.marker == marker && $0.count == remaining })
+      }
+  guard let foundIdx = openIdx else { break }
+  let matchIdx = foundIdx
+  let open = stack.remove(at: matchIdx)
       var closeCount = open.count
       if marker == .tilde {
         guard open.count >= 2 && remaining >= 2 else {
@@ -444,7 +514,7 @@ public class MarkdownInlineBuilder: CodeNodeBuilder {
         let strike = StrikeNode(content: "")
         for child in content { strike.append(child) }
         nodes.append(strike)
-      } else if closeCount == 3 { // produce nested strong + emphasis
+      } else if closeCount == 3 {  // produce nested strong + emphasis
         let strong = StrongNode(content: "")
         let em = EmphasisNode(content: "")
         for child in content { em.append(child) }
@@ -460,7 +530,7 @@ public class MarkdownInlineBuilder: CodeNodeBuilder {
         nodes.append(em)
       }
 
-      remaining -= closeCount
+  remaining -= closeCount
     }
 
     if remaining > 0 {
@@ -554,7 +624,8 @@ public class MarkdownInlineBuilder: CodeNodeBuilder {
         return nil
       }
       context.consuming += 1
-      let link = LinkNode(url: url, title: "")
+      let (finalURL, finalTitle) = splitLinkAndTitle(url)
+      let link = LinkNode(url: finalURL, title: finalTitle)
       for child in textNodes { link.append(child) }
       return link
     }
@@ -585,9 +656,14 @@ public class MarkdownInlineBuilder: CodeNodeBuilder {
       for child in textNodes { ref.append(child) }
       return ref
     }
-
-    context.consuming = start
-    return nil
+    // Collapsed reference link [text]
+    // If there is no following ( or [, treat it as a reference that should
+    // resolve using its own text as identifier.
+    do {
+      let ref = ReferenceNode(identifier: "", url: "", title: "")
+      for child in textNodes { ref.append(child) }
+      return ref
+    }
   }
 
   private static func parseImage(
@@ -611,7 +687,7 @@ public class MarkdownInlineBuilder: CodeNodeBuilder {
     if context.consuming < context.tokens.count,
       let next = context.tokens[context.consuming] as? MarkdownToken
     {
-      if next.element == .leftParen { // inline image
+      if next.element == .leftParen {  // inline image
         context.consuming += 1
         var spec = ""
         while context.consuming < context.tokens.count,
@@ -631,7 +707,7 @@ public class MarkdownInlineBuilder: CodeNodeBuilder {
         context.consuming += 1
         let (url, title) = splitLinkAndTitle(spec)
         return ImageNode(url: url, alt: alt, title: title)
-      } else if next.element == .leftBracket { // reference-style image
+      } else if next.element == .leftBracket {  // reference-style image
         context.consuming += 1
         var ident = ""
         while context.consuming < context.tokens.count,
@@ -649,7 +725,7 @@ public class MarkdownInlineBuilder: CodeNodeBuilder {
           return nil
         }
         context.consuming += 1
-        return ImageNode(url: "", alt: alt, title: ident) // title暂存 identifier
+        return ImageNode(url: "", alt: alt, title: ident)  // title暂存 identifier
       }
     }
     context.consuming -= 3
@@ -665,13 +741,17 @@ public class MarkdownInlineBuilder: CodeNodeBuilder {
       let quote = working[firstQuoteIdx]
       let before = working[..<firstQuoteIdx].trimmingCharacters(in: .whitespaces)
       var search = working.index(after: firstQuoteIdx)
-      while search < working.endIndex && working[search] != quote { search = working.index(after: search) }
+      while search < working.endIndex && working[search] != quote {
+        search = working.index(after: search)
+      }
       if search < working.endIndex {
         title = String(working[working.index(after: firstQuoteIdx)..<search])
         url = before
       }
     }
     if url.hasPrefix("<"), url.hasSuffix(">") { url = String(url.dropFirst().dropLast()) }
+    url = MarkdownEscaping.unescapeBackslashes(url)
+    title = MarkdownEscaping.unescapeBackslashes(title)
     return (url, title)
   }
 

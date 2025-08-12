@@ -49,8 +49,10 @@ struct MarkdownGFMTests {
     let para = result.root.children.first as? ParagraphNode
     #expect(para != nil)
     let hasEm = para?.children.contains { ($0 as? MarkdownNodeBase)?.element == .emphasis } ?? false
-    let hasStrong = para?.children.contains { ($0 as? MarkdownNodeBase)?.element == .strong } ?? false
-    let hasStrike = para?.children.contains { ($0 as? MarkdownNodeBase)?.element == .strike } ?? false
+    let hasStrong =
+      para?.children.contains { ($0 as? MarkdownNodeBase)?.element == .strong } ?? false
+    let hasStrike =
+      para?.children.contains { ($0 as? MarkdownNodeBase)?.element == .strike } ?? false
     #expect(hasEm && hasStrong && hasStrike)
   }
 
@@ -213,7 +215,7 @@ struct MarkdownGFMTests {
     #expect(table.alignments[2] == .right)
     #expect(table.alignments[3] == .none)
     let rows = table.children.compactMap { $0 as? TableRowNode }
-    #expect(rows.count == 2) // header + one data row
+    #expect(rows.count == 2)  // header + one data row
     let headerCells = rows[0].children.compactMap { $0 as? TableCellNode }
     #expect(headerCells.count == 4)
     #expect(headerCells[0].alignment == .left)
@@ -251,10 +253,10 @@ struct MarkdownGFMTests {
     let result = parser.parse(input, language: language)
     guard let ulist = result.root.children.first as? UnorderedListNode else { return }
     guard let item = ulist.children.first as? ListItemNode else { return }
-  _ = item // silence unused
-  // Should not produce any TaskListItemNode in the list
-  let hasTask = ulist.children.contains { $0 is TaskListItemNode }
-  #expect(hasTask == false)
+    _ = item  // silence unused
+    // Should not produce any TaskListItemNode in the list
+    let hasTask = ulist.children.contains { $0 is TaskListItemNode }
+    #expect(hasTask == false)
   }
 
   @Test("Table escaped pipe and inline code containing pipe")
@@ -294,7 +296,7 @@ struct MarkdownGFMTests {
       Issue.record("Expected ParagraphNode instead of TableNode")
       return
     }
-    let concatenated = para.children.compactMap { ( ($0 as? TextNode)?.content ) }.joined()
+    let concatenated = para.children.compactMap { (($0 as? TextNode)?.content) }.joined()
     #expect(concatenated.contains("| A | B |"))
   }
 
@@ -303,7 +305,11 @@ struct MarkdownGFMTests {
     let input = "> [!NOTE]\n> Content line"
     let result = parser.parse(input, language: language)
     #expect(result.errors.isEmpty)
-    guard let node = result.root.children.first(where: { ($0 as? MarkdownNodeBase)?.element == .admonition }) as? AdmonitionNode else {
+    guard
+      let node = result.root.children.first(where: {
+        ($0 as? MarkdownNodeBase)?.element == .admonition
+      }) as? AdmonitionNode
+    else {
       Issue.record("Expected AdmonitionNode")
       return
     }
@@ -317,13 +323,16 @@ struct MarkdownGFMTests {
     let input = "> [!TIP]\n> Line 1\n> Line 2 with `code` and *em*"
     let result = parser.parse(input, language: language)
     #expect(result.errors.isEmpty)
-    let node = result.root.children.first(where: { ($0 as? MarkdownNodeBase)?.element == .admonition }) as? AdmonitionNode
+    let node =
+      result.root.children.first(where: { ($0 as? MarkdownNodeBase)?.element == .admonition })
+      as? AdmonitionNode
     #expect(node?.kind == "tip")
     // Expect inline children spanning both lines: Text, LineBreak, Text, InlineCode, Text, Emphasis
     #expect(node?.children.contains { $0 is InlineCodeNode } == true)
     #expect(node?.children.contains { $0 is EmphasisNode } == true)
     // Ensure both lines' text are present in order
-    let concatenated = node?.children.compactMap { ( ($0 as? TextNode)?.content ) }.joined(separator: "\n")
+    let concatenated = node?.children.compactMap { (($0 as? TextNode)?.content) }.joined(
+      separator: "\n")
     #expect(concatenated?.contains("Line 1") == true)
     #expect(concatenated?.contains("Line 2") == true)
   }
@@ -333,7 +342,11 @@ struct MarkdownGFMTests {
     let input = ">  [!WaRn]\n>  with *em* and `code`"
     let result = parser.parse(input, language: language)
     #expect(result.errors.isEmpty)
-    guard let node = result.root.children.first(where: { ($0 as? MarkdownNodeBase)?.element == .admonition }) as? AdmonitionNode else {
+    guard
+      let node = result.root.children.first(where: {
+        ($0 as? MarkdownNodeBase)?.element == .admonition
+      }) as? AdmonitionNode
+    else {
       Issue.record("Expected AdmonitionNode")
       return
     }
@@ -347,7 +360,9 @@ struct MarkdownGFMTests {
     let input = "> [!TiP]\n> x"
     let result = parser.parse(input, language: language)
     #expect(result.errors.isEmpty)
-    let node = result.root.children.first(where: { ($0 as? MarkdownNodeBase)?.element == .admonition }) as? AdmonitionNode
+    let node =
+      result.root.children.first(where: { ($0 as? MarkdownNodeBase)?.element == .admonition })
+      as? AdmonitionNode
     #expect(node?.kind == "tip")
   }
 
@@ -356,7 +371,9 @@ struct MarkdownGFMTests {
     let input = "> [!WARNING]\nno quote here"
     let result = parser.parse(input, language: language)
     #expect(result.errors.isEmpty)
-    let hasAdmonition = result.root.children.contains { ($0 as? MarkdownNodeBase)?.element == .admonition }
+    let hasAdmonition = result.root.children.contains {
+      ($0 as? MarkdownNodeBase)?.element == .admonition
+    }
     #expect(!hasAdmonition)
   }
 }

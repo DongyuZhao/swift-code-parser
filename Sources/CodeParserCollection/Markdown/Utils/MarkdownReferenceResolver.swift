@@ -45,7 +45,7 @@ enum MarkdownReferenceResolver {
           replaceReferences(node: link, definitions: definitions)
           continue
         }
-      } else if let img = child as? ImageNode, img.url.isEmpty, !img.title.isEmpty { // unresolved reference-style image
+      } else if let img = child as? ImageNode, img.url.isEmpty, !img.title.isEmpty {  // unresolved reference-style image
         let ident = img.title.lowercased()
         if let def = definitions[ident] {
           img.url = def.url

@@ -289,7 +289,6 @@ public class AdmonitionNode: MarkdownNodeBase {
   }
 }
 
-
 // MARK: - Inline Elements
 public class TextNode: MarkdownNodeBase {
   public var content: String

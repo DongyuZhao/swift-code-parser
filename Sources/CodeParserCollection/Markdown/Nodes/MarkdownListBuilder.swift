@@ -11,6 +11,15 @@ public class MarkdownListBuilder: CodeNodeBuilder {
     let state = context.state as? MarkdownConstructState ?? MarkdownConstructState()
     if context.state == nil { context.state = state }
 
+    // If the previous sibling at the current level is a blockquote and we are not after
+    // a blank line, avoid treating this line as a new list. This allows blockquote's
+    // lazy continuation to capture lines like "    - bar" into the same paragraph.
+    if let last = context.current.children.last as? MarkdownNodeBase,
+       last.element == .blockquote,
+       state.lastWasBlankLine == false {
+      return false
+    }
+
     var idx = context.consuming
     var indent = 0
     while idx < context.tokens.count,
@@ -69,9 +78,10 @@ public class MarkdownListBuilder: CodeNodeBuilder {
         context.current = current
       }
     }
-    
-    if let last = state.listStack.last, 
-       last.level == indent && last.element != type {
+
+    if let last = state.listStack.last,
+      last.level == indent && last.element != type
+    {
       state.listStack.removeAll()
       var current: CodeNode<MarkdownNodeElement> = context.current
       while current.element != .document {
@@ -93,7 +103,7 @@ public class MarkdownListBuilder: CodeNodeBuilder {
       } else {
         listNode = OrderedListNode(start: startNum, level: indent)
       }
-      
+
       if indent > 0, let parentList = state.listStack.last, indent > parentList.level {
         if let lastListItem = parentList.children.last as? MarkdownNodeBase {
           lastListItem.append(listNode)
@@ -103,7 +113,7 @@ public class MarkdownListBuilder: CodeNodeBuilder {
       } else {
         context.current.append(listNode)
       }
-      
+
       state.listStack.append(listNode)
     }
 
@@ -148,8 +158,8 @@ public class MarkdownListBuilder: CodeNodeBuilder {
     let inlineBuilder = MarkdownInlineBuilder()
     _ = inlineBuilder.build(from: &inlineCtx)
     context.consuming = inlineCtx.consuming
-  item.append(paragraph)
-  listNode.append(item)
+    item.append(paragraph)
+    listNode.append(item)
 
     if context.consuming < context.tokens.count,
       let nl = context.tokens[context.consuming] as? MarkdownToken,
@@ -157,9 +167,9 @@ public class MarkdownListBuilder: CodeNodeBuilder {
     {
       context.consuming += 1
     }
-  // After finishing initial paragraph of the list item, set current to the list item
-  // so that subsequent paragraphs (continuations) can be correctly attached.
-  context.current = item
-  return true
+    // After finishing initial paragraph of the list item, set current to the list item
+    // so that subsequent paragraphs (continuations) can be correctly attached.
+    context.current = item
+    return true
   }
 }

@@ -165,20 +165,22 @@ struct MarkdownFullTests {
       orderedListNode.children.count == 2,
       "Ordered list should have 2 children (2 list items)"
     )
-    
+
     let orderedItems = orderedListNode.children.compactMap { $0 as? ListItemNode }
     #expect(orderedItems.count == 2, "Should have 2 ordered list items")
-    
+
     if orderedItems.count >= 2 {
       let secondItem = orderedItems[1]
       let nestedUnorderedLists = secondItem.children.compactMap { $0 as? UnorderedListNode }
       #expect(nestedUnorderedLists.count == 1, "Second item should have 1 nested unordered list")
-      
+
       if let nestedList = nestedUnorderedLists.first {
         let taskItems = nestedList.nodes(where: { $0.element == .taskListItem })
         #expect(taskItems.count == 2, "Should have 2 task items in nested list")
-        
-        if let uncheckedTask = taskItems.first(where: { ($0 as? TaskListItemNode)?.checked == false })
+
+        if let uncheckedTask = taskItems.first(where: {
+          ($0 as? TaskListItemNode)?.checked == false
+        })
           as? TaskListItemNode
         {
           #expect(!uncheckedTask.checked, "Should have unchecked task")
@@ -190,8 +192,10 @@ struct MarkdownFullTests {
         }
       }
     }
-    
-    let unorderedLists = root.nodes(where: { $0.element == .unorderedList }).compactMap { $0 as? UnorderedListNode }
+
+    let unorderedLists = root.nodes(where: { $0.element == .unorderedList }).compactMap {
+      $0 as? UnorderedListNode
+    }
     let topLevelUnorderedLists = unorderedLists.filter { $0.level == 0 }
     #expect(topLevelUnorderedLists.count >= 1, "Should have at least 1 top-level unordered list")
   }

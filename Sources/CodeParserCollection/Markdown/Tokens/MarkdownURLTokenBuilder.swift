@@ -71,7 +71,7 @@ public class MarkdownURLTokenBuilder: CodeTokenBuilder {
     }
     guard idx < content.endIndex, content[idx] == ":" else { return false }
     let afterColon = content.index(after: idx)
-    return afterColon < content.endIndex // at least one char after ':'
+    return afterColon < content.endIndex  // at least one char after ':'
   }
 
   private static func matchURL(in source: String, from start: String.Index) -> String.Index? {
@@ -113,7 +113,12 @@ public class MarkdownURLTokenBuilder: CodeTokenBuilder {
     var seenDot = false
     var lastLabelLen = 0
     while idx < source.endIndex, isEmailDomainChar(source[idx]) {
-      if source[idx] == "." { seenDot = true; lastLabelLen = 0 } else { lastLabelLen += 1 }
+      if source[idx] == "." {
+        seenDot = true
+        lastLabelLen = 0
+      } else {
+        lastLabelLen += 1
+      }
       idx = source.index(after: idx)
     }
     guard seenDot, lastLabelLen >= 2, idx > start else { return nil }
@@ -124,13 +129,23 @@ public class MarkdownURLTokenBuilder: CodeTokenBuilder {
     var idx = content.startIndex
     // local
     var localLen = 0
-    while idx < content.endIndex, isEmailLocalChar(content[idx]) { localLen += 1; idx = content.index(after: idx) }
-    guard localLen > 0, idx < content.endIndex, content[idx] == "@" else { return content.startIndex }
+    while idx < content.endIndex, isEmailLocalChar(content[idx]) {
+      localLen += 1
+      idx = content.index(after: idx)
+    }
+    guard localLen > 0, idx < content.endIndex, content[idx] == "@" else {
+      return content.startIndex
+    }
     idx = content.index(after: idx)
     var seenDot = false
     var lastLabelLen = 0
     while idx < content.endIndex, isEmailDomainChar(content[idx]) {
-      if content[idx] == "." { seenDot = true; lastLabelLen = 0 } else { lastLabelLen += 1 }
+      if content[idx] == "." {
+        seenDot = true
+        lastLabelLen = 0
+      } else {
+        lastLabelLen += 1
+      }
       idx = content.index(after: idx)
     }
     guard seenDot, lastLabelLen >= 2 else { return content.startIndex }

@@ -38,8 +38,18 @@ public class CodeConstructor<Node, Token> where Node: CodeNodeElement, Token: Co
 
       var matched = false
       for node in builders {
+        let before = context.consuming
         if node.build(from: &context) {
           matched = true
+          // Safety guard: ensure progress to avoid infinite loops when a builder
+          // returns true without consuming any tokens.
+          if context.consuming == before {
+            let token = context.tokens[context.consuming]
+            let error = CodeError(
+              "Builder made no progress on token: \(token.element)", range: token.range)
+            context.errors.append(error)
+            context.consuming += 1
+          }
           break
         }
       }

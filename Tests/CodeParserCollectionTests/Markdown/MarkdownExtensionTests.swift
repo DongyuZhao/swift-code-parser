@@ -33,14 +33,14 @@ struct MarkdownExtensionTests {
   @Test("Definition list with two items and trailing non-definition paragraph")
   func ext_definitionListEdges() {
     let input = """
-    Term1
-    : Definition 1
-    Term2
-    : Definition 2
+      Term1
+      : Definition 1
+      Term2
+      : Definition 2
 
-    Not a term
-    No colon line
-    """
+      Not a term
+      No colon line
+      """
     let result = parser.parse(input, language: language)
     #expect(result.errors.isEmpty)
     let list = result.root.first(where: { $0.element == .definitionList }) as? DefinitionListNode

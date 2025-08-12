@@ -12,6 +12,8 @@ public class MarkdownParagraphBuilder: CodeNodeBuilder {
       token.element != .newline,
       token.element != .eof
     else { return false }
+  let state = (context.state as? MarkdownConstructState) ?? MarkdownConstructState()
+  if context.state == nil { context.state = state }
     // Determine target for the paragraph. Normally it's the current node, but
     // for list item continuation paragraphs we need to attach to the last list item.
     var target: CodeNode<MarkdownNodeElement> = context.current
@@ -90,23 +92,27 @@ public class MarkdownParagraphBuilder: CodeNodeBuilder {
 
     // Early Setext heading detection (before line merging). Only when paragraph is not list item continuation.
     if target.element != .listItem,
-       context.consuming < context.tokens.count,
-       let nlTok = context.tokens[context.consuming] as? MarkdownToken,
-       nlTok.element == .newline {
+      context.consuming < context.tokens.count,
+      let nlTok = context.tokens[context.consuming] as? MarkdownToken,
+      nlTok.element == .newline
+    {
       // Look ahead to gather underline line tokens
       var idx = context.consuming + 1
       var underline: [MarkdownToken] = []
       while idx < context.tokens.count,
-            let t = context.tokens[idx] as? MarkdownToken,
-            t.element != .newline, t.element != .eof {
+        let t = context.tokens[idx] as? MarkdownToken,
+        t.element != .newline, t.element != .eof
+      {
         underline.append(t)
         idx += 1
       }
       if !underline.isEmpty {
         let hasEquals = underline.contains { $0.element == .equals }
         let hasDashes = underline.contains { $0.element == .dash }
-        if hasEquals != hasDashes { // not mixed
-          let invalid = underline.contains { tok in !(tok.element == .space || tok.element == .equals || tok.element == .dash) }
+        if hasEquals != hasDashes {  // not mixed
+          let invalid = underline.contains { tok in
+            !(tok.element == .space || tok.element == .equals || tok.element == .dash)
+          }
           if !invalid {
             let level = hasEquals ? 1 : 2
             // Replace paragraph with header
@@ -117,27 +123,44 @@ public class MarkdownParagraphBuilder: CodeNodeBuilder {
             // Advance consuming over newline + underline + optional trailing newline
             context.consuming = idx
             if context.consuming < context.tokens.count,
-               let endNl = context.tokens[context.consuming] as? MarkdownToken,
-               endNl.element == .newline { context.consuming += 1 }
+              let endNl = context.tokens[context.consuming] as? MarkdownToken,
+              endNl.element == .newline
+            {
+              context.consuming += 1
+            }
             // Consume terminator newline if present
             if context.consuming < context.tokens.count,
-               let termNl = context.tokens[context.consuming] as? MarkdownToken,
-               termNl.element == .newline { context.consuming += 1 }
+              let termNl = context.tokens[context.consuming] as? MarkdownToken,
+              termNl.element == .newline
+            {
+              context.consuming += 1
+            }
             return true
           }
         }
       }
     }
 
+    // If a previous quoted blank requested a paragraph split inside a blockquote, honor it
+    // by not merging the upcoming line into the previous paragraph. We do this by clearing
+    // the flag here and simply letting this paragraph start fresh.
+    if state.pendingBlockquoteParagraphSplit {
+      state.pendingBlockquoteParagraphSplit = false
+    }
+
     // Merge successive non-blank lines into same paragraph (soft line breaks)
     // Stop on blank line (double newline), EOF, or a token that can start a new block.
     lineJoin: while context.consuming < context.tokens.count {
-      guard let nl = context.tokens[context.consuming] as? MarkdownToken, nl.element == .newline else { break }
+      guard let nl = context.tokens[context.consuming] as? MarkdownToken, nl.element == .newline
+      else { break }
       // Peek next token to decide termination
       if context.consuming + 1 < context.tokens.count,
-         let next = context.tokens[context.consuming + 1] as? MarkdownToken {
+        let next = context.tokens[context.consuming + 1] as? MarkdownToken
+      {
         // Blank line => terminate paragraph (consume one newline leaving following newline for outer loop to skip)
         if next.element == .newline { break }
+        // End of file after newline -> do not merge as soft break
+        if next.element == .eof { break }
         // Block-starting token (e.g., heading, list, blockquote, code fence) should end paragraph
         if next.canStartBlock { break }
       }
@@ -145,7 +168,7 @@ public class MarkdownParagraphBuilder: CodeNodeBuilder {
       // Determine hard vs soft line break based on trailing spaces or backslash before newline
       var isHard = false
       if let last = node.children.last as? TextNode, !last.content.isEmpty {
-        if last.content.hasSuffix("\\") { // backslash hard break
+        if last.content.hasSuffix("\\") {  // backslash hard break
           isHard = true
           last.content.removeLast()
         } else {
@@ -154,9 +177,14 @@ public class MarkdownParagraphBuilder: CodeNodeBuilder {
           var i = last.content.endIndex
           while i > last.content.startIndex {
             let prev = last.content.index(before: i)
-            if last.content[prev] == " " { spaceCount += 1; i = prev } else { break }
+            if last.content[prev] == " " {
+              spaceCount += 1
+              i = prev
+            } else {
+              break
+            }
           }
-          if spaceCount >= 2 { // hard break
+          if spaceCount >= 2 {  // hard break
             isHard = true
             // trim trailing spaces used for hard break
             last.content = String(last.content.dropLast(spaceCount))
@@ -325,10 +353,13 @@ public class MarkdownParagraphBuilder: CodeNodeBuilder {
       }
     }
 
-  // Consume a single trailing newline (paragraph terminator) if present
-  if context.consuming < context.tokens.count,
-     let nl = context.tokens[context.consuming] as? MarkdownToken,
-     nl.element == .newline { context.consuming += 1 }
+    // Consume a single trailing newline (paragraph terminator) if present
+    if context.consuming < context.tokens.count,
+      let nl = context.tokens[context.consuming] as? MarkdownToken,
+      nl.element == .newline
+    {
+      context.consuming += 1
+    }
     return true
   }
 }

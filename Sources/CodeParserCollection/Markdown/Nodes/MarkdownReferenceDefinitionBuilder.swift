@@ -76,8 +76,11 @@ public class MarkdownReferenceDefinitionBuilder: CodeNodeBuilder {
       let node = CitationNode(identifier: identifier, content: value)
       context.current.append(node)
     } else {
-  let (url, title) = splitLinkAndTitle(value)
-  let node = ReferenceNode(identifier: identifier, url: url, title: title)
+  var (url, title) = splitLinkAndTitle(value)
+  // Unescape backslashes per CommonMark rules for escapable punctuation
+  url = MarkdownEscaping.unescapeBackslashes(url)
+  title = MarkdownEscaping.unescapeBackslashes(title)
+      let node = ReferenceNode(identifier: identifier, url: url, title: title)
       context.current.append(node)
       var root = context.current
       while let parent = root.parent { root = parent }
@@ -113,7 +116,7 @@ public class MarkdownReferenceDefinitionBuilder: CodeNodeBuilder {
       while endIdx < trimmed.endIndex && trimmed[endIdx] != quoteChar {
         endIdx = trimmed.index(after: endIdx)
       }
-      if endIdx < trimmed.endIndex { // found closing
+      if endIdx < trimmed.endIndex {  // found closing
         titlePart = String(trimmed[trimmed.index(after: quoteIndex)..<endIdx])
         urlPart = before
       }

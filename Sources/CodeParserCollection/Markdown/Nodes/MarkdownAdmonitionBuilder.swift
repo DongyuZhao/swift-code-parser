@@ -16,7 +16,7 @@ public class MarkdownAdmonitionBuilder: CodeNodeBuilder {
     // Optional whitespace after '>' (one or more space/tab)
     while idx < context.tokens.count,
       let ws = context.tokens[idx] as? MarkdownToken,
-      (ws.element == .space || ws.element == .tab)
+      ws.element == .space || ws.element == .tab
     { idx += 1 }
     guard idx + 3 < context.tokens.count,
       let lb = context.tokens[idx] as? MarkdownToken, lb.element == .leftBracket,
@@ -61,7 +61,7 @@ public class MarkdownAdmonitionBuilder: CodeNodeBuilder {
       // Optional whitespace after '>' on content line
       while idx < context.tokens.count,
         let sp = context.tokens[idx] as? MarkdownToken,
-        (sp.element == .space || sp.element == .tab)
+        sp.element == .space || sp.element == .tab
       { idx += 1 }
 
       // Build inline contents for the remainder of this line
@@ -77,7 +77,11 @@ public class MarkdownAdmonitionBuilder: CodeNodeBuilder {
       if idx < context.tokens.count,
         let nlt = context.tokens[idx] as? MarkdownToken,
         nlt.element == .newline
-      { idx += 1 } else { break }
+      {
+        idx += 1
+      } else {
+        break
+      }
       // Continue the loop; next iteration will verify starting with '>' again
     }
 

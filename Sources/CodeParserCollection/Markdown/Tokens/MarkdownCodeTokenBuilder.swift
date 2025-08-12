@@ -12,6 +12,10 @@ public class MarkdownCodeTokenBuilder: CodeTokenBuilder {
     let char = context.source[start]
 
     if char == "`" {
+      // If opening backtick is escaped by a backslash, do not treat as code
+      if MarkdownEscaping.isEscapedByBackslash(in: context.source, at: start) {
+        return false
+      }
       if let fenced = buildFencedCode(from: &context, start: start, fenceChar: char) {
         context.tokens.append(fenced)
         return true
@@ -30,7 +34,7 @@ public class MarkdownCodeTokenBuilder: CodeTokenBuilder {
         count += 1
         idx = context.source.index(after: idx)
       }
-      if count >= 3 { // fenced code
+      if count >= 3 {  // fenced code
         if let fenced = buildFencedCode(from: &context, start: start, fenceChar: "~") {
           context.tokens.append(fenced)
           return true
@@ -40,6 +44,11 @@ public class MarkdownCodeTokenBuilder: CodeTokenBuilder {
     }
 
     if (char == " " || char == "\t") && isLineStart(source: context.source, index: start) {
+      // Do not start an indented code block unless preceded by a blank line or start of document.
+      // This prevents an indented line within a paragraph from forming a code block (CommonMark Spec 70).
+      if !hasBlankLineBefore(source: context.source, index: start) {
+        return false
+      }
       if let token = buildIndentedCode(from: &context, start: start) {
         context.tokens.append(token)
         return true
@@ -56,8 +65,50 @@ public class MarkdownCodeTokenBuilder: CodeTokenBuilder {
     return c == "\n" || c == "\r"
   }
 
+  private func hasBlankLineBefore(source: String, index: String.Index) -> Bool {
+    // If at very start, treat as blank line before
+    if index == source.startIndex { return true }
+    // Walk backward to previous line break
+    var i = index
+    var sawEOL = false
+    while i > source.startIndex {
+      let j = source.index(before: i)
+      let ch = source[j]
+      if ch == "\n" {
+        sawEOL = true
+        i = j
+        break
+      } else if ch == "\r" {
+        sawEOL = true
+        // handle \r\n
+        i = j
+        if i > source.startIndex {
+          let k = source.index(before: i)
+          if source[k] == "\n" { i = k }
+        }
+        break
+      }
+      i = j
+    }
+    if !sawEOL { return true } // start of file acts like blank
+    // Now i is pointing at line terminator; check previous line is blank
+    var k = i
+    // Move to start of previous line
+    while k > source.startIndex {
+      let j = source.index(before: k)
+      let ch = source[j]
+      if ch == "\n" || ch == "\r" { break }
+      // If any non-space/tab character, not blank
+      if ch != " " && ch != "\t" { return false }
+      k = j
+    }
+    // If we reached another EOL or start without finding non-space, previous line is blank
+    return true
+  }
+
   private func buildFencedCode(
-    from context: inout CodeTokenContext<MarkdownTokenElement>, start: String.Index, fenceChar: Character
+    from context: inout CodeTokenContext<MarkdownTokenElement>, start: String.Index,
+    fenceChar: Character
   ) -> MarkdownToken? {
     var tickCount = 0
     var idx = start
@@ -117,7 +168,7 @@ public class MarkdownCodeTokenBuilder: CodeTokenBuilder {
     }
 
     let range = start..<end
-  let text = String(context.source[range])
+    let text = String(context.source[range])
     return MarkdownToken.fencedCodeBlock(text, at: range)
   }
 
@@ -144,7 +195,10 @@ public class MarkdownCodeTokenBuilder: CodeTokenBuilder {
           run += 1
           runIdx = context.source.index(after: runIdx)
         }
-        if run == openingLen { closingStart = search; break }
+        if run == openingLen {
+          closingStart = search
+          break
+        }
         search = runIdx
       } else {
         search = context.source.index(after: search)

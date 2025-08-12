@@ -13,7 +13,7 @@ public class MarkdownFencedCodeBuilder: CodeNodeBuilder {
       isStartOfLine(context)
     else { return false }
     context.consuming += 1
-  let (code, language) = extractCodeAndLanguage(token.text)
+    let (code, language) = extractCodeAndLanguage(token.text)
     let node = CodeBlockNode(source: code, language: language)
     context.current.append(node)
     if context.consuming < context.tokens.count,
@@ -29,11 +29,11 @@ public class MarkdownFencedCodeBuilder: CodeNodeBuilder {
     var lines = text.split(separator: "\n", omittingEmptySubsequences: false)
     guard !lines.isEmpty else { return (text, nil) }
     let fenceLine = String(lines.first!)
-  let fenceChar = fenceLine.first ?? "`"
+    let fenceChar = fenceLine.first ?? "`"
     let fenceCount = fenceLine.prefix { $0 == fenceChar }.count
     // language part: chars after opening fence run up to space or end
     var lang: String? = nil
-  let afterFenceSub = fenceLine.dropFirst(fenceCount)
+    let afterFenceSub = fenceLine.dropFirst(fenceCount)
     if !afterFenceSub.isEmpty {
       let trimmed = String(afterFenceSub).trimmingCharacters(in: .whitespaces)
       if let stop = trimmed.firstIndex(where: { $0.isWhitespace || $0 == "{" }) {
@@ -42,6 +42,10 @@ public class MarkdownFencedCodeBuilder: CodeNodeBuilder {
       } else {
         lang = trimmed.isEmpty ? nil : trimmed
       }
+    }
+    // Unescape backslashes in language info (CommonMark: backslash escapes in info string)
+    if let l = lang {
+      lang = MarkdownEscaping.unescapeBackslashes(l)
     }
     // remove first fence line
     lines.removeFirst()
@@ -65,4 +69,5 @@ public class MarkdownFencedCodeBuilder: CodeNodeBuilder {
     }
     return false
   }
+
 }
