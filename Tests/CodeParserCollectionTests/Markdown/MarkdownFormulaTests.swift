@@ -13,7 +13,7 @@ struct MarkdownFormulaTests {
     parser = CodeParser(language: language)
   }
 
-  @Test("Inline formula parsing")
+  @Test("Spec F1: Inline formula parsing")
   func inlineFormula() {
     let input = "Euler: $e^{i\\pi}+1=0$"
     let result = parser.parse(input, language: language)
@@ -25,7 +25,7 @@ struct MarkdownFormulaTests {
     #expect(para.first(where: { $0.element == .formula }) != nil)
   }
 
-  @Test("Block formula parsing")
+  @Test("Spec F2: Block formula parsing")
   func blockFormula() {
     let input = "$$x=1$$"
     let result = parser.parse(input, language: language)
@@ -35,7 +35,7 @@ struct MarkdownFormulaTests {
 
   // MARK: - Additional Coverage
 
-  @Test("Backslash inline formula parsing")
+  @Test("Spec F3: Backslash inline formula parsing")
   func backslashFormulas() {
     let input = #"Before \(a+b\) end"#
     let result = parser.parse(input, language: language)
@@ -48,7 +48,7 @@ struct MarkdownFormulaTests {
     #expect(formulas?.first?.expression == #"\(a+b\)"#)
   }
 
-  @Test("Backslash block formula \\[..\\]")
+  @Test("Spec F4: Backslash block formula \\[..\\]")
   func backslashBlock() {
     let input = #"\[ x^2 + y^2 \]"#
     let result = parser.parse(input, language: language)
@@ -58,7 +58,7 @@ struct MarkdownFormulaTests {
     #expect(block?.expression == "x^2 + y^2")
   }
 
-  @Test("Unclosed display $$ and \\[ ...")
+  @Test("Spec F5: Unclosed display $$ and \\[ ...")
   func unclosedDisplay() {
     let input = "$$x + 1\nNext line\n\\[ y+2"
     let result = parser.parse(input, language: language)
@@ -69,7 +69,7 @@ struct MarkdownFormulaTests {
     #expect(blocks.first?.expression.contains("x + 1") == true)
   }
 
-  @Test("Unclosed inline $x+1 should NOT form formula")
+  @Test("Spec F6: Unclosed inline $x+1 should NOT form formula")
   func unclosedInline() {
     let input = "Text $x+1 and more"
     let result = parser.parse(input, language: language)
@@ -80,7 +80,7 @@ struct MarkdownFormulaTests {
     #expect(!hasFormula)
   }
 
-  @Test("Whitespace invalid inline should not parse")
+  @Test("Spec F7: Whitespace invalid inline should not parse")
   func whitespaceInvalidInline() {
     let samples = ["$ x$", "$x $"]
     for s in samples {
@@ -93,7 +93,7 @@ struct MarkdownFormulaTests {
     }
   }
 
-  @Test("Escaped dollar inside inline formula")
+  @Test("Spec F8: Escaped dollar inside inline formula")
   func escapedDollar() {
     let input = #"$a\$b$"#
     let result = parser.parse(input, language: language)
@@ -105,7 +105,7 @@ struct MarkdownFormulaTests {
     #expect(formula?.expression == #"a\$b"#)
   }
 
-  @Test("Multiple inline formulas in one paragraph")
+  @Test("Spec F9: Multiple inline formulas in one paragraph")
   func multipleInline() {
     let input = "A $x$ B $y^2$ C"
     let result = parser.parse(input, language: language)
@@ -116,7 +116,7 @@ struct MarkdownFormulaTests {
     #expect(Set(formulas?.map { $0.expression } ?? []) == ["x", "y^2"])
   }
 
-  @Test("Display formula with newline inside $$ .. $$")
+  @Test("Spec F10: Display formula with newline inside $$ .. $$")
   func displayWithNewline() {
     let input = "$$x^2 +\n y^2$$"
     let result = parser.parse(input, language: language)
@@ -126,7 +126,7 @@ struct MarkdownFormulaTests {
     #expect(normalized.contains("x^2+\ny^2".replacingOccurrences(of: " ", with: "")))
   }
 
-  @Test("Adjacent inline formulas")
+  @Test("Spec F11: Adjacent inline formulas")
   func adjacentInline() {
     let input = "Text$A$B$C$Text"
     let result = parser.parse(input, language: language)
@@ -138,7 +138,7 @@ struct MarkdownFormulaTests {
     #expect(formulas?.map { $0.expression } == ["A", "C"])
   }
 
-  @Test("Inline code containing dollar should not produce formula")
+  @Test("Spec F12: Inline code containing dollar should not produce formula")
   func inlineCodeWithDollar() {
     let input = "`$a$` and $b$"
     let result = parser.parse(input, language: language)

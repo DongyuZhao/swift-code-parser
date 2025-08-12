@@ -6,8 +6,8 @@ public class MarkdownTextTokenBuilder: CodeTokenBuilder {
 
   private let boundaries: Set<Character>
 
-  public init(singleCharacterMap: [Character: MarkdownTokenElement]) {
-    var set = Set(singleCharacterMap.keys)
+  public init(characters: Set<Character>) {
+    var set = Set(characters)
     set.insert(" ")
     set.insert("\t")
     set.insert("\n")
