@@ -46,28 +46,6 @@ public enum MarkdownTokenElement: String, CaseIterable, CodeTokenElement {
   // MARK: - Text and Numbers
   case text = "text"  // consecutive text characters
   case number = "number"  // consecutive digit characters
-
-  // MARK: - Code Blocks and Inline Code
-  case inlineCode = "inline_code"  // `code` - inline code span
-  case fencedCodeBlock = "fenced_code_block"  // ```code``` - fenced code block
-  case indentedCodeBlock = "indented_code_block"  // 4-space indented code block
-
-  // MARK: - URLs and Links
-  case autolink = "autolink"  // <https://example.com> - autolink
-  case url = "url"  // https://example.com - bare URL
-  case email = "email"  // user@example.com - email address
-
-  // MARK: - Math Formulas (Complete)
-  case formula = "formula"  // $...$ or \(...\)
-  case formulaBlock = "formula_block"  // $$...$$ or \[...\]
-
-  // MARK: - HTML Basic Elements
-  case htmlTag = "html_tag"
-  case htmlComment = "html_comment"
-  case htmlEntity = "html_entity"
-  case htmlBlock = "html_block"  // Closed HTML block
-  case htmlUnclosedBlock = "html_unclosed_block"  // Unclosed HTML block
-
 }
 
 // MARK: - Token Implementation
@@ -188,65 +166,6 @@ public class MarkdownToken: CodeToken {
   public static func eof(at range: Range<String.Index>) -> MarkdownToken {
     return MarkdownToken(element: .eof, text: "", range: range)
   }
-
-  public static func htmlTag(_ tag: String, at range: Range<String.Index>) -> MarkdownToken {
-    return MarkdownToken(element: .htmlTag, text: tag, range: range)
-  }
-
-  public static func htmlComment(_ comment: String, at range: Range<String.Index>) -> MarkdownToken
-  {
-    return MarkdownToken(element: .htmlComment, text: comment, range: range)
-  }
-
-  public static func htmlEntity(_ entity: String, at range: Range<String.Index>) -> MarkdownToken {
-    return MarkdownToken(element: .htmlEntity, text: entity, range: range)
-  }
-
-  public static func htmlBlock(_ block: String, at range: Range<String.Index>) -> MarkdownToken {
-    return MarkdownToken(element: .htmlBlock, text: block, range: range)
-  }
-
-  public static func htmlUnclosedBlock(_ block: String, at range: Range<String.Index>)
-    -> MarkdownToken
-  {
-    return MarkdownToken(element: .htmlUnclosedBlock, text: block, range: range)
-  }
-
-  public static func formula(_ formula: String, at range: Range<String.Index>) -> MarkdownToken {
-    return MarkdownToken(element: .formula, text: formula, range: range)
-  }
-
-  public static func formulaBlock(_ formula: String, at range: Range<String.Index>) -> MarkdownToken
-  {
-    return MarkdownToken(element: .formulaBlock, text: formula, range: range)
-  }
-
-  public static func inlineCode(_ code: String, at range: Range<String.Index>) -> MarkdownToken {
-    return MarkdownToken(element: .inlineCode, text: code, range: range)
-  }
-
-  public static func fencedCodeBlock(_ code: String, at range: Range<String.Index>) -> MarkdownToken
-  {
-    return MarkdownToken(element: .fencedCodeBlock, text: code, range: range)
-  }
-
-  public static func indentedCodeBlock(_ code: String, at range: Range<String.Index>)
-    -> MarkdownToken
-  {
-    return MarkdownToken(element: .indentedCodeBlock, text: code, range: range)
-  }
-
-  public static func autolink(_ link: String, at range: Range<String.Index>) -> MarkdownToken {
-    return MarkdownToken(element: .autolink, text: link, range: range)
-  }
-
-  public static func url(_ url: String, at range: Range<String.Index>) -> MarkdownToken {
-    return MarkdownToken(element: .url, text: url, range: range)
-  }
-
-  public static func email(_ email: String, at range: Range<String.Index>) -> MarkdownToken {
-    return MarkdownToken(element: .email, text: email, range: range)
-  }
 }
 
 // MARK: - Token Utilities
@@ -279,8 +198,7 @@ extension MarkdownToken {
   /// Check if this token can start a block element
   public var canStartBlock: Bool {
     switch element {
-    case .hash, .gt, .dash, .plus, .asterisk, .tilde, .number, .inlineCode, .fencedCodeBlock,
-      .indentedCodeBlock, .autolink:
+    case .hash, .gt, .dash, .plus, .asterisk, .tilde, .number:
       return true
     default:
       return false
@@ -292,54 +210,8 @@ extension MarkdownToken {
     return false  // No individual math delimiters anymore, only complete formulas
   }
 
-  /// Check if this token is a math formula
-  public var isMathFormula: Bool {
-    return element == .formula || element == .formulaBlock
-  }
-
-  /// Check if this token is inline math
-  public var isInlineMath: Bool {
-    return element == .formula
-  }
-
-  /// Check if this token is display math
-  public var isDisplayMath: Bool {
-    return element == .formulaBlock
-  }
-
   /// Check if this token is a table delimiter
   public var isTableDelimiter: Bool {
     return element == .pipe
-  }
-
-  /// Check if this token is HTML-related
-  public var isHtml: Bool {
-    return element == .htmlTag || element == .htmlComment || element == .htmlEntity
-      || element == .htmlBlock || element == .htmlUnclosedBlock
-  }
-
-  /// Check if this token is an HTML tag
-  public var isHtmlTag: Bool {
-    return element == .htmlTag
-  }
-
-  /// Check if this token is an HTML block
-  public var isHtmlBlock: Bool {
-    return element == .htmlBlock
-  }
-
-  /// Check if this token is an HTML unclosed block
-  public var isHtmlUnclosedBlock: Bool {
-    return element == .htmlUnclosedBlock
-  }
-
-  /// Check if this token is an HTML comment
-  public var isHtmlComment: Bool {
-    return element == .htmlComment
-  }
-
-  /// Check if this token is an HTML entity
-  public var isHtmlEntity: Bool {
-    return element == .htmlEntity
   }
 }

@@ -42,6 +42,7 @@ public enum MarkdownNodeElement: String, CaseIterable, CodeNodeElement {
   // MARK: - GFM Extensions
   case table = "table"
   case tableHeader = "table_header"
+  case tableContent = "table_content"
   case tableRow = "table_row"
   case tableCell = "table_cell"
   case taskList = "task_list"
@@ -423,7 +424,6 @@ public class CommentNode: MarkdownNodeBase {
 
 // MARK: - GFM Extensions
 public class TableNode: MarkdownNodeBase {
-  public var alignments: [TableCellNode.Alignment] = []
   public init(range: Range<String.Index>) {
     super.init(element: .table)
   }
@@ -435,17 +435,15 @@ public class TableHeaderNode: MarkdownNodeBase {
   }
 }
 
-public class TableRowNode: MarkdownNodeBase {
-  public var isHeader: Bool
-
-  public init(range: Range<String.Index>, isHeader: Bool = false) {
-    self.isHeader = isHeader
-    super.init(element: .tableRow)
+public class TableContentNode: MarkdownNodeBase {
+  public init(range: Range<String.Index>) {
+    super.init(element: .tableContent)
   }
+}
 
-  public override func hash(into hasher: inout Hasher) {
-    super.hash(into: &hasher)
-    hasher.combine(isHeader)
+public class TableRowNode: MarkdownNodeBase {
+  public init(range: Range<String.Index>, isHeader: Bool = false) {
+    super.init(element: .tableRow)
   }
 }
 

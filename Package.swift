@@ -23,9 +23,6 @@ let package = Package(
             targets: ["CodeParserShowCase"]
         ),
     ],
-    dependencies: [
-        .package(url: "https://github.com/apple/swift-format.git", from: "510.1.0")
-    ],
     targets: [
         .target(
             name: "CodeParserCore",
