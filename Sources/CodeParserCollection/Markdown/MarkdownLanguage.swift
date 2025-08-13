@@ -24,6 +24,7 @@ public class MarkdownLanguage: CodeLanguage {
   ///   disabled.
   public init() {
     self.nodes = [
+      MarkdownDocumentBuilder(),
     ]
     self.tokens = [
       MarkdownWhitespaceTokenBuilder(),
