@@ -1,54 +1,71 @@
+import CodeParserCore
 import Foundation
 
 /// Builds paragraph nodes.
-final class MarkdownParagraphBuilder: MarkdownBlockBuilder {
+public final class MarkdownParagraphBuilder: CodeNodeBuilder {
+  public typealias Node = MarkdownNodeElement
+  public typealias Token = MarkdownTokenElement
+
   private let inline = MarkdownInlineParser()
   private let interruptors: [(String) -> Bool]
 
-  init(interruptors: [(String) -> Bool]) {
+  public init(interruptors: [(String) -> Bool]) {
     self.interruptors = interruptors
   }
 
-  func match(line: String) -> Bool {
-    // Paragraph is fallback; always match
-    return true
-  }
+  public func build(
+    from context: inout CodeConstructContext<MarkdownNodeElement, MarkdownTokenElement>
+  ) -> Bool {
+    guard context.consuming < context.tokens.count else { return false }
+    let (firstRaw, firstConsumed) = MarkdownLineReader.nextLine(
+      from: context.tokens, startingAt: context.consuming)
+    var firstLine = firstRaw.trimmingCharacters(in: .newlines)
+    if firstLine.trimmingCharacters(in: .whitespaces).isEmpty {
+      context.consuming += firstConsumed
+      return true
+    }
+    guard let root = context.current as? MarkdownNodeBase else { return false }
 
-  func build(lines: [String], index: inout Int, root: MarkdownNodeBase) {
-    var first = lines[index]
     var removedFirst = 0
-    while removedFirst < 3 && first.first == " " {
-      first.removeFirst()
+    while removedFirst < 3 && firstLine.first == " " {
+      firstLine.removeFirst()
       removedFirst += 1
     }
-    var parts: [(text: String, removed: Int)] = [(first, removedFirst)]
-    var i = index + 1
-    while i < lines.count {
-      let next = lines[i]
-      if next.trimmingCharacters(in: .whitespaces).isEmpty { break }
-      if interruptors.contains(where: { $0(next) }) { break }
-      var text = next
+    var parts: [(text: String, removed: Int)] = [(firstLine, removedFirst)]
+    var total = firstConsumed
+    var index = context.consuming + firstConsumed
+
+    while index < context.tokens.count {
+      let (nextRaw, consumed) = MarkdownLineReader.nextLine(from: context.tokens, startingAt: index)
+      var nextLine = nextRaw.trimmingCharacters(in: .newlines)
+      if nextLine.trimmingCharacters(in: .whitespaces).isEmpty {
+        total += consumed
+        break
+      }
+      if interruptors.contains(where: { $0(nextLine) }) {
+        break
+      }
       var removed = 0
-      while removed < 4 && text.first == " " {
-        text.removeFirst()
+      while removed < 4 && nextLine.first == " " {
+        nextLine.removeFirst()
         removed += 1
       }
-      parts.append((text, removed))
-      i += 1
+      parts.append((nextLine, removed))
+      total += consumed
+      index += consumed
     }
+
+    let para = ParagraphNode(range: parts[0].text.startIndex..<parts[0].text.startIndex)
     if parts.count == 2, parts[1].removed == 4, parts[1].text.first == "#" {
-      let para = ParagraphNode(range: parts[0].text.startIndex..<parts[0].text.startIndex)
       for node in inline.parse(parts[0].text) { para.append(node) }
       para.append(LineBreakNode())
       for node in inline.parse(parts[1].text) { para.append(node) }
-      root.append(para)
-      index = i
-      return
+    } else {
+      let joined = parts.map { $0.text }.joined(separator: " ")
+      for node in inline.parse(joined) { para.append(node) }
     }
-    let para = ParagraphNode(range: parts[0].text.startIndex..<parts[0].text.startIndex)
-    let joined = parts.map { $0.text }.joined(separator: " ")
-    for node in inline.parse(joined) { para.append(node) }
     root.append(para)
-    index = i
+    context.consuming += total
+    return true
   }
 }

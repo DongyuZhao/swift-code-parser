@@ -1,17 +1,30 @@
+import CodeParserCore
 import Foundation
 
-/// Builds ATX heading nodes.
-final class MarkdownATXHeadingBuilder: MarkdownBlockBuilder {
+/// Builds ATX heading nodes from a token stream.
+public final class MarkdownATXHeadingBuilder: CodeNodeBuilder {
+  public typealias Node = MarkdownNodeElement
+  public typealias Token = MarkdownTokenElement
+
   private let inline = MarkdownInlineParser()
 
-  func match(line: String) -> Bool {
-    return parse(line) != nil
-  }
+  public init() {}
 
-  func build(lines: [String], index: inout Int, root: MarkdownNodeBase) {
-    guard let heading = parse(lines[index]) else { return }
+  // Exposed for paragraph interruptor checks
+  func match(line: String) -> Bool { parse(line) != nil }
+
+  public func build(
+    from context: inout CodeConstructContext<MarkdownNodeElement, MarkdownTokenElement>
+  ) -> Bool {
+    guard context.consuming < context.tokens.count else { return false }
+    let (rawLine, consumed) = MarkdownLineReader.nextLine(
+      from: context.tokens, startingAt: context.consuming)
+    let line = rawLine.trimmingCharacters(in: .newlines)
+    guard let heading = parse(line) else { return false }
+    guard let root = context.current as? MarkdownNodeBase else { return false }
     root.append(heading)
-    index += 1
+    context.consuming += consumed
+    return true
   }
 
   private func parse(_ line: String) -> HeaderNode? {
@@ -31,7 +44,6 @@ final class MarkdownATXHeadingBuilder: MarkdownBlockBuilder {
     if idx < line.endIndex && line[idx] != " " { return nil }
     if idx < line.endIndex { idx = line.index(after: idx) }
     var content = String(line[idx...]).trimmingCharacters(in: .whitespaces)
-    // Optional closing sequence
     var trimmed = content
     while trimmed.last == " " { trimmed.removeLast() }
     var count = 0

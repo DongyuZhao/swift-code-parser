@@ -18,14 +18,18 @@ public class MarkdownLanguage: CodeLanguage {
 
   // MARK: - Initialization
   /// Create a Markdown language with the provided builders.
-  ///
-  /// - Parameter consumers: Node builders to be used when constructing the
-  ///   document AST. Passing a custom set allows features to be enabled or
-  ///   disabled.
   public init() {
-    self.nodes = [
-      MarkdownDocumentBuilder(),
-    ]
+    let heading = MarkdownATXHeadingBuilder()
+    let setext = MarkdownSetextHeadingBuilder()
+    let thematic = MarkdownThematicBreakBuilder()
+    let code = MarkdownIndentedCodeBlockBuilder()
+    let list = MarkdownUnorderedListBuilder(thematic: thematic)
+    let paragraph = MarkdownParagraphBuilder(interruptors: [
+      { heading.match(line: $0) },
+      { thematic.match(line: $0) },
+      { list.match(line: $0) },
+    ])
+    self.nodes = [code, heading, setext, thematic, list, paragraph]
     self.tokens = [
       MarkdownWhitespaceTokenBuilder(),
       MarkdownCharacterTokenBuilder(),

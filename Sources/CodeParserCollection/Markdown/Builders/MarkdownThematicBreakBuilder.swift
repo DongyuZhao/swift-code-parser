@@ -1,15 +1,28 @@
+import CodeParserCore
 import Foundation
 
 /// Builds thematic break nodes (`***`, `---`, `___`).
-final class MarkdownThematicBreakBuilder: MarkdownBlockBuilder {
-  func match(line: String) -> Bool {
-    return parse(line) != nil
-  }
+public final class MarkdownThematicBreakBuilder: CodeNodeBuilder {
+  public typealias Node = MarkdownNodeElement
+  public typealias Token = MarkdownTokenElement
 
-  func build(lines: [String], index: inout Int, root: MarkdownNodeBase) {
-    guard parse(lines[index]) != nil else { return }
+  public init() {}
+
+  // Exposed for paragraph interruptor checks
+  func match(line: String) -> Bool { parse(line) != nil }
+
+  public func build(
+    from context: inout CodeConstructContext<MarkdownNodeElement, MarkdownTokenElement>
+  ) -> Bool {
+    guard context.consuming < context.tokens.count else { return false }
+    let (rawLine, consumed) = MarkdownLineReader.nextLine(
+      from: context.tokens, startingAt: context.consuming)
+    let line = rawLine.trimmingCharacters(in: .newlines)
+    guard parse(line) != nil else { return false }
+    guard let root = context.current as? MarkdownNodeBase else { return false }
     root.append(ThematicBreakNode())
-    index += 1
+    context.consuming += consumed
+    return true
   }
 
   /// Returns the marker character if the line is a thematic break.
@@ -20,7 +33,6 @@ final class MarkdownThematicBreakBuilder: MarkdownBlockBuilder {
       idx = line.index(after: idx)
       spaces += 1
     }
-    // Four or more leading spaces turn this into a code block.
     if spaces >= 4 { return nil }
     var marker: Character?
     var count = 0
@@ -31,8 +43,7 @@ final class MarkdownThematicBreakBuilder: MarkdownBlockBuilder {
         continue
       }
       if c == "*" || c == "-" || c == "_" {
-        if marker == nil { marker = c }
-        else if marker != c { return nil }
+        if marker == nil { marker = c } else if marker != c { return nil }
         count += 1
         idx = line.index(after: idx)
       } else {

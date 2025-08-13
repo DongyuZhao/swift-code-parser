@@ -1,54 +1,59 @@
+import CodeParserCore
 import Foundation
 
-/// Converts a preceding paragraph to a setext heading when encountering an underline of `===` or `---`.
-final class MarkdownSetextHeadingBuilder {
-  func match(line: String, previous: MarkdownNodeBase?) -> Bool {
-    guard previous is ParagraphNode else { return false }
-    return parse(line) != nil
-  }
+/// Builds setext headings (underline-style) from consecutive lines.
+public final class MarkdownSetextHeadingBuilder: CodeNodeBuilder {
+  public typealias Node = MarkdownNodeElement
+  public typealias Token = MarkdownTokenElement
 
-  func build(lines: [String], index: inout Int, root: MarkdownNodeBase) {
-    guard let marker = parse(lines[index]) else { return }
-    guard root.children.count > 0 else { return }
-    let lastIndex = root.children.count - 1
-    guard let para = root.children[lastIndex] as? ParagraphNode else { return }
-    let level = marker == "=" ? 1 : 2
-    let header = HeaderNode(level: level)
-    for child in para.children {
-      if let node = child as? MarkdownNodeBase {
-        header.append(node)
-      }
-    }
-    root.remove(at: lastIndex)
-    root.append(header)
-    index += 1
-  }
+  private let inline = MarkdownInlineParser()
+  private let thematic = MarkdownThematicBreakBuilder()
 
-  private func parse(_ line: String) -> Character? {
-    var idx = line.startIndex
+  public init() {}
+
+  private func match(first: String, second: String) -> Int? {
+    if thematic.match(line: first) { return nil }
+    var idx = second.startIndex
     var spaces = 0
-    while idx < line.endIndex && line[idx] == " " {
-      idx = line.index(after: idx)
+    while idx < second.endIndex && second[idx] == " " {
+      idx = second.index(after: idx)
       spaces += 1
     }
-    if spaces >= 4 { return nil }
-    var marker: Character?
+    if idx == second.endIndex { return nil }
+    let marker = second[idx]
+    guard marker == "-" || marker == "=" else { return nil }
     var count = 0
-    while idx < line.endIndex {
-      let c = line[idx]
-      if c == " " || c == "\t" {
-        idx = line.index(after: idx)
-        continue
-      }
-      if c == "=" || c == "-" {
-        if marker == nil { marker = c }
-        else if marker != c { return nil }
-        count += 1
-        idx = line.index(after: idx)
-      } else {
-        return nil
-      }
+    while idx < second.endIndex && second[idx] == marker {
+      count += 1
+      idx = second.index(after: idx)
     }
-    return count >= 1 ? marker : nil
+    if idx != second.endIndex { return nil }
+    if count < 3 { return nil }
+    return marker == "=" ? 1 : 2
+  }
+
+  public func build(
+    from context: inout CodeConstructContext<MarkdownNodeElement, MarkdownTokenElement>
+  ) -> Bool {
+    guard context.consuming < context.tokens.count else { return false }
+    let start = context.consuming
+    let (firstRaw, firstConsumed) = MarkdownLineReader.nextLine(
+      from: context.tokens, startingAt: start)
+    let firstLine = firstRaw.trimmingCharacters(in: .newlines)
+    if firstLine.trimmingCharacters(in: .whitespaces).isEmpty { return false }
+    let nextIndex = start + firstConsumed
+    guard nextIndex < context.tokens.count else { return false }
+    let (secondRaw, secondConsumed) = MarkdownLineReader.nextLine(
+      from: context.tokens, startingAt: nextIndex)
+    let secondLine = secondRaw.trimmingCharacters(in: .newlines)
+    guard let level = match(first: firstLine, second: secondLine) else { return false }
+    guard let root = context.current as? MarkdownNodeBase else { return false }
+    let heading = HeaderNode(level: level)
+    for node in inline.parse(firstLine.trimmingCharacters(in: .whitespaces)) {
+      heading.append(node)
+    }
+    root.append(heading)
+    context.consuming = start + firstConsumed + secondConsumed
+    return true
   }
 }
