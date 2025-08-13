@@ -20,25 +20,33 @@ public class MarkdownDocumentBuilder: CodeNodeBuilder {
 
     let headingBuilder = MarkdownATXHeadingBuilder()
     let thematicBuilder = MarkdownThematicBreakBuilder()
+    let listBuilder = MarkdownUnorderedListBuilder()
     let codeBuilder = MarkdownIndentedCodeBlockBuilder()
     let paragraphBuilder = MarkdownParagraphBuilder(
       interruptors: [
         { headingBuilder.match(line: $0) },
         { thematicBuilder.match(line: $0) },
+        { listBuilder.match(line: $0) },
       ]
     )
     let builders: [MarkdownBlockBuilder] = [
       headingBuilder,
       thematicBuilder,
+      listBuilder,
       codeBuilder,
       paragraphBuilder,
     ]
+    let setextBuilder = MarkdownSetextHeadingBuilder()
 
     var index = 0
     while index < lines.count {
       let line = lines[index]
       if line.trimmingCharacters(in: .whitespaces).isEmpty {
         index += 1
+        continue
+      }
+      if setextBuilder.match(line: line, previous: root.children.last as? MarkdownNodeBase) {
+        setextBuilder.build(lines: lines, index: &index, root: root)
         continue
       }
       for builder in builders {

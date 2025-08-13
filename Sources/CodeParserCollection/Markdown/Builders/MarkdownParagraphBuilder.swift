@@ -15,7 +15,13 @@ final class MarkdownParagraphBuilder: MarkdownBlockBuilder {
   }
 
   func build(lines: [String], index: inout Int, root: MarkdownNodeBase) {
-    var paraLines: [String] = [lines[index]]
+    var first = lines[index]
+    var removedFirst = 0
+    while removedFirst < 3 && first.first == " " {
+      first.removeFirst()
+      removedFirst += 1
+    }
+    var parts: [(text: String, removed: Int)] = [(first, removedFirst)]
     var i = index + 1
     while i < lines.count {
       let next = lines[i]
@@ -27,14 +33,21 @@ final class MarkdownParagraphBuilder: MarkdownBlockBuilder {
         text.removeFirst()
         removed += 1
       }
-      paraLines.append(text)
+      parts.append((text, removed))
       i += 1
     }
-    let para = ParagraphNode(range: paraLines[0].startIndex..<paraLines[0].startIndex)
-    for (idx, line) in paraLines.enumerated() {
-      if idx > 0 { para.append(LineBreakNode()) }
-      for node in inline.parse(line) { para.append(node) }
+    if parts.count == 2, parts[1].removed == 4, parts[1].text.first == "#" {
+      let para = ParagraphNode(range: parts[0].text.startIndex..<parts[0].text.startIndex)
+      for node in inline.parse(parts[0].text) { para.append(node) }
+      para.append(LineBreakNode())
+      for node in inline.parse(parts[1].text) { para.append(node) }
+      root.append(para)
+      index = i
+      return
     }
+    let para = ParagraphNode(range: parts[0].text.startIndex..<parts[0].text.startIndex)
+    let joined = parts.map { $0.text }.joined(separator: " ")
+    for node in inline.parse(joined) { para.append(node) }
     root.append(para)
     index = i
   }

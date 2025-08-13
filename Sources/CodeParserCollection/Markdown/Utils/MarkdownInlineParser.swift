@@ -36,7 +36,7 @@ struct MarkdownInlineParser {
           }
           j += 1
         }
-        if found {
+        if found && j > i + 1 {
           flush()
           let inner = String(chars[(i + 1)..<j])
           let em = EmphasisNode(content: inner)
