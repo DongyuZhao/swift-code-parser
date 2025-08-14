@@ -24,6 +24,21 @@ public class MarkdownLanguage: CodeLanguage {
   ///   disabled.
   public init() {
     self.nodes = [
+      MarkdownBlankLineBuilder(),
+      MarkdownReferenceDefinitionBuilder(),
+      MarkdownATXHeadingBuilder(),
+      MarkdownThematicBreakBuilder(),
+      MarkdownHTMLBlockBuilder(),
+      MarkdownIndentedCodeBlockBuilder(),
+      MarkdownFencedCodeBlockBuilder(),
+      MarkdownFormulaBlockBuilder(),
+      MarkdownBlockquoteBuilder(),
+      MarkdownOrderedListBuilder(),
+      MarkdownUnorderedListBuilder(),
+      MarkdownTableBuilder(),
+      MarkdownSetextHeadingBuilder(),
+      MarkdownParagraphBuilder(),
+      MarkdownEOFBuilder(),
     ]
     self.tokens = [
       MarkdownWhitespaceTokenBuilder(),

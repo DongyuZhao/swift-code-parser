@@ -25,8 +25,10 @@ public enum MarkdownTokenElement: String, CaseIterable, CodeTokenElement {
   case ampersand = "&"
   case backslash = "\\"
   case forwardSlash = "/"
+  case dollar = "$"
   case quote = "\""
   case singleQuote = "'"
+  case backtick = "`"
 
   // MARK: - Brackets and Parentheses
   case leftBracket = "["
@@ -115,6 +117,10 @@ public class MarkdownToken: CodeToken {
     return MarkdownToken(element: .lt, text: "<", range: range)
   }
 
+  public static func dollar(at range: Range<String.Index>) -> MarkdownToken {
+    return MarkdownToken(element: .dollar, text: "$", range: range)
+  }
+
   public static func leftBracket(at range: Range<String.Index>) -> MarkdownToken {
     return MarkdownToken(element: .leftBracket, text: "[", range: range)
   }
@@ -155,6 +161,10 @@ public class MarkdownToken: CodeToken {
     return MarkdownToken(element: .backslash, text: "\\", range: range)
   }
 
+  public static func backtick(at range: Range<String.Index>) -> MarkdownToken {
+    return MarkdownToken(element: .backtick, text: "`", range: range)
+  }
+
   public static func text(_ text: String, at range: Range<String.Index>) -> MarkdownToken {
     return MarkdownToken(element: .text, text: text, range: range)
   }
@@ -188,7 +198,7 @@ extension MarkdownToken {
   /// Check if this token is a punctuation character
   public var isPunctuation: Bool {
     switch element {
-    case .exclamation, .question, .dot, .comma, .semicolon, .colon, .quote, .singleQuote, .atSign:
+    case .exclamation, .question, .dot, .comma, .semicolon, .colon, .quote, .singleQuote, .atSign, .dollar:
       return true
     default:
       return false
