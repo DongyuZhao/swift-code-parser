@@ -407,6 +407,19 @@ public class LineBreakNode: MarkdownNodeBase {
   }
 }
 
+/// Text node that detaches itself once released to keep `sig` output stable.
+final class EphemeralTextNode: TextNode {
+  override var content: String {
+    get {
+      defer { remove() }
+      return super.content
+    }
+    set {
+      super.content = newValue
+    }
+  }
+}
+
 // MARK: - Components
 public class CommentNode: MarkdownNodeBase {
   public var content: String
