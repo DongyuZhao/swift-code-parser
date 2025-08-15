@@ -44,6 +44,7 @@ public enum MarkdownTokenElement: String, CaseIterable, CodeTokenElement {
   case newline = "\n"
   case carriageReturn = "\r"
   case eof = ""
+  case percent = "%"
 
   // MARK: - Text and Numbers
   case text = "text"  // consecutive text characters

@@ -4,16 +4,7 @@ import Foundation
 public class MarkdownTextTokenBuilder: CodeTokenBuilder {
   public typealias Token = MarkdownTokenElement
 
-  private let boundaries: Set<Character>
-
-  public init(characters: Set<Character>) {
-    var set = Set(characters)
-    set.insert(" ")
-    set.insert("\t")
-    set.insert("\n")
-    set.insert("\r")
-    self.boundaries = set
-  }
+  private let boundaries: Set<Character> = MarkdownSpecialCharacter.characters.union([" ", "\t", "\n", "\r"])
 
   public func build(from context: inout CodeTokenContext<MarkdownTokenElement>) -> Bool {
     guard context.consuming < context.source.endIndex else { return false }

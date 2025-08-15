@@ -1,0 +1,38 @@
+public enum MarkdownSpecialCharacter: Character, CaseIterable, Sendable {
+  case hash         = "#"
+  case asterisk     = "*"
+  case underscore   = "_"
+  case dash         = "-"
+  case plus         = "+"
+  case equals       = "="
+  case tilde        = "~"
+  case caret        = "^"
+  case atSign       = "@"
+  case pipe         = "|"
+  case colon        = ":"
+  case semicolon    = ";"
+  case exclamation  = "!"
+  case question     = "?"
+  case dot          = "."
+  case comma        = ","
+  case gt           = ">"
+  case lt           = "<"
+  case ampersand    = "&"
+  case backslash    = "\\"
+  case forwardSlash = "/"
+  case quote        = "\""
+  case singleQuote  = "'"
+  case backtick     = "`"
+  case dollar       = "$"
+  case percent      = "%"
+  case leftBracket  = "["
+  case rightBracket = "]"
+  case leftParen    = "("
+  case rightParen   = ")"
+  case leftBrace    = "{"
+  case rightBrace   = "}"
+}
+
+extension MarkdownSpecialCharacter {
+    static let characters: Set<Character> = Set(MarkdownSpecialCharacter.allCases.map { $0.rawValue })
+}
