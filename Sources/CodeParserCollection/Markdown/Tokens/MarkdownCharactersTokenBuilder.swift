@@ -1,0 +1,77 @@
+import CodeParserCore
+import Foundation
+
+// MARK: - Characters Token Builder (handles backslash escapes)
+public class MarkdownCharactersTokenBuilder: CodeTokenBuilder {
+  public typealias Token = MarkdownTokenElement
+
+  public init() {}
+
+  public func build(from context: inout CodeTokenContext<Token>) -> Bool {
+    let source = context.source
+    var current = context.consuming
+    let start = current
+    var resultText = ""
+
+    guard current < source.endIndex else { return false }
+
+    // Determine if we are in a special mode (code, HTML, autolink, etc.)
+    let inSpecialMode: Bool
+    if let state = context.state as? MarkdownTokenState {
+      switch state.modes.top {
+      case .code, .html, .autolink:
+        inSpecialMode = true
+      default:
+        inSpecialMode = false
+      }
+    } else {
+      inSpecialMode = false
+    }
+
+    while current < source.endIndex {
+      let char = source[current]
+
+      if char == "\\" && !inSpecialMode {
+        // Handle backslash escapes
+        let nextIndex = source.index(after: current)
+
+        if nextIndex >= source.endIndex {
+          // Trailing backslash at EOF -> treat as literal
+          resultText.append("\\")
+          current = nextIndex
+          break
+        }
+
+        let nextChar = source[nextIndex]
+
+        if MarkdownPunctuationCharacter.characters.contains(nextChar) {
+          // Escape for ASCII punctuation: drop backslash and keep the punctuation
+          resultText.append(nextChar)
+          current = source.index(after: nextIndex)
+        } else {
+          // Backslash + non-punctuation (including newline): keep backslash literally
+          resultText.append("\\")
+          current = nextIndex
+        }
+      } else {
+        // Regular character handling
+        if MarkdownWhitespaceCharacter.characters.contains(char) ||
+           MarkdownPunctuationCharacter.characters.contains(char) {
+          // Stop at boundary character
+          break
+        }
+
+        resultText.append(char)
+        current = source.index(after: current)
+      }
+    }
+
+    guard !resultText.isEmpty else { return false }
+
+    let range = start..<current
+    let token = MarkdownToken(element: .characters, text: resultText, range: range)
+    context.tokens.append(token)
+    context.consuming = current
+    return true
+  }
+}

@@ -1,53 +1,33 @@
 import CodeParserCore
 import Foundation
 
+// MARK: - Whitespace Token Builder (excluding newline)
 public class MarkdownWhitespaceTokenBuilder: CodeTokenBuilder {
   public typealias Token = MarkdownTokenElement
 
   public init() {}
 
-  public func build(from context: inout CodeTokenContext<MarkdownTokenElement>) -> Bool {
-    guard context.consuming < context.source.endIndex else { return false }
-    let char = context.source[context.consuming]
+  // Collects a run of whitespace characters excluding newline.
+  public func build(from context: inout CodeTokenContext<Token>) -> Bool {
+    let source = context.source
+    var current = context.consuming
+    let start = current
 
-    switch char {
-    case "\r\n":
-      let start = context.consuming
-      context.consuming = context.source.index(after: context.consuming)
-      let range = start..<context.consuming
-      context.tokens.append(MarkdownToken(element: .newline, text: "\r\n", range: range))
-      return true
-    case " ":
-      let start = context.consuming
-      context.consuming = context.source.index(after: context.consuming)
-      context.tokens.append(MarkdownToken.space(at: start..<context.consuming))
-      return true
-    case "\t":
-      let start = context.consuming
-      context.consuming = context.source.index(after: context.consuming)
-      context.tokens.append(MarkdownToken.tab(at: start..<context.consuming))
-      return true
-    case "\n":
-      let start = context.consuming
-      context.consuming = context.source.index(after: context.consuming)
-      context.tokens.append(MarkdownToken.newline(at: start..<context.consuming))
-      return true
-    case "\r":
-      let start = context.consuming
-      let next = context.source.index(after: context.consuming)
-      if next < context.source.endIndex && context.source[next] == "\n" {
-        let end = context.source.index(after: next)
-        context.consuming = end
-        let range = start..<end
-        context.tokens.append(MarkdownToken(element: .newline, text: "\r\n", range: range))
-      } else {
-        context.consuming = next
-        let range = start..<context.consuming
-        context.tokens.append(MarkdownToken(element: .carriageReturn, text: "\r", range: range))
-      }
-      return true
-    default:
-      return false
+    guard current < source.endIndex else { return false }
+    guard MarkdownWhitespaceCharacter.characters.contains(source[current]),
+          source[current] != "\n" else { return false }
+
+    // Gather consecutive non-newline whitespace characters
+    while current < source.endIndex,
+          MarkdownWhitespaceCharacter.characters.contains(source[current]),
+          source[current] != "\n" {
+      current = source.index(after: current)
     }
+
+    let range = start..<current
+    let token = MarkdownToken(element: .whitespaces, text: String(source[range]), range: range)
+    context.tokens.append(token)
+    context.consuming = current
+    return true
   }
 }
