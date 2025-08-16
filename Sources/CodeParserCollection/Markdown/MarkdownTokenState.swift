@@ -11,9 +11,15 @@ public class MarkdownTokenState: CodeTokenState {
     public typealias Token = MarkdownTokenElement
 
     public var modes: [MarkdownTokenMode] // The token parsing mode stack for Markdown tokenization
+    // A mode that should be pushed after the next newline (used for fenced code blocks)
+    public var pendingMode: MarkdownTokenMode?
+    // Whether we are inside a fenced code block
+    public var inFencedCodeBlock: Bool
 
     public init() {
         self.modes = [.normal]
+        self.pendingMode = nil
+        self.inFencedCodeBlock = false
     }
 }
 
