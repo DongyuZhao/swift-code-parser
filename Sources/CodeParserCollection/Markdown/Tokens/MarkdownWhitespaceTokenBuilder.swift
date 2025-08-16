@@ -28,6 +28,16 @@ public class MarkdownWhitespaceTokenBuilder: CodeTokenBuilder {
     let token = MarkdownToken(element: .whitespaces, text: String(source[range]), range: range)
     context.tokens.append(token)
     context.consuming = current
+
+    if let state = context.state as? MarkdownTokenState {
+      let length = source.distance(from: start, to: current)
+      let atLineStart = context.tokens.dropLast().last?.element == .newline || context.tokens.count == 1
+      if atLineStart && length >= 4 && state.modes.top != .code {
+        state.modes.push(.code)
+        state.inFencedCodeBlock = false
+      }
+    }
+
     return true
   }
 }

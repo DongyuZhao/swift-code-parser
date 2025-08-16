@@ -31,33 +31,49 @@ public class MarkdownCharactersTokenBuilder: CodeTokenBuilder {
     while current < source.endIndex {
       let char = source[current]
 
-      if char == "\\" && !inSpecialMode {
-        // Handle backslash escapes
+      if char == "\\" {
         let nextIndex = source.index(after: current)
 
-        if nextIndex >= source.endIndex {
-          // Trailing backslash at EOF -> treat as literal
-          resultText.append("\\")
-          current = nextIndex
-          break
-        }
+        if !inSpecialMode {
+          if nextIndex < source.endIndex && source[nextIndex] == "\n" {
+            // Backslash followed by newline -> line break, consume backslash only
+            current = nextIndex
+            break
+          }
 
-        let nextChar = source[nextIndex]
+          if nextIndex >= source.endIndex {
+            resultText.append("\\")
+            current = nextIndex
+            break
+          }
 
-        if MarkdownPunctuationCharacter.characters.contains(nextChar) {
-          // Escape for ASCII punctuation: drop backslash and keep the punctuation
-          resultText.append(nextChar)
-          current = source.index(after: nextIndex)
+          let nextChar = source[nextIndex]
+          if MarkdownPunctuationCharacter.characters.contains(nextChar) {
+            resultText.append(nextChar)
+            current = source.index(after: nextIndex)
+          } else {
+            resultText.append("\\")
+            current = nextIndex
+          }
         } else {
-          // Backslash + non-punctuation (including newline): keep backslash literally
+          if nextIndex >= source.endIndex {
+            resultText.append("\\")
+            current = nextIndex
+            break
+          }
+          let nextChar = source[nextIndex]
           resultText.append("\\")
-          current = nextIndex
+          if MarkdownPunctuationCharacter.characters.contains(nextChar) {
+            resultText.append(nextChar)
+            current = source.index(after: nextIndex)
+          } else {
+            current = nextIndex
+          }
+          continue
         }
       } else {
-        // Regular character handling
         if MarkdownWhitespaceCharacter.characters.contains(char) ||
            MarkdownPunctuationCharacter.characters.contains(char) {
-          // Stop at boundary character
           break
         }
 
