@@ -4,7 +4,7 @@ import Testing
 @testable import CodeParserCollection
 @testable import CodeParserCore
 
-@Suite("CommonMark - Paragraphs (Strict)")
+@Suite("CommonMark - Paragraphs")
 struct MarkdownParagraphsTests {
   private let h = MarkdownTestHarness()
   // Uses shared childrenTypes/sig helpers from TestUtils

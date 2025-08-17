@@ -4,12 +4,12 @@ import Testing
 @testable import CodeParserCollection
 @testable import CodeParserCore
 
-@Suite("CommonMark - Strikethrough (GFM)")
+@Suite("GFM - Strikethrough Extension")
 struct MarkdownStrikesTests {
   private let h = MarkdownTestHarness()
 
-  // 491
-  @Test("Spec 491: ~~Hi~~ Hello, world! -> strike + text")
+  // Example 491: Basic strikethrough with tildes (GFM Extension)
+  @Test("Example 491: ~~Hi~~ Hello, world! - strikethrough text")
   func spec491() {
     let input = "~~Hi~~ Hello, world!\n"
     let r = h.parser.parse(input, language: h.language)
@@ -31,8 +31,8 @@ struct MarkdownStrikesTests {
     #expect(sig(r.root) == "document[paragraph[strike[text(\"Hi\")],text(\" Hello, world!\")]]")
   }
 
-  // 492
-  @Test("Spec 492: Unmatched across paragraph breaks -> literal tildes")
+  // Example 492: Strikethrough cannot span paragraphs (GFM Extension)
+  @Test("Example 492: ~~text across\n\nparagraphs~~ - no strikethrough across paragraphs")
   func spec492() {
     let input = "This ~~has a\n\nnew paragraph~~.\n"
     let r = h.parser.parse(input, language: h.language)

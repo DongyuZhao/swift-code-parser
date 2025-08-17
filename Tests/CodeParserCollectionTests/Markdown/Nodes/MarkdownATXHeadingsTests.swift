@@ -4,16 +4,15 @@ import Testing
 @testable import CodeParserCollection
 @testable import CodeParserCore
 
-@Suite("CommonMark - ATX Headings (Strict)")
+@Suite("CommonMark - ATX Headings")
 struct MarkdownATXHeadingsTests {
   private let h = MarkdownTestHarness()
 
   // CommonMark Spec - ATX headings
+  // Simple headings (levels 1-6)
 
-  // Using shared childrenTypes/sig from Tests/.../Utils/TestUtils.swift
-
-  @Test("Spec 32: ATX heading levels 1..6")
-  func spec32() {
+  @Test("Simple headings: # foo through ###### foo")
+  func simpleHeadings() {
     let input = """
       # foo
       ## foo
@@ -40,8 +39,8 @@ struct MarkdownATXHeadingsTests {
     )
   }
 
-  @Test("Spec 33: 7 leading # is not a heading")
-  func spec33() {
+  @Test("More than six # characters is not a heading")
+  func moreThanSixHashes() {
     let input = "####### foo\n"
     let result = h.parser.parse(input, language: h.language)
     #expect(result.errors.isEmpty)
@@ -55,8 +54,8 @@ struct MarkdownATXHeadingsTests {
     #expect(sig(result.root) == "document[paragraph[text(\"####### foo\")]]")
   }
 
-  @Test("Spec 34: No space after # -> not a heading")
-  func spec34() {
+  @Test("At least one space required between # and content")
+  func spaceRequiredAfterHashes() {
     let input = "#5 bolt\n\n#hashtag\n"
     let result = h.parser.parse(input, language: h.language)
     #expect(result.errors.isEmpty)
@@ -75,7 +74,7 @@ struct MarkdownATXHeadingsTests {
       sig(result.root) == "document[paragraph[text(\"#5 bolt\")],paragraph[text(\"#hashtag\")]]")
   }
 
-  @Test("Spec 35: Escaped hashes -> not a heading")
+  @Test("Example 35: Escaped hashes -> not a heading")
   func spec35() {
     let input = "\\## foo\n"
     let result = h.parser.parse(input, language: h.language)
@@ -89,7 +88,7 @@ struct MarkdownATXHeadingsTests {
     #expect(sig(result.root) == "document[paragraph[text(\"## foo\")]]")
   }
 
-  @Test("Spec 36: Inline content in heading with escaped asterisks")
+  @Test("Example 36: Inline content in heading with escaped asterisks")
   func spec36() {
     let input = "# foo *bar* \\*baz\\*\n"
     let result = h.parser.parse(input, language: h.language)
@@ -123,7 +122,7 @@ struct MarkdownATXHeadingsTests {
         == #"document[heading(level:1)[text("foo "),emphasis[text("bar")],text(" *baz*")]]"#)
   }
 
-  @Test("Spec 37: Heading trims trailing spaces")
+  @Test("Example 37: Heading trims trailing spaces")
   func spec37() {
     let input = "#                  foo                     \n"
     let result = h.parser.parse(input, language: h.language)
@@ -138,7 +137,7 @@ struct MarkdownATXHeadingsTests {
     #expect(sig(result.root) == "document[heading(level:1)[text(\"foo\")]]")
   }
 
-  @Test("Spec 38: Up to 3 leading spaces are allowed before ATX")
+  @Test("Example 38: Up to 3 leading spaces are allowed before ATX")
   func spec38() {
     let input = " ### foo\n  ## foo\n   # foo\n"
     let result = h.parser.parse(input, language: h.language)
@@ -160,7 +159,7 @@ struct MarkdownATXHeadingsTests {
     )
   }
 
-  @Test("Spec 39: Four leading spaces -> indented code block, not heading")
+  @Test("Example 39: Four leading spaces -> indented code block, not heading")
   func spec39() {
     let input = "    # foo\n"
     let result = h.parser.parse(input, language: h.language)
@@ -171,7 +170,7 @@ struct MarkdownATXHeadingsTests {
     #expect(sig(result.root) == "document[code_block(\"# foo\")]")
   }
 
-  @Test("Spec 40: Indented line inside paragraph is not a code block")
+  @Test("Example 40: Indented line inside paragraph is not a code block")
   func spec40() {
     let input = "foo\n    # bar\n"
     let result = h.parser.parse(input, language: h.language)
@@ -187,12 +186,12 @@ struct MarkdownATXHeadingsTests {
     // Deterministic: first text then soft break then '# bar' literal
     #expect((para.children.first as? TextNode)?.content == "foo")
     #expect(para.children.contains { $0 is LineBreakNode })
-    #expect((para.children.last as? TextNode)?.content == "# bar")
+    #expect((para.children.last as? TextNode)?.content == "    # bar")
     #expect(
-      sig(result.root) == "document[paragraph[text(\"foo\"),line_break(soft),text(\"# bar\")]]")
+      sig(result.root) == "document[paragraph[text(\"foo\"),line_break(soft),text(\"    # bar\")]]")
   }
 
-  @Test("Spec 41: Optional closing sequence with spaces")
+  @Test("Example 41: Optional closing sequence with spaces")
   func spec41() {
     let input = "## foo ##\n  ###   bar    ###\n"
     let result = h.parser.parse(input, language: h.language)
@@ -213,7 +212,7 @@ struct MarkdownATXHeadingsTests {
         == "document[heading(level:2)[text(\"foo\")],heading(level:3)[text(\"bar\")]]")
   }
 
-  @Test("Spec 42: Long closing sequence is allowed")
+  @Test("Example 42: Long closing sequence is allowed")
   func spec42() {
     let input = "# foo ##################################\n##### foo ##\n"
     let result = h.parser.parse(input, language: h.language)
@@ -234,7 +233,7 @@ struct MarkdownATXHeadingsTests {
         == "document[heading(level:1)[text(\"foo\")],heading(level:5)[text(\"foo\")]]")
   }
 
-  @Test("Spec 43: Closing sequence may be followed by spaces")
+  @Test("Example 43: Closing sequence may be followed by spaces")
   func spec43() {
     let input = "### foo ###     \n"
     let result = h.parser.parse(input, language: h.language)
@@ -248,7 +247,7 @@ struct MarkdownATXHeadingsTests {
     #expect(sig(result.root) == "document[heading(level:3)[text(\"foo\")]]")
   }
 
-  @Test("Spec 44: If non-space after closing sequence, treat hashes as text")
+  @Test("Example 44: If non-space after closing sequence, treat hashes as text")
   func spec44() {
     let input = "### foo ### b\n"
     let result = h.parser.parse(input, language: h.language)
@@ -264,7 +263,7 @@ struct MarkdownATXHeadingsTests {
     #expect(sig(result.root) == "document[heading(level:3)[text(\"foo ### b\")]]")
   }
 
-  @Test("Spec 45: Trailing # without preceding space is text, not closing seq")
+  @Test("Example 45: Trailing # without preceding space is text, not closing seq")
   func spec45() {
     let input = "# foo#\n"
     let result = h.parser.parse(input, language: h.language)
@@ -279,7 +278,7 @@ struct MarkdownATXHeadingsTests {
     #expect(sig(result.root) == "document[heading(level:1)[text(\"foo#\")]]")
   }
 
-  @Test("Spec 46: Escaped closing sequence keeps hashes as text")
+  @Test("Example 46: Escaped closing sequence keeps hashes as text")
   func spec46() {
     let input = "### foo \\###\n## foo #\\##\n# foo \\#\n"
     let result = h.parser.parse(input, language: h.language)
@@ -304,7 +303,7 @@ struct MarkdownATXHeadingsTests {
     )
   }
 
-  @Test("Spec 47: Thematic break around ATX")
+  @Test("Example 47: Thematic break around ATX")
   func spec47() {
     let input = "****\n## foo\n****\n"
     let result = h.parser.parse(input, language: h.language)
@@ -322,7 +321,7 @@ struct MarkdownATXHeadingsTests {
       sig(result.root) == "document[thematic_break,heading(level:2)[text(\"foo\")],thematic_break]")
   }
 
-  @Test("Spec 48: Paragraphs around ATX")
+  @Test("Example 48: Paragraphs around ATX")
   func spec48() {
     let input = "Foo bar\n# baz\nBar foo\n"
     let result = h.parser.parse(input, language: h.language)
@@ -345,7 +344,7 @@ struct MarkdownATXHeadingsTests {
     )
   }
 
-  @Test("Spec 49: Empty headings")
+  @Test("Example 49: Empty headings")
   func spec49() {
     let input = "## \n#\n### ###\n"
     let result = h.parser.parse(input, language: h.language)

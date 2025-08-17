@@ -4,7 +4,7 @@ import Testing
 @testable import CodeParserCollection
 @testable import CodeParserCore
 
-@Suite("CommonMark - Code Spans (Strict)")
+@Suite("CommonMark - Code Spans")
 struct MarkdownCodeSpansTests {
   private let h = MarkdownTestHarness()
 

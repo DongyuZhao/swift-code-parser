@@ -359,4 +359,62 @@ struct MarkdownTokenEscapeTests {
       #expect(result.tokens[i].text == txt)
     }
   }
+
+  // Additional test for autolink mode backslash behavior
+  @Test("Autolink mode - Backslash before > should not escape the > but preserve the backslash")
+  func autolinkBackslashBehavior() async throws {
+    let input = "<http://example.com/path\\>\n"
+    let result = h.parser.parse(input, language: h.language)
+
+    let expected: [(MarkdownTokenElement, String)] = [
+      (.punctuation, "<"),
+      (.characters, "http"),
+      (.punctuation, ":"),
+      (.punctuation, "/"),
+      (.punctuation, "/"),
+      (.characters, "example"),
+      (.punctuation, "."),
+      (.characters, "com"),
+      (.punctuation, "/"),
+      (.characters, "path\\"),  // Backslash is preserved literally
+      (.punctuation, ">"),      // > ends the autolink mode, not escaped
+      (.newline, "\n"),
+      (.eof, ""),
+    ]
+    #expect(result.tokens.count == expected.count)
+    for (i, (el, txt)) in expected.enumerated() {
+      #expect(result.tokens[i].element == el, "Token \(i): expected \(el), got \(result.tokens[i].element)")
+      #expect(result.tokens[i].text == txt, "Token \(i): expected '\(txt)', got '\(result.tokens[i].text)'")
+    }
+  }
+
+  // Additional test for autolink mode - other escaped characters behavior
+  @Test("Autolink mode - Other backslash escapes should be preserved literally")
+  func autolinkOtherEscapesBehavior() async throws {
+    let input = "<http://example.com?q=\\*test\\&value>\n"
+    let result = h.parser.parse(input, language: h.language)
+
+    let expected: [(MarkdownTokenElement, String)] = [
+      (.punctuation, "<"),
+      (.characters, "http"),
+      (.punctuation, ":"),
+      (.punctuation, "/"),
+      (.punctuation, "/"),
+      (.characters, "example"),
+      (.punctuation, "."),
+      (.characters, "com"),
+      (.punctuation, "?"),
+      (.characters, "q"),
+      (.punctuation, "="),
+      (.characters, "\\*test\\&value"),  // All backslashes and content preserved literally
+      (.punctuation, ">"),
+      (.newline, "\n"),
+      (.eof, ""),
+    ]
+    #expect(result.tokens.count == expected.count)
+    for (i, (el, txt)) in expected.enumerated() {
+      #expect(result.tokens[i].element == el, "Token \(i): expected \(el), got \(result.tokens[i].element)")
+      #expect(result.tokens[i].text == txt, "Token \(i): expected '\(txt)', got '\(result.tokens[i].text)'")
+    }
+  }
 }

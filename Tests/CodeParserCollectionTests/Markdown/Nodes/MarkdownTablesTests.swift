@@ -4,7 +4,7 @@ import Testing
 @testable import CodeParserCollection
 @testable import CodeParserCore
 
-@Suite("CommonMark - Tables (GFM)")
+@Suite("GFM - Tables Extension")
 struct MarkdownTablesTests {
   private let h = MarkdownTestHarness()
 

@@ -62,6 +62,16 @@ public class MarkdownCharactersTokenBuilder: CodeTokenBuilder {
             break
           }
           let nextChar = source[nextIndex]
+
+          // In autolink mode, '>' should end the token even if escaped
+          if let state = context.state as? MarkdownTokenState,
+             state.modes.top == .autolink && nextChar == ">" {
+            resultText.append("\\")
+            current = nextIndex
+            break
+          }
+
+          // In autolink mode, backslashes are preserved literally
           resultText.append("\\")
           if MarkdownPunctuationCharacter.characters.contains(nextChar) {
             resultText.append(nextChar)

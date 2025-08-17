@@ -4,7 +4,7 @@ import Testing
 @testable import CodeParserCollection
 @testable import CodeParserCore
 
-@Suite("CommonMark - Autolinks (Strict)")
+@Suite("GFM - Autolinks (includes GFM extensions)")
 struct MarkdownAutolinksTests {
   private let h = MarkdownTestHarness()
 
@@ -352,8 +352,8 @@ struct MarkdownAutolinksTests {
       Issue.record("Expected TextNode")
       return
     }
-    #expect(t.content == "<foo+@bar.example.com>")
-    #expect(sig(result.root) == "document[paragraph[text(\"<foo+@bar.example.com>\")]]")
+    #expect(t.content == "<foo\\+@bar.example.com>")
+    #expect(sig(result.root) == "document[paragraph[text(\"<foo\\+@bar.example.com>\")]]")
   }
 
   // 615
@@ -433,7 +433,7 @@ struct MarkdownAutolinksTests {
   }
 
   // 619
-  @Test("Spec 619: Bare URL is not an autolink")
+  @Test("Spec 619: Bare domain name without subdomain is not an autolink")
   func spec619() {
     let input = "https://example.com\n"
     let result = h.parser.parse(input, language: h.language)
@@ -442,17 +442,23 @@ struct MarkdownAutolinksTests {
       Issue.record("Expected ParagraphNode")
       return
     }
-    #expect(childrenTypes(p) == [.text])
-    guard let t = p.children.first as? TextNode else {
-      Issue.record("Expected TextNode")
+    #expect(childrenTypes(p) == [.link])
+    guard let link = p.children.first as? LinkNode else {
+      Issue.record("Expected LinkNode")
       return
     }
-    #expect(t.content == "https://example.com")
-    #expect(sig(result.root) == "document[paragraph[text(\"https://example.com\")]]")
+    #expect(link.url == "https://example.com")
+    #expect(link.title.isEmpty)
+    guard let lt = link.children.first as? TextNode else {
+      Issue.record("Expected link text node")
+      return
+    }
+    #expect(lt.content == "https://example.com")
+    #expect(sig(result.root) == "document[paragraph[link(url:\"https://example.com\",title:\"\")[text(\"https://example.com\")]]]")
   }
 
   // 620
-  @Test("Spec 620: Bare email is not an autolink")
+  @Test("Spec 620: Bare email autolinks")
   func spec620() {
     let input = "foo@bar.example.com\n"
     let result = h.parser.parse(input, language: h.language)
@@ -461,13 +467,19 @@ struct MarkdownAutolinksTests {
       Issue.record("Expected ParagraphNode")
       return
     }
-    #expect(childrenTypes(p) == [.text])
-    guard let t = p.children.first as? TextNode else {
-      Issue.record("Expected TextNode")
+    #expect(childrenTypes(p) == [.link])
+    guard let link = p.children.first as? LinkNode else {
+      Issue.record("Expected LinkNode")
       return
     }
-    #expect(t.content == "foo@bar.example.com")
-    #expect(sig(result.root) == "document[paragraph[text(\"foo@bar.example.com\")]]")
+    #expect(link.url == "mailto:foo@bar.example.com")
+    #expect(link.title.isEmpty)
+    guard let lt = link.children.first as? TextNode else {
+      Issue.record("Expected link text node")
+      return
+    }
+    #expect(lt.content == "foo@bar.example.com")
+    #expect(sig(result.root) == "document[paragraph[link(url:\"mailto:foo@bar.example.com\",title:\"\")[text(\"foo@bar.example.com\")]]]")
   }
 
   // 621
@@ -579,14 +591,14 @@ struct MarkdownAutolinksTests {
           (l.children.first as? TextNode)?.content == "www.google.com/search?q=Markup+(business)")
       }
     }
-    // P2: link then "))"
+    // P2: link then ")"
     if let p2 = r.root.children[1] as? ParagraphNode {
       #expect(childrenTypes(p2) == [.link, .text])
       if let l = p2.children.first as? LinkNode, let t = p2.children.last as? TextNode {
         #expect(l.url == "http://www.google.com/search?q=Markup+(business)")
         #expect(
           (l.children.first as? TextNode)?.content == "www.google.com/search?q=Markup+(business)")
-        #expect(t.content == "))")
+        #expect(t.content == ")")
       }
     }
     // P3: "(" then link then ")"
@@ -615,7 +627,7 @@ struct MarkdownAutolinksTests {
     }
     #expect(
       sig(r.root)
-        == "document[paragraph[link(url:\"http://www.google.com/search?q=Markup+(business)\",title:\"\")[text(\"www.google.com/search?q=Markup+(business)\")]],paragraph[link(url:\"http://www.google.com/search?q=Markup+(business)\",title:\"\")[text(\"www.google.com/search?q=Markup+(business)\")],text(\"))\")],paragraph[text(\"(\"),link(url:\"http://www.google.com/search?q=Markup+(business)\",title:\"\")[text(\"www.google.com/search?q=Markup+(business)\")],text(\")\")],paragraph[text(\"(\"),link(url:\"http://www.google.com/search?q=Markup+(business)\",title:\"\")[text(\"www.google.com/search?q=Markup+(business)\")]]]"
+        == "document[paragraph[link(url:\"http://www.google.com/search?q=Markup+(business)\",title:\"\")[text(\"www.google.com/search?q=Markup+(business)\")]],paragraph[link(url:\"http://www.google.com/search?q=Markup+(business)\",title:\"\")[text(\"www.google.com/search?q=Markup+(business)\")],text(\")\")],paragraph[text(\"(\"),link(url:\"http://www.google.com/search?q=Markup+(business)\",title:\"\")[text(\"www.google.com/search?q=Markup+(business)\")],text(\")\")],paragraph[text(\"(\"),link(url:\"http://www.google.com/search?q=Markup+(business)\",title:\"\")[text(\"www.google.com/search?q=Markup+(business)\")]]]"
     )
   }
 

@@ -4,7 +4,7 @@ import Testing
 @testable import CodeParserCollection
 @testable import CodeParserCore
 
-@Suite("CommonMark - Link Reference Definitions (Strict)")
+@Suite("CommonMark - Link Reference Definitions")
 struct MarkdownLinkReferencesBlocksTests {
   private let h = MarkdownTestHarness()
 

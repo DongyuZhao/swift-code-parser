@@ -4,7 +4,7 @@ import Testing
 @testable import CodeParserCollection
 @testable import CodeParserCore
 
-@Suite("CommonMark - Line Breaks (Strict)")
+@Suite("CommonMark - Line Breaks")
 struct MarkdownLineBreaksTests {
   private let h = MarkdownTestHarness()
 

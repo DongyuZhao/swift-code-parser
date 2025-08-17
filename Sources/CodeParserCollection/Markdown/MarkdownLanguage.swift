@@ -32,6 +32,7 @@ public class MarkdownLanguage: CodeLanguage {
     self.tokens = [
       MarkdownNewlineTokenBuilder(),
       MarkdownWhitespaceTokenBuilder(),
+      MarkdownEntitiesTokenBuilder(),
       MarkdownCharactersTokenBuilder(),
       MarkdownPunctuationTokenBuilder()
     ]

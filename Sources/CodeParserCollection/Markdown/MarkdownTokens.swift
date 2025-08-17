@@ -8,6 +8,7 @@ public enum MarkdownTokenElement: String, CaseIterable, CodeTokenElement {
   case hardbreak = "hardbreak" // A hard break, which is a line ending that will start a new line.
   case whitespaces = "whitespaces" // A sequence of whitespace characters except for new lines.
   case punctuation = "punctuation" // A character that belongs to punctuations
+  case charref = "charref" // A sequence of characters that represents an HTML entity reference
   case eof = "eof" // The end of file
 }
 

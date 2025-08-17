@@ -4,7 +4,7 @@ import Testing
 @testable import CodeParserCollection
 @testable import CodeParserCore
 
-@Suite("CommonMark - Raw HTML (Strict)")
+@Suite("CommonMark - Raw HTML")
 struct MarkdownRawHTMLTests {
   private let h = MarkdownTestHarness()
   // Helpers moved to shared TestUtils: childrenTypes, sig

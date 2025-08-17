@@ -28,8 +28,9 @@ let package = Package(
             name: "CodeParserCore",
             dependencies: []
         ),
-        .target(name: "CodeParserCollection",
-            dependencies: ["CodeParserCore"]
+        .target(
+            name: "CodeParserCollection",
+            dependencies: ["CodeParserCore"],
         ),
         .executableTarget(
             name: "CodeParserShowCase",

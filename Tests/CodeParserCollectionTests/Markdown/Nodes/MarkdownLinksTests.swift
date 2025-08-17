@@ -4,7 +4,7 @@ import Testing
 @testable import CodeParserCollection
 @testable import CodeParserCore
 
-@Suite("CommonMark - Links (Strict)")
+@Suite("CommonMark - Links")
 struct MarkdownLinksTests {
   private let h = MarkdownTestHarness()
   // childrenTypes/sig moved to shared TestUtils
@@ -15,7 +15,7 @@ struct MarkdownLinksTests {
   }
 
   // 493
-  @Test("Spec 493: [link](/uri \"title\")")
+  @Test("Example 493: [link](/uri \"title\")")
   func spec493() {
     let input = "[link](/uri \"title\")\n"
     let result = h.parser.parse(input, language: h.language)
@@ -37,7 +37,7 @@ struct MarkdownLinksTests {
   }
 
   // 494
-  @Test("Spec 494: [link](/uri)")
+  @Test("Example 494: [link](/uri)")
   func spec494() {
     let input = "[link](/uri)\n"
     let result = h.parser.parse(input, language: h.language)
@@ -79,7 +79,7 @@ struct MarkdownLinksTests {
   }
 
   // 495
-  @Test("Spec 495: [link]()")
+  @Test("Example 495: [link]()")
   func spec495() {
     let input = "[link]()\n"
     let result = h.parser.parse(input, language: h.language)
@@ -100,7 +100,7 @@ struct MarkdownLinksTests {
   }
 
   // 496
-  @Test("Spec 496: [link](<>)")
+  @Test("Example 496: [link](<>)")
   func spec496() {
     let input = "[link](<>)\n"
     let result = h.parser.parse(input, language: h.language)
@@ -141,7 +141,7 @@ struct MarkdownLinksTests {
   }
 
   // 497
-  @Test("Spec 497: [link](/my uri) is literal text")
+  @Test("Example 497: [link](/my uri) is literal text")
   func spec497() {
     let input = "[link](/my uri)\n"
     let result = h.parser.parse(input, language: h.language)
@@ -156,7 +156,7 @@ struct MarkdownLinksTests {
   }
 
   // 498
-  @Test("Spec 498: [link](</my uri>) with spaces in angle brackets")
+  @Test("Example 498: [link](</my uri>) with spaces in angle brackets")
   func spec498() {
     let input = "[link](</my uri>)\n"
     let result = h.parser.parse(input, language: h.language)
@@ -178,7 +178,7 @@ struct MarkdownLinksTests {
   }
 
   // 499
-  @Test("Spec 499: newline in destination -> literal")
+  @Test("Example 499: newline in destination -> literal")
   func spec499() {
     let input = "[link](foo\nbar)\n"
     let result = h.parser.parse(input, language: h.language)
@@ -192,7 +192,7 @@ struct MarkdownLinksTests {
   }
 
   // 500
-  @Test("Spec 500: newline in angle-bracket destination -> literal")
+  @Test("Example 500: newline in angle-bracket destination -> literal")
   func spec500() {
     let input = "[link](<foo\nbar>)\n"
     let result = h.parser.parse(input, language: h.language)
@@ -206,7 +206,7 @@ struct MarkdownLinksTests {
   }
 
   // 501
-  @Test("Spec 501: [a](<b)c>) -> href 'b)c'")
+  @Test("Example 501: [a](<b)c>) -> href 'b)c'")
   func spec501() {
     let input = "[a](<b)c>)\n"
     let result = h.parser.parse(input, language: h.language)
@@ -225,7 +225,7 @@ struct MarkdownLinksTests {
   }
 
   // 502
-  @Test("Spec 502: [link](<foo\\>) is literal")
+  @Test("Example 502: [link](<foo\\>) is literal")
   func spec502() {
     let input = "[link](<foo\\>)\n"
     let result = h.parser.parse(input, language: h.language)
@@ -239,7 +239,7 @@ struct MarkdownLinksTests {
   }
 
   // 503
-  @Test("Spec 503: mixed cases remain literal")
+  @Test("Example 503: mixed cases remain literal")
   func spec503() {
     let input = "[a](<b)c\n[a](<b)c>\n[a](<b>c)\n"
     let result = h.parser.parse(input, language: h.language)
@@ -253,7 +253,7 @@ struct MarkdownLinksTests {
   }
 
   // 504
-  @Test("Spec 504: escaped parens in destination")
+  @Test("Example 504: escaped parens in destination")
   func spec504() {
     let input = "[link](\\(foo\\))\n"
     let result = h.parser.parse(input, language: h.language)
@@ -274,7 +274,7 @@ struct MarkdownLinksTests {
   }
 
   // 505
-  @Test("Spec 505: nested parens in destination")
+  @Test("Example 505: nested parens in destination")
   func spec505() {
     let input = "[link](foo(and(bar)))\n"
     let result = h.parser.parse(input, language: h.language)
@@ -310,7 +310,7 @@ struct MarkdownLinksTests {
   }
 
   // 506
-  @Test("Spec 506: escapes inside destination")
+  @Test("Example 506: escapes inside destination")
   func spec506() {
     let input = "[link](foo\\(and\\(bar\\))\n"
     let result = h.parser.parse(input, language: h.language)
@@ -325,7 +325,7 @@ struct MarkdownLinksTests {
   }
 
   // 507
-  @Test("Spec 507: angle-bracket destination with parens")
+  @Test("Example 507: angle-bracket destination with parens")
   func spec507() {
     let input = "[link](<foo(and(bar)>)\n"
     let result = h.parser.parse(input, language: h.language)
@@ -347,7 +347,7 @@ struct MarkdownLinksTests {
   }
 
   // 508
-  @Test("Spec 508: escaped ) and : in destination")
+  @Test("Example 508: escaped ) and : in destination")
   func spec508() {
     let input = "[link](foo\\)\\:)\n"
     let result = h.parser.parse(input, language: h.language)
@@ -366,7 +366,7 @@ struct MarkdownLinksTests {
   }
 
   // 509
-  @Test("Spec 509: fragments and query+fragment")
+  @Test("Example 509: fragments and query+fragment")
   func spec509() {
     let input =
       "[link](#fragment)\n\n[link](https://example.com#fragment)\n\n[link](https://example.com?foo=3#frag)\n"
@@ -384,7 +384,7 @@ struct MarkdownLinksTests {
   }
 
   // 510
-  @Test("Spec 510: backslash in destination percent-encoded")
+  @Test("Example 510: backslash in destination percent-encoded")
   func spec510() {
     let input = "[link](foo\\bar)\n"
     let result = h.parser.parse(input, language: h.language)
@@ -397,7 +397,7 @@ struct MarkdownLinksTests {
   }
 
   // 511
-  @Test("Spec 511: entity decoded to UTF-8 then percent-encoded")
+  @Test("Example 511: entity decoded to UTF-8 then percent-encoded")
   func spec511() {
     let input = "[link](foo%20b&auml;)\n"
     let result = h.parser.parse(input, language: h.language)
@@ -415,7 +415,7 @@ struct MarkdownLinksTests {
   }
 
   // 512
-  @Test("Spec 512: title as destination -> becomes URL")
+  @Test("Example 512: title as destination -> becomes URL")
   func spec512() {
     let input = "[link](\"title\")\n"
     let result = h.parser.parse(input, language: h.language)
@@ -434,7 +434,7 @@ struct MarkdownLinksTests {
   }
 
   // 513
-  @Test("Spec 513: three title delimiter styles")
+  @Test("Example 513: three title delimiter styles")
   func spec513() {
     let input = "[link](/url \"title\")\n[link](/url 'title')\n[link](/url (title))\n"
     let result = h.parser.parse(input, language: h.language)
@@ -449,7 +449,7 @@ struct MarkdownLinksTests {
   }
 
   // 514
-  @Test("Spec 514: quotes inside title")
+  @Test("Example 514: quotes inside title")
   func spec514() {
     let input = "[link](/url \"title \\\"&quot;\\\")\n"
     let result = h.parser.parse(input, language: h.language)
@@ -465,7 +465,7 @@ struct MarkdownLinksTests {
   }
 
   // 515
-  @Test("Spec 515: NBSP not treated as space before title => goes to URL")
+  @Test("Example 515: NBSP not treated as space before title => goes to URL")
   func spec515() {
     let input = "[link](/url\u{00A0}\"title\")\n"  // NBSP U+00A0 between URL and title
     let expectedURL = "/url%C2%A0%22title%22"
@@ -482,7 +482,7 @@ struct MarkdownLinksTests {
   }
 
   // 516
-  @Test("Spec 516: invalid quoted title -> literal")
+  @Test("Example 516: invalid quoted title -> literal")
   func spec516() {
     let input = "[link](/url \"title \"and\" title\")\n"
     let result = h.parser.parse(input, language: h.language)
@@ -491,7 +491,7 @@ struct MarkdownLinksTests {
   }
 
   // 517
-  @Test("Spec 517: single-quoted title with embedded double quotes")
+  @Test("Example 517: single-quoted title with embedded double quotes")
   func spec517() {
     let input = "[link](/url 'title \"and\" title')\n"
     let result = h.parser.parse(input, language: h.language)
@@ -507,7 +507,7 @@ struct MarkdownLinksTests {
   }
 
   // 518
-  @Test("Spec 518: destination on next line, then title")
+  @Test("Example 518: destination on next line, then title")
   func spec518() {
     let input = "[link](   /uri\n  \"title\"  )\n"
     let result = h.parser.parse(input, language: h.language)
@@ -524,7 +524,7 @@ struct MarkdownLinksTests {
   }
 
   // 519
-  @Test("Spec 519: space between label and ( makes literal")
+  @Test("Example 519: space between label and ( makes literal")
   func spec519() {
     let input = "[link] (/uri)\n"
     let result = h.parser.parse(input, language: h.language)
@@ -538,7 +538,7 @@ struct MarkdownLinksTests {
   }
 
   // 520
-  @Test("Spec 520: nested brackets in label allowed")
+  @Test("Example 520: nested brackets in label allowed")
   func spec520() {
     let input = "[link [foo [bar]]](/uri)\n"
     let r = h.parser.parse(input, language: h.language)
@@ -559,7 +559,7 @@ struct MarkdownLinksTests {
   }
 
   // 521
-  @Test("Spec 521: stray ] in label makes literal")
+  @Test("Example 521: stray ] in label makes literal")
   func spec521() {
     let input = "[link] bar](/uri)\n"
     let r = h.parser.parse(input, language: h.language)
@@ -573,7 +573,7 @@ struct MarkdownLinksTests {
   }
 
   // 522
-  @Test("Spec 522: inner autolink link remains; outer literal")
+  @Test("Example 522: inner autolink link remains; outer literal")
   func spec522() {
     let input = "[link [bar](/uri)\n"
     let r = h.parser.parse(input, language: h.language)
@@ -585,7 +585,7 @@ struct MarkdownLinksTests {
   }
 
   // 523
-  @Test("Spec 523: escaped [ inside label")
+  @Test("Example 523: escaped [ inside label")
   func spec523() {
     let input = "[link \\[[bar](/uri)\n"
     let r = h.parser.parse(input, language: h.language)
@@ -599,7 +599,7 @@ struct MarkdownLinksTests {
   }
 
   // 524
-  @Test("Spec 524: strong/emphasis/code inside label")
+  @Test("Example 524: strong/emphasis/code inside label")
   func spec524() {
     let input = "[link *foo **bar** `#`*](/uri)\n"
     let r = h.parser.parse(input, language: h.language)
@@ -625,7 +625,7 @@ struct MarkdownLinksTests {
   }
 
   // 525
-  @Test("Spec 525: image inside link")
+  @Test("Example 525: image inside link")
   func spec525() {
     let input = "[![moon](moon.jpg)](/uri)\n"
     let r = h.parser.parse(input, language: h.language)
@@ -646,7 +646,7 @@ struct MarkdownLinksTests {
   }
 
   // 526
-  @Test("Spec 526: nested link invalid -> inner only")
+  @Test("Example 526: nested link invalid -> inner only")
   func spec526() {
     let input = "[foo [bar](/uri)](/uri)\n"
     let r = h.parser.parse(input, language: h.language)
@@ -661,7 +661,7 @@ struct MarkdownLinksTests {
   }
 
   // 527
-  @Test("Spec 527: nested link invalid inside emphasis -> inner only")
+  @Test("Example 527: nested link invalid inside emphasis -> inner only")
   func spec527() {
     let input = "[foo *[bar [baz](/uri)](/uri)*](/uri)\n"
     let r = h.parser.parse(input, language: h.language)
@@ -677,7 +677,7 @@ struct MarkdownLinksTests {
   }
 
   // 528
-  @Test("Spec 528: nested image becomes image with complex alt")
+  @Test("Example 528: nested image becomes image with complex alt")
   func spec528() {
     let input = "![[[foo](uri1)](uri2)](uri3)\n"
     let r = h.parser.parse(input, language: h.language)
@@ -691,7 +691,7 @@ struct MarkdownLinksTests {
   }
 
   // 529
-  @Test("Spec 529: leading * literal before link")
+  @Test("Example 529: leading * literal before link")
   func spec529() {
     let input = "*[foo*](/uri)\n"
     let r = h.parser.parse(input, language: h.language)
@@ -712,7 +712,7 @@ struct MarkdownLinksTests {
   }
 
   // 530
-  @Test("Spec 530: trailing * in destination stays in URL")
+  @Test("Example 530: trailing * in destination stays in URL")
   func spec530() {
     let input = "[foo *bar](baz*)\n"
     let r = h.parser.parse(input, language: h.language)
@@ -727,7 +727,7 @@ struct MarkdownLinksTests {
   }
 
   // 531
-  @Test("Spec 531: emphasis swallows opening [ -> no link")
+  @Test("Example 531: emphasis swallows opening [ -> no link")
   func spec531() {
     let input = "*foo [bar* baz]\n"
     let r = h.parser.parse(input, language: h.language)
@@ -736,7 +736,7 @@ struct MarkdownLinksTests {
   }
 
   // 532
-  @Test("Spec 532: HTML-like label makes literal")
+  @Test("Example 532: HTML-like label makes literal")
   func spec532() {
     let input = "[foo <bar attr=\"](baz)\">\n"
     let r = h.parser.parse(input, language: h.language)
@@ -750,7 +750,7 @@ struct MarkdownLinksTests {
   }
 
   // 533
-  @Test("Spec 533: code span closes before link -> no link")
+  @Test("Example 533: code span closes before link -> no link")
   func spec533() {
     let input = "[foo`](/uri)`\n"
     let r = h.parser.parse(input, language: h.language)
@@ -765,7 +765,7 @@ struct MarkdownLinksTests {
   }
 
   // 534
-  @Test("Spec 534: autolink eats following ](uri) as text")
+  @Test("Example 534: autolink eats following ](uri) as text")
   func spec534() {
     let input = "[foo<https://example.com/?search=](uri)>\n"
     let r = h.parser.parse(input, language: h.language)
@@ -786,7 +786,7 @@ struct MarkdownLinksTests {
   }
 
   // 535
-  @Test("Spec 535: reference link basic")
+  @Test("Example 535: reference link basic")
   func spec535() {
     let input = "[foo][bar]\n\n[bar]: /url \"title\"\n"
     let r = h.parser.parse(input, language: h.language)
@@ -799,7 +799,7 @@ struct MarkdownLinksTests {
   }
 
   // 536
-  @Test("Spec 536: nested brackets in ref label")
+  @Test("Example 536: nested brackets in ref label")
   func spec536() {
     let input = "[link [foo [bar]]][ref]\n\n[ref]: /uri\n"
     let r = h.parser.parse(input, language: h.language)
@@ -818,7 +818,7 @@ struct MarkdownLinksTests {
   }
 
   // 537
-  @Test("Spec 537: escaped [ in ref label")
+  @Test("Example 537: escaped [ in ref label")
   func spec537() {
     let input = "[link \\[bar][ref]\n\n[ref]: /uri\n"
     let r = h.parser.parse(input, language: h.language)
@@ -832,7 +832,7 @@ struct MarkdownLinksTests {
   }
 
   // 538
-  @Test("Spec 538: formatting inside ref link")
+  @Test("Example 538: formatting inside ref link")
   func spec538() {
     let input = "[link *foo **bar** `#`*][ref]\n\n[ref]: /uri\n"
     let r = h.parser.parse(input, language: h.language)
@@ -848,7 +848,7 @@ struct MarkdownLinksTests {
   }
 
   // 539
-  @Test("Spec 539: image inside ref link")
+  @Test("Example 539: image inside ref link")
   func spec539() {
     let input = "[![moon](moon.jpg)][ref]\n\n[ref]: /uri\n"
     let r = h.parser.parse(input, language: h.language)
@@ -865,7 +865,7 @@ struct MarkdownLinksTests {
   }
 
   // 540
-  @Test("Spec 540: inner inline link + ref link to 'ref'")
+  @Test("Example 540: inner inline link + ref link to 'ref'")
   func spec540() {
     let input = "[foo [bar](/uri)][ref]\n\n[ref]: /uri\n"
     let r = h.parser.parse(input, language: h.language)
@@ -877,7 +877,7 @@ struct MarkdownLinksTests {
   }
 
   // 541
-  @Test("Spec 541: inner inline link inside emphasis + ref link")
+  @Test("Example 541: inner inline link inside emphasis + ref link")
   func spec541() {
     let input = "[foo *bar [baz][ref]*][ref]\n\n[ref]: /uri\n"
     let r = h.parser.parse(input, language: h.language)
@@ -889,7 +889,7 @@ struct MarkdownLinksTests {
   }
 
   // 542
-  @Test("Spec 542: literal * around ref link")
+  @Test("Example 542: literal * around ref link")
   func spec542() {
     let input = "*[foo*][ref]\n\n[ref]: /uri\n"
     let r = h.parser.parse(input, language: h.language)
@@ -908,7 +908,7 @@ struct MarkdownLinksTests {
   }
 
   // 543
-  @Test("Spec 543: trailing * after ref link literal")
+  @Test("Example 543: trailing * after ref link literal")
   func spec543() {
     let input = "[foo *bar][ref]*\n\n[ref]: /uri\n"
     let r = h.parser.parse(input, language: h.language)
@@ -926,7 +926,7 @@ struct MarkdownLinksTests {
   }
 
   // 544
-  @Test("Spec 544: HTML-like label -> literal")
+  @Test("Example 544: HTML-like label -> literal")
   func spec544() {
     let input = "[foo <bar attr=\"][ref]\">\n\n[ref]: /uri\n"
     let r = h.parser.parse(input, language: h.language)
@@ -935,7 +935,7 @@ struct MarkdownLinksTests {
   }
 
   // 545
-  @Test("Spec 545: code span in label breaks ref link")
+  @Test("Example 545: code span in label breaks ref link")
   func spec545() {
     let input = "[foo`][ref]`\n\n[ref]: /uri\n"
     let r = h.parser.parse(input, language: h.language)
@@ -950,7 +950,7 @@ struct MarkdownLinksTests {
   }
 
   // 546
-  @Test("Spec 546: autolink consumes following ][ref]")
+  @Test("Example 546: autolink consumes following ][ref]")
   func spec546() {
     let input = "[foo<https://example.com/?search=][ref]>\n\n[ref]: /uri\n"
     let r = h.parser.parse(input, language: h.language)
@@ -969,7 +969,7 @@ struct MarkdownLinksTests {
   }
 
   // 547
-  @Test("Spec 547: case-insensitive reference label")
+  @Test("Example 547: case-insensitive reference label")
   func spec547() {
     let input = "[foo][BaR]\n\n[bar]: /url \"title\"\n"
     let r = h.parser.parse(input, language: h.language)
@@ -985,7 +985,7 @@ struct MarkdownLinksTests {
   }
 
   // 548
-  @Test("Spec 548: unicode case fold for label (ẞ vs SS)")
+  @Test("Example 548: unicode case fold for label (ẞ vs SS)")
   func spec548() {
     let input = "[ẞ]\n\n[SS]: /url\n"
     let r = h.parser.parse(input, language: h.language)
@@ -998,7 +998,7 @@ struct MarkdownLinksTests {
   }
 
   // 549
-  @Test("Spec 549: multi-line definition label")
+  @Test("Example 549: multi-line definition label")
   func spec549() {
     let input = "[Foo\n  bar]: /url\n\n[Baz][Foo bar]\n"
     let r = h.parser.parse(input, language: h.language)
@@ -1014,7 +1014,7 @@ struct MarkdownLinksTests {
   }
 
   // 550
-  @Test("Spec 550: space-separated [foo] [bar]")
+  @Test("Example 550: space-separated [foo] [bar]")
   func spec550() {
     let input = "[foo] [bar]\n\n[bar]: /url \"title\"\n"
     let r = h.parser.parse(input, language: h.language)
@@ -1025,7 +1025,7 @@ struct MarkdownLinksTests {
   }
 
   // 551
-  @Test("Spec 551: stacked vertically [foo]\n[bar]")
+  @Test("Example 551: stacked vertically [foo]\n[bar]")
   func spec551() {
     let input = "[foo]\n[bar]\n\n[bar]: /url \"title\"\n"
     let r = h.parser.parse(input, language: h.language)
@@ -1036,7 +1036,7 @@ struct MarkdownLinksTests {
   }
 
   // 552
-  @Test("Spec 552: first definition wins")
+  @Test("Example 552: first definition wins")
   func spec552() {
     let input = "[foo]: /url1\n\n[foo]: /url2\n\n[bar][foo]\n"
     let r = h.parser.parse(input, language: h.language)
@@ -1049,7 +1049,7 @@ struct MarkdownLinksTests {
   }
 
   // 553
-  @Test("Spec 553: escaped ! in reference label prevents match")
+  @Test("Example 553: escaped ! in reference label prevents match")
   func spec553() {
     let input = "[bar][foo\\!]\n\n[foo!]: /url\n"
     let r = h.parser.parse(input, language: h.language)
@@ -1058,7 +1058,7 @@ struct MarkdownLinksTests {
   }
 
   // 554
-  @Test("Spec 554: malformed reference definition -> literal")
+  @Test("Example 554: malformed reference definition -> literal")
   func spec554() {
     let input = "[foo][ref[]\n\n[ref[]: /uri\n"
     let r = h.parser.parse(input, language: h.language)
@@ -1067,7 +1067,7 @@ struct MarkdownLinksTests {
   }
 
   // 555
-  @Test("Spec 555: nested [] in reference label -> literal")
+  @Test("Example 555: nested [] in reference label -> literal")
   func spec555() {
     let input = "[foo][ref[bar]]\n\n[ref[bar]]: /uri\n"
     let r = h.parser.parse(input, language: h.language)
@@ -1076,7 +1076,7 @@ struct MarkdownLinksTests {
   }
 
   // 556
-  @Test("Spec 556: [[[foo]]] with def remains literal")
+  @Test("Example 556: [[[foo]]] with def remains literal")
   func spec556() {
     let input = "[[[foo]]]\n\n[[[foo]]]: /url\n"
     let r = h.parser.parse(input, language: h.language)
@@ -1085,7 +1085,7 @@ struct MarkdownLinksTests {
   }
 
   // 557
-  @Test("Spec 557: escaped [ in ref label allows match")
+  @Test("Example 557: escaped [ in ref label allows match")
   func spec557() {
     let input = "[foo][ref\\[]\n\n[ref\\[]: /uri\n"
     let r = h.parser.parse(input, language: h.language)
@@ -1098,7 +1098,7 @@ struct MarkdownLinksTests {
   }
 
   // 558
-  @Test("Spec 558: backslash at end of label name")
+  @Test("Example 558: backslash at end of label name")
   func spec558() {
     let input = "[bar\\\\]: /uri\n\n[bar\\\\]\n"
     let r = h.parser.parse(input, language: h.language)
@@ -1111,7 +1111,7 @@ struct MarkdownLinksTests {
   }
 
   // 559
-  @Test("Spec 559: empty [] then def; first stays literal")
+  @Test("Example 559: empty [] then def; first stays literal")
   func spec559() {
     let input = "[]\n\n[]: /uri\n"
     let r = h.parser.parse(input, language: h.language)
@@ -1125,7 +1125,7 @@ struct MarkdownLinksTests {
   }
 
   // 560
-  @Test("Spec 560: bracket across lines stays literal")
+  @Test("Example 560: bracket across lines stays literal")
   func spec560() {
     let input = "[\n ]\n\n[\n ]: /uri\n"
     let r = h.parser.parse(input, language: h.language)
@@ -1139,7 +1139,7 @@ struct MarkdownLinksTests {
   }
 
   // 561
-  @Test("Spec 561: collapsed reference")
+  @Test("Example 561: collapsed reference")
   func spec561() {
     let input = "[foo][]\n\n[foo]: /url \"title\"\n"
     let r = h.parser.parse(input, language: h.language)
@@ -1153,7 +1153,7 @@ struct MarkdownLinksTests {
   }
 
   // 562
-  @Test("Spec 562: collapsed ref with emphasis in label")
+  @Test("Example 562: collapsed ref with emphasis in label")
   func spec562() {
     let input = "[*foo* bar][]\n\n[*foo* bar]: /url \"title\"\n"
     let r = h.parser.parse(input, language: h.language)
@@ -1167,7 +1167,7 @@ struct MarkdownLinksTests {
   }
 
   // 563
-  @Test("Spec 563: case-insensitive collapsed ref label")
+  @Test("Example 563: case-insensitive collapsed ref label")
   func spec563() {
     let input = "[Foo][]\n\n[foo]: /url \"title\"\n"
     let r = h.parser.parse(input, language: h.language)
@@ -1181,7 +1181,7 @@ struct MarkdownLinksTests {
   }
 
   // 564
-  @Test("Spec 564: collapsed ref cannot be split across paragraphs")
+  @Test("Example 564: collapsed ref cannot be split across paragraphs")
   func spec564() {
     let input = "[foo] \n[]\n\n[foo]: /url \"title\"\n"
     let r = h.parser.parse(input, language: h.language)
@@ -1196,7 +1196,7 @@ struct MarkdownLinksTests {
   }
 
   // 565
-  @Test("Spec 565: shortcut reference")
+  @Test("Example 565: shortcut reference")
   func spec565() {
     let input = "[foo]\n\n[foo]: /url \"title\"\n"
     let r = h.parser.parse(input, language: h.language)
@@ -1210,7 +1210,7 @@ struct MarkdownLinksTests {
   }
 
   // 566
-  @Test("Spec 566: shortcut reference with emphasis in label")
+  @Test("Example 566: shortcut reference with emphasis in label")
   func spec566() {
     let input = "[*foo* bar]\n\n[*foo* bar]: /url \"title\"\n"
     let r = h.parser.parse(input, language: h.language)
@@ -1224,7 +1224,7 @@ struct MarkdownLinksTests {
   }
 
   // 567
-  @Test("Spec 567: extra [ around shortcut -> literal bracketed link")
+  @Test("Example 567: extra [ around shortcut -> literal bracketed link")
   func spec567() {
     let input = "[[*foo* bar]]\n\n[*foo* bar]: /url \"title\"\n"
     let r = h.parser.parse(input, language: h.language)
@@ -1238,7 +1238,7 @@ struct MarkdownLinksTests {
   }
 
   // 568
-  @Test("Spec 568: nested [foo] across newline stays literal")
+  @Test("Example 568: nested [foo] across newline stays literal")
   func spec568() {
     let input = "[[bar [foo]\n\n[foo]: /url\n"
     let r = h.parser.parse(input, language: h.language)
@@ -1247,7 +1247,7 @@ struct MarkdownLinksTests {
   }
 
   // 569
-  @Test("Spec 569: capitalized shortcut reference works")
+  @Test("Example 569: capitalized shortcut reference works")
   func spec569() {
     let input = "[Foo]\n\n[foo]: /url \"title\"\n"
     let r = h.parser.parse(input, language: h.language)
@@ -1260,7 +1260,7 @@ struct MarkdownLinksTests {
   }
 
   // 570
-  @Test("Spec 570: shortcut link followed by text")
+  @Test("Example 570: shortcut link followed by text")
   func spec570() {
     let input = "[foo] bar\n\n[foo]: /url\n"
     let r = h.parser.parse(input, language: h.language)
@@ -1280,7 +1280,7 @@ struct MarkdownLinksTests {
   }
 
   // 571
-  @Test("Spec 571: escaped [ prevents link")
+  @Test("Example 571: escaped [ prevents link")
   func spec571() {
     let input = "\\[foo]\n\n[foo]: /url \"title\"\n"
     let r = h.parser.parse(input, language: h.language)
@@ -1289,7 +1289,7 @@ struct MarkdownLinksTests {
   }
 
   // 572
-  @Test("Spec 572: definition 'foo*' and usage '*[foo*]'")
+  @Test("Example 572: definition 'foo*' and usage '*[foo*]'")
   func spec572() {
     let input = "[foo*]: /url\n\n*[foo*]\n"
     let r = h.parser.parse(input, language: h.language)
@@ -1307,7 +1307,7 @@ struct MarkdownLinksTests {
   }
 
   // 573
-  @Test("Spec 573: multiple definitions; choose 'bar'")
+  @Test("Example 573: multiple definitions; choose 'bar'")
   func spec573() {
     let input = "[foo][bar]\n\n[foo]: /url1\n[bar]: /url2\n"
     let r = h.parser.parse(input, language: h.language)
@@ -1320,7 +1320,7 @@ struct MarkdownLinksTests {
   }
 
   // 574
-  @Test("Spec 574: collapsed ref uses its own label")
+  @Test("Example 574: collapsed ref uses its own label")
   func spec574() {
     let input = "[foo][]\n\n[foo]: /url1\n"
     let r = h.parser.parse(input, language: h.language)
@@ -1334,7 +1334,7 @@ struct MarkdownLinksTests {
   }
 
   // 575
-  @Test("Spec 575: inline empty dest takes precedence over def")
+  @Test("Example 575: inline empty dest takes precedence over def")
   func spec575() {
     let input = "[foo]()\n\n[foo]: /url1\n"
     let r = h.parser.parse(input, language: h.language)
@@ -1348,7 +1348,7 @@ struct MarkdownLinksTests {
   }
 
   // 576
-  @Test("Spec 576: inline (not a link) then shortcut resolves")
+  @Test("Example 576: inline (not a link) then shortcut resolves")
   func spec576() {
     let input = "[foo](not a link)\n\n[foo]: /url1\n"
     let r = h.parser.parse(input, language: h.language)
@@ -1367,7 +1367,7 @@ struct MarkdownLinksTests {
   }
 
   // 577
-  @Test("Spec 577: chained refs; later def applies to baz")
+  @Test("Example 577: chained refs; later def applies to baz")
   func spec577() {
     let input = "[foo][bar][baz]\n\n[baz]: /url\n"
     let r = h.parser.parse(input, language: h.language)
@@ -1378,7 +1378,7 @@ struct MarkdownLinksTests {
   }
 
   // 578
-  @Test("Spec 578: chained refs resolved independently")
+  @Test("Example 578: chained refs resolved independently")
   func spec578() {
     let input = "[foo][bar][baz]\n\n[baz]: /url1\n[bar]: /url2\n"
     let r = h.parser.parse(input, language: h.language)
@@ -1390,7 +1390,7 @@ struct MarkdownLinksTests {
   }
 
   // 579
-  @Test("Spec 579: chained refs with foo defined -> only bar resolved")
+  @Test("Example 579: chained refs with foo defined -> only bar resolved")
   func spec579() {
     let input = "[foo][bar][baz]\n\n[baz]: /url1\n[foo]: /url2\n"
     let r = h.parser.parse(input, language: h.language)

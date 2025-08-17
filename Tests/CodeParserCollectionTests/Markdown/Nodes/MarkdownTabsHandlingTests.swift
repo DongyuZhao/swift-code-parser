@@ -4,7 +4,7 @@ import Testing
 @testable import CodeParserCollection
 @testable import CodeParserCore
 
-@Suite("CommonMark - Tabs handling (Strict)")
+@Suite("CommonMark - Tabs handling")
 struct MarkdownTabsHandlingTests {
   private let h = MarkdownTestHarness()
   // Spec 1: leading tab opens indented code block

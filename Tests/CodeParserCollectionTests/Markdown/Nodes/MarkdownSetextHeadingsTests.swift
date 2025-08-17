@@ -4,7 +4,7 @@ import Testing
 @testable import CodeParserCollection
 @testable import CodeParserCore
 
-@Suite("CommonMark - Setext Headings (Strict)")
+@Suite("CommonMark - Setext Headings")
 struct MarkdownSetextHeadingsTests {
   private let h = MarkdownTestHarness()
 

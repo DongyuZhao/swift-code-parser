@@ -4,7 +4,7 @@ import Testing
 @testable import CodeParserCollection
 @testable import CodeParserCore
 
-@Suite("CommonMark - HTML Blocks and Inline HTML (Strict)")
+@Suite("CommonMark - HTML Blocks and Inline HTML")
 struct MarkdownHTMLTests {
   private let h = MarkdownTestHarness()
 

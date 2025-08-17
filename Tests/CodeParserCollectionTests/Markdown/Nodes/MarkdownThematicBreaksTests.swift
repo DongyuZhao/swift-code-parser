@@ -4,7 +4,7 @@ import Testing
 @testable import CodeParserCollection
 @testable import CodeParserCore
 
-@Suite("CommonMark - Thematic Breaks (Strict)")
+@Suite("CommonMark - Thematic Breaks")
 struct MarkdownThematicBreaksTests {
   private let h = MarkdownTestHarness()
 

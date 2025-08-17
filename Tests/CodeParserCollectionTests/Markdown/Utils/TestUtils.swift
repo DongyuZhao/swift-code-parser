@@ -37,11 +37,6 @@ func childrenTypes(_ node: CodeNode<MarkdownNodeElement>) -> [MarkdownNodeElemen
 }
 
 func sig(_ node: CodeNode<MarkdownNodeElement>) -> String {
-  func esc(_ s: String) -> String {
-    s.replacingOccurrences(of: "\\", with: "\\\\")
-      .replacingOccurrences(of: "\"", with: "\\\"")
-      .replacingOccurrences(of: "\n", with: "\\n")
-  }
   func label(_ n: CodeNode<MarkdownNodeElement>) -> String {
     switch n {
     case is DocumentNode: return "document"
@@ -54,14 +49,14 @@ func sig(_ node: CodeNode<MarkdownNodeElement>) -> String {
     case let ol as OrderedListNode:
       return "ordered_list(level:\(ol.level))"
     case is ListItemNode: return "list_item"
-    case let c as CodeBlockNode: return "code_block(\"\(esc(c.source))\")"
-    case let ic as InlineCodeNode: return "code(\"\(esc(ic.code))\")"
-    case let t as TextNode: return "text(\"\(esc(t.content))\")"
+    case let c as CodeBlockNode: return "code_block(\"\(c.source)\")"
+    case let ic as InlineCodeNode: return "code(\"\(ic.code)\")"
+    case let t as TextNode: return "text(\"\(t.content)\")"
     case is HTMLNode: return "html"
     case is HTMLBlockNode: return "html_block"
-    case let l as LinkNode: return "link(url:\"\(esc(l.url))\",title:\"\(esc(l.title))\")"
+    case let l as LinkNode: return "link(url:\"\(l.url)\",title:\"\(l.title)\")"
     case let i as ImageNode:
-      return "image(url:\"\(esc(i.url))\",alt:\"\(esc(i.alt))\",title:\"\(esc(i.title))\")"
+      return "image(url:\"\(i.url)\",alt:\"\(i.alt)\",title:\"\(i.title)\")"
     case let br as LineBreakNode: return "line_break(\(br.variant == .hard ? "hard" : "soft"))"
     case is EmphasisNode: return "emphasis"
     case is StrongNode: return "strong"

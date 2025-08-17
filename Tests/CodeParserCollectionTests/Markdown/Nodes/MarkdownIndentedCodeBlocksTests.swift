@@ -4,7 +4,7 @@ import Testing
 @testable import CodeParserCollection
 @testable import CodeParserCore
 
-@Suite("CommonMark - Indented Code Blocks (Strict)")
+@Suite("CommonMark - Indented Code Blocks")
 struct MarkdownIndentedCodeBlocksTests {
   private let h = MarkdownTestHarness()
 

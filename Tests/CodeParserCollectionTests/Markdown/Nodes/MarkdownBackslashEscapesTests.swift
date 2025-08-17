@@ -4,7 +4,7 @@ import Testing
 @testable import CodeParserCollection
 @testable import CodeParserCore
 
-@Suite("CommonMark - Backslash Escapes (Strict)")
+@Suite("CommonMark - Backslash Escapes")
 struct MarkdownBackslashEscapesTests {
   private let h = MarkdownTestHarness()
 

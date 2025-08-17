@@ -62,7 +62,9 @@ public class MarkdownPunctuationTokenBuilder: CodeTokenBuilder {
       switch char {
       case "<":
         if state.modes.top != .code {
-          state.modes.push(.html)
+          // We need to look ahead to determine if this should be autolink or html mode
+          // For now, we'll use a heuristic: if we're not in code mode, try autolink first
+          state.modes.push(.autolink)
         }
       case ">":
         if state.modes.top == .html || state.modes.top == .autolink {

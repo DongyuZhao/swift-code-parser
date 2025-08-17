@@ -4,7 +4,7 @@ import Testing
 @testable import CodeParserCollection
 @testable import CodeParserCore
 
-@Suite("CommonMark - Entity References (Strict)")
+@Suite("CommonMark - Entity References")
 struct MarkdownEntityReferencesTests {
   private let h = MarkdownTestHarness()
 
