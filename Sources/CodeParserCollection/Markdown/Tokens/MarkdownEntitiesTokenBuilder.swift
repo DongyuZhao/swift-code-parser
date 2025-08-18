@@ -84,7 +84,7 @@ public final class MarkdownEntitiesTokenBuilder: CodeTokenBuilder {
       // Consume ';'
       current = source.index(after: current)
       let range = start..<current
-      let token = MarkdownToken(element: .charref, text: String(source[range]), range: range)
+      let token = MarkdownToken(element: .charef, text: String(source[range]), range: range)
       context.tokens.append(token)
       context.consuming = current
       return true
@@ -104,7 +104,7 @@ public final class MarkdownEntitiesTokenBuilder: CodeTokenBuilder {
 
     current = source.index(after: current) // consume ';'
     let range = start..<current
-    let token = MarkdownToken(element: .charref, text: String(source[range]), range: range)
+    let token = MarkdownToken(element: .charef, text: String(source[range]), range: range)
     context.tokens.append(token)
     context.consuming = current
     return true

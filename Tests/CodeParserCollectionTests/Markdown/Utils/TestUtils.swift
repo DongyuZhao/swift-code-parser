@@ -49,11 +49,16 @@ func sig(_ node: CodeNode<MarkdownNodeElement>) -> String {
     case let ol as OrderedListNode:
       return "ordered_list(level:\(ol.level))"
     case is ListItemNode: return "list_item"
-    case let c as CodeBlockNode: return "code_block(\"\(c.source)\")"
-    case let ic as InlineCodeNode: return "code(\"\(ic.code)\")"
+    case let c as CodeBlockNode:
+      if let lang = c.language {
+        return "code_block(lang:\"\(lang)\",\"\(c.source)\")"
+      } else {
+        return "code_block(\"\(c.source)\")"
+      }
+    case let ic as CodeSpanNode: return "code(\"\(ic.code)\")"
     case let t as TextNode: return "text(\"\(t.content)\")"
-    case is HTMLNode: return "html"
-    case is HTMLBlockNode: return "html_block"
+    case let h as HTMLNode: return "html(\"\(h.content)\")"
+    case let hb as HTMLBlockNode: return "html_block(name:\"\(hb.name)\",content:\"\(hb.content)\")"
     case let l as LinkNode: return "link(url:\"\(l.url)\",title:\"\(l.title)\")"
     case let i as ImageNode:
       return "image(url:\"\(i.url)\",alt:\"\(i.alt)\",title:\"\(i.title)\")"
@@ -78,6 +83,8 @@ func sig(_ node: CodeNode<MarkdownNodeElement>) -> String {
       case .right: a = "right"
       }
       return "table_cell(align:\(a))"
+    case let r as ReferenceNode:
+      return "reference(id:\"\(r.identifier)\",url:\"\(r.url)\",title:\"\(r.title)\")"
     default:
       if let m = n as? MarkdownNodeBase { return m.element.rawValue }
       return "node"

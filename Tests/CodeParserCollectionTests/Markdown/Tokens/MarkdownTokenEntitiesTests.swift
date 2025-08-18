@@ -22,12 +22,12 @@ struct MarkdownTokenEntitiesTests {
     let input = "&nbsp; &amp; &copy; &AElig; &Dcaron;\n&frac34; &HilbertSpace; &DifferentialD;\n&ClockwiseContourIntegral; &ngE;\n"
     let toks = tokens(input)
     let expected: [(MarkdownTokenElement, String)] = [
-      (.charref, "&nbsp;"), (.whitespaces, " "), (.charref, "&amp;"), (.whitespaces, " "),
-      (.charref, "&copy;"), (.whitespaces, " "), (.charref, "&AElig;"), (.whitespaces, " "),
-      (.charref, "&Dcaron;"), (.newline, "\n"),
-      (.charref, "&frac34;"), (.whitespaces, " "), (.charref, "&HilbertSpace;"), (.whitespaces, " "),
-      (.charref, "&DifferentialD;"), (.newline, "\n"),
-      (.charref, "&ClockwiseContourIntegral;"), (.whitespaces, " "), (.charref, "&ngE;"),
+      (.charef, "&nbsp;"), (.whitespaces, " "), (.charef, "&amp;"), (.whitespaces, " "),
+      (.charef, "&copy;"), (.whitespaces, " "), (.charef, "&AElig;"), (.whitespaces, " "),
+      (.charef, "&Dcaron;"), (.newline, "\n"),
+      (.charef, "&frac34;"), (.whitespaces, " "), (.charef, "&HilbertSpace;"), (.whitespaces, " "),
+      (.charef, "&DifferentialD;"), (.newline, "\n"),
+      (.charef, "&ClockwiseContourIntegral;"), (.whitespaces, " "), (.charef, "&ngE;"),
       (.newline, "\n"), (.eof, "")
     ]
     #expect(toks.count == expected.count)
@@ -40,8 +40,8 @@ struct MarkdownTokenEntitiesTests {
     let input = "&#35; &#1234; &#992; &#0;\n"
     let toks = tokens(input)
     let expected: [(MarkdownTokenElement, String)] = [
-      (.charref, "&#35;"), (.whitespaces, " "), (.charref, "&#1234;"), (.whitespaces, " "),
-      (.charref, "&#992;"), (.whitespaces, " "), (.charref, "&#0;"), (.newline, "\n"), (.eof, "")
+      (.charef, "&#35;"), (.whitespaces, " "), (.charef, "&#1234;"), (.whitespaces, " "),
+      (.charef, "&#992;"), (.whitespaces, " "), (.charef, "&#0;"), (.newline, "\n"), (.eof, "")
     ]
     #expect(toks.count == expected.count)
     for i in 0..<expected.count { #expect(pair(toks[i]) == expected[i]) }
@@ -53,8 +53,8 @@ struct MarkdownTokenEntitiesTests {
     let input = "&#X22; &#XD06; &#xcab;\n"
     let toks = tokens(input)
     let expected: [(MarkdownTokenElement, String)] = [
-      (.charref, "&#X22;"), (.whitespaces, " "), (.charref, "&#XD06;"), (.whitespaces, " "),
-      (.charref, "&#xcab;"), (.newline, "\n"), (.eof, "")
+      (.charef, "&#X22;"), (.whitespaces, " "), (.charef, "&#XD06;"), (.whitespaces, " "),
+      (.charef, "&#xcab;"), (.newline, "\n"), (.eof, "")
     ]
     #expect(toks.count == expected.count)
     for i in 0..<expected.count { #expect(pair(toks[i]) == expected[i]) }
@@ -65,7 +65,7 @@ struct MarkdownTokenEntitiesTests {
   func spec324_token() async throws {
     let input = "&nbsp &x; &#; &#x;\n&#87654321;\n&#abcdef0;\n&ThisIsNotDefined; &hi?;\n"
     let toks = tokens(input)
-    #expect(!toks.contains { $0.element == .charref && !$0.text.isEmpty })
+    #expect(!toks.contains { $0.element == .charef && !$0.text.isEmpty })
     #expect(toks.last?.element == .eof)
   }
 
@@ -98,7 +98,7 @@ struct MarkdownTokenEntitiesTests {
   func spec327_token() async throws {
     let input = "<a href=\"&ouml;&ouml;.html\">\n"
     let toks = tokens(input)
-    let hrefs = toks.filter { $0.element == .charref }.map { $0.text }
+    let hrefs = toks.filter { $0.element == .charef }.map { $0.text }
     #expect(hrefs == ["&ouml;", "&ouml;"])
   }
 
@@ -107,7 +107,7 @@ struct MarkdownTokenEntitiesTests {
   func spec328_token() async throws {
     let input = "[foo](/f&ouml;&ouml; \"f&ouml;&ouml;\")\n"
     let toks = tokens(input)
-    let hrefs = toks.filter { $0.element == .charref }.map { $0.text }
+    let hrefs = toks.filter { $0.element == .charef }.map { $0.text }
     #expect(hrefs == ["&ouml;", "&ouml;", "&ouml;", "&ouml;"])
   }
 
@@ -116,7 +116,7 @@ struct MarkdownTokenEntitiesTests {
   func spec329_token() async throws {
     let input = "[foo]\n\n[foo]: /f&ouml;&ouml; \"f&ouml;&ouml;\"\n"
     let toks = tokens(input)
-    let hrefs = toks.filter { $0.element == .charref }.map { $0.text }
+    let hrefs = toks.filter { $0.element == .charef }.map { $0.text }
     #expect(hrefs == ["&ouml;", "&ouml;", "&ouml;", "&ouml;"])
   }
 
@@ -126,12 +126,12 @@ struct MarkdownTokenEntitiesTests {
     let input = "``` f&ouml;&ouml;\nfoo &ouml;\n```\n"
     let toks = tokens(input)
     // two in info ("&ouml;&ouml;") and none in body because we are in code mode after newline
-    let hrefs = toks.filter { $0.element == .charref }.map { $0.text }
+    let hrefs = toks.filter { $0.element == .charef }.map { $0.text }
     #expect(hrefs == ["&ouml;", "&ouml;"])
     // Ensure no .href appears after the first newline (i.e., inside the body)
     if let firstNL = toks.firstIndex(where: { $0.element == .newline }) {
       let after = toks.index(after: firstNL)
-      #expect(!toks[after..<toks.endIndex].contains { $0.element == .charref })
+      #expect(!toks[after..<toks.endIndex].contains { $0.element == .charef })
     }
   }
 
@@ -140,7 +140,7 @@ struct MarkdownTokenEntitiesTests {
   func spec331_token() async throws {
     let input = "`f&ouml;&ouml;`\n"
     let toks = tokens(input)
-    #expect(!toks.contains { $0.element == .charref })
+    #expect(!toks.contains { $0.element == .charef })
   }
 
   // 332: indented code block preserves literal, so no .href
@@ -148,7 +148,7 @@ struct MarkdownTokenEntitiesTests {
   func spec332_token() async throws {
     let input = "    f&ouml;f&ouml;\n"
     let toks = tokens(input)
-    #expect(!toks.contains { $0.element == .charref })
+    #expect(!toks.contains { $0.element == .charef })
   }
 
   // 333: entity-escaped '*'
@@ -157,7 +157,7 @@ struct MarkdownTokenEntitiesTests {
     let input = "&#42;foo&#42;\n*foo*\n"
     let toks = tokens(input)
     let expectedFirstLine: [(MarkdownTokenElement, String)] = [
-      (.charref, "&#42;"), (.characters, "foo"), (.charref, "&#42;"), (.newline, "\n")
+      (.charef, "&#42;"), (.characters, "foo"), (.charef, "&#42;"), (.newline, "\n")
     ]
     for i in 0..<expectedFirstLine.count { #expect(pair(toks[i]) == expectedFirstLine[i]) }
   }
@@ -168,7 +168,7 @@ struct MarkdownTokenEntitiesTests {
     let input = "&#42; foo\n\n* foo\n"
     let toks = tokens(input)
     let expectedPrefix: [(MarkdownTokenElement, String)] = [
-      (.charref, "&#42;"), (.whitespaces, " "), (.characters, "foo")
+      (.charef, "&#42;"), (.whitespaces, " "), (.characters, "foo")
     ]
     #expect(toks.count > expectedPrefix.count)
     for i in 0..<expectedPrefix.count { #expect(pair(toks[i]) == expectedPrefix[i]) }
@@ -179,14 +179,14 @@ struct MarkdownTokenEntitiesTests {
   func spec335_336_token() async throws {
     let toks1 = tokens("foo&#10;&#10;bar\n")
     let expected1: [(MarkdownTokenElement, String)] = [
-      (.characters, "foo"), (.charref, "&#10;"), (.charref, "&#10;"), (.characters, "bar"), (.newline, "\n"), (.eof, "")
+      (.characters, "foo"), (.charef, "&#10;"), (.charef, "&#10;"), (.characters, "bar"), (.newline, "\n"), (.eof, "")
     ]
     #expect(toks1.count == expected1.count)
     for i in 0..<expected1.count { #expect(pair(toks1[i]) == expected1[i]) }
 
     let toks2 = tokens("&#9;foo\n")
     let expected2: [(MarkdownTokenElement, String)] = [
-      (.charref, "&#9;"), (.characters, "foo"), (.newline, "\n"), (.eof, "")
+      (.charef, "&#9;"), (.characters, "foo"), (.newline, "\n"), (.eof, "")
     ]
     #expect(toks2.count == expected2.count)
     for i in 0..<expected2.count { #expect(pair(toks2[i]) == expected2[i]) }
@@ -196,7 +196,7 @@ struct MarkdownTokenEntitiesTests {
   @Test("Spec 337 (token): &quot; is tokenized as .href inside link title")
   func spec337_token() async throws {
     let toks = tokens("[a](url &quot;tit&quot;)\n")
-    let hrefs = toks.filter { $0.element == .charref }.map { $0.text }
+    let hrefs = toks.filter { $0.element == .charef }.map { $0.text }
     #expect(hrefs == ["&quot;", "&quot;"])
   }
 }

@@ -323,7 +323,7 @@ public class StrikeNode: MarkdownNodeBase {
   }
 }
 
-public class InlineCodeNode: MarkdownNodeBase {
+public class CodeSpanNode: MarkdownNodeBase {
   public var code: String
 
   public init(code: String) {
