@@ -56,6 +56,11 @@ public enum MarkdownNodeElement: String, CaseIterable, CodeNodeElement {
   // MARK: - Math Elements (LaTeX/TeX)
   case formula = "formula"
   case formulaBlock = "formula_block"
+
+  // MARK: - Parse Internal nodes, should not present in final AST
+
+  // Represent the pending parsing tokens that need to be handled in the content parsing stage.
+  case content = "content"
 }
 
 // MARK: - Markdown Node Base Class
@@ -610,5 +615,14 @@ public class FormulaBlockNode: MarkdownNodeBase {
   public override func hash(into hasher: inout Hasher) {
     super.hash(into: &hasher)
     hasher.combine(expression)
+  }
+}
+
+public class ContentNode: MarkdownNodeBase {
+  public var tokens: [any CodeToken<MarkdownTokenElement>]
+
+  public init(tokens: [any CodeToken<MarkdownTokenElement>]) {
+    self.tokens = tokens
+    super.init(element: .content)
   }
 }

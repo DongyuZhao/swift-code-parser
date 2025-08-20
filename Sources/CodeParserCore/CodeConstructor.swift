@@ -32,7 +32,7 @@ public class CodeConstructor<Node, Token> where Node: CodeNodeElement, Token: Co
   public func parse(_ tokens: [any CodeToken<Token>], root: CodeNode<Node>) -> (
     CodeNode<Node>, [CodeError]
   ) {
-    var context = CodeConstructContext(current: root, tokens: tokens, state: state())
+    var context = CodeConstructContext(root: root, tokens: tokens, state: state())
 
     while context.consuming < context.tokens.count {
       var consumed = false

@@ -8,7 +8,6 @@ public class MarkdownConstructState: CodeConstructState {
 
   // Line-based processing state
   public var lines: [MarkdownLine] = []
-  public var currentLineIndex: Int = 0
 
   public init() {}
 }

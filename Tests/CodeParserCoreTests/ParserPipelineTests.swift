@@ -152,7 +152,7 @@ struct ParserPipelineTests {
 
     let root = CodeNode<SimpleNodeElement>(element: .root)
     let constructContext = CodeConstructContext<SimpleNodeElement, SimpleTokenElement>(
-      current: root, tokens: []
+      root: root, tokens: []
     )
     #expect(constructContext.current === root)
     #expect(constructContext.tokens.count == 0)

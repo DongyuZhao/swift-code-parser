@@ -8,6 +8,9 @@ where Node: CodeNodeElement, Token: CodeTokenElement {
 
 public class CodeConstructContext<Node, Token>
 where Node: CodeNodeElement, Token: CodeTokenElement {
+  /// The root of the AST
+  public var root: CodeNode<Node>
+
   /// The current node being processed in the context
   public var current: CodeNode<Node>
 
@@ -24,10 +27,15 @@ where Node: CodeNodeElement, Token: CodeTokenElement {
   public var state: (any CodeConstructState<Node, Token>)?
 
   public init(
-    current: CodeNode<Node>, tokens: [any CodeToken<Token>], consuming: Int = 0,
-    state: (any CodeConstructState<Node, Token>)? = nil, errors: [CodeError] = []
+    root: CodeNode<Node>,
+    current: CodeNode<Node>? = nil,
+    tokens: [any CodeToken<Token>],
+    consuming: Int = 0,
+    state: (any CodeConstructState<Node, Token>)? = nil,
+    errors: [CodeError] = []
   ) {
-    self.current = current
+    self.root = root
+    self.current = current ?? root
     self.tokens = tokens
     self.consuming = consuming
     self.state = state
