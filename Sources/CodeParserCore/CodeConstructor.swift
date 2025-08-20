@@ -35,15 +35,14 @@ public class CodeConstructor<Node, Token> where Node: CodeNodeElement, Token: Co
     var context = CodeConstructContext(current: root, tokens: tokens, state: state())
 
     while context.consuming < context.tokens.count {
-
-      var matched = false
+      var consumed = false
       for node in builders {
-        let before = context.consuming
+        let prev = context.consuming
         if node.build(from: &context) {
-          matched = true
+          consumed = true
           // Safety guard: ensure progress to avoid infinite loops when a builder
           // returns true without consuming any tokens.
-          if context.consuming == before {
+          if context.consuming == prev {
             let token = context.tokens[context.consuming]
             let error = CodeError(
               "Builder made no progress on token: \(token.element)", range: token.range)
@@ -54,7 +53,7 @@ public class CodeConstructor<Node, Token> where Node: CodeNodeElement, Token: Co
         }
       }
 
-      if !matched {
+      if !consumed {
         // If no builder matched, record an error and skip the token
         let token = context.tokens[context.consuming]
         let error = CodeError("Unrecognized token: \(token.element)", range: token.range)

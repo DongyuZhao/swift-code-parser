@@ -86,8 +86,7 @@ func sig(_ node: CodeNode<MarkdownNodeElement>) -> String {
     case let r as ReferenceNode:
       return "reference(id:\"\(r.identifier)\",url:\"\(r.url)\",title:\"\(r.title)\")"
     default:
-      if let m = n as? MarkdownNodeBase { return m.element.rawValue }
-      return "node"
+      return n.element.rawValue
     }
   }
   // Leaf nodes with inline payload already encoded in the label

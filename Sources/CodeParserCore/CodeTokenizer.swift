@@ -25,17 +25,17 @@ public class CodeTokenizer<Token> where Token: CodeTokenElement {
 
     while context.consuming < context.source.endIndex {
       let start = context.consuming
-      var matched = false
+      var consumed = false
 
       for builder in builders {
         if builder.build(from: &context) {
-          matched = true
+          consumed = true
           break
         }
       }
 
-      if !matched {
-        // No token matched, record an error and skip one character
+      if !consumed {
+        // No token matched, record an error and skip one character to avoid infinite loop
         let next = context.source.index(after: context.consuming)
         let range = context.consuming..<next
         context.errors.append(
