@@ -23,27 +23,28 @@ public class MarkdownLanguage: CodeLanguage {
   ///   document AST. Passing a custom set allows features to be enabled or
   ///   disabled.
   public init() {
+    let contentBuilder = MarkdownContentBuilder()
     self.nodes = [
       MarkdownBlankLineNodeBuilder(),
       MarkdownThematicBreakNodeBuilder(),
-      MarkdownHeadingNodeBuilder(),
-      MarkdownBlockquoteNodeBuilder(),
-      MarkdownOrderedListNodeBuilder(),
-      MarkdownUnorderedListNodeBuilder(),
+      MarkdownHeadingNodeBuilder(contentBuilder: contentBuilder),
+      MarkdownBlockquoteNodeBuilder(contentBuilder: contentBuilder),
+      MarkdownOrderedListNodeBuilder(contentBuilder: contentBuilder),
+      MarkdownUnorderedListNodeBuilder(contentBuilder: contentBuilder),
       MarkdownCodeBlockNodeBuilder(),
       MarkdownHTMLBlockNodeBuilder(),
       MarkdownImageBlockNodeBuilder(),
       MarkdownDefinitionNodeBuilder(),
       MarkdownAdmonitionNodeBuilder(),
-      MarkdownParagraphNodeBuilder(),
-      MarkdownListItemNodeBuilder()
+      MarkdownParagraphNodeBuilder(contentBuilder: contentBuilder),
+      MarkdownListItemNodeBuilder(),
     ]
     self.tokens = [
       MarkdownNewlineTokenBuilder(),
       MarkdownWhitespaceTokenBuilder(),
       MarkdownEntitiesTokenBuilder(),
       MarkdownCharactersTokenBuilder(),
-      MarkdownPunctuationTokenBuilder()
+      MarkdownPunctuationTokenBuilder(),
     ]
   }
 

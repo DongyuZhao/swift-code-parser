@@ -8,7 +8,11 @@ public struct MarkdownBlockquoteNodeBuilder: CodeNodeBuilder {
   public typealias Node = MarkdownNodeElement
   public typealias Token = MarkdownTokenElement
 
-  public init() {}
+  private let contentBuilder: MarkdownContentBuilder
+
+  public init(contentBuilder: MarkdownContentBuilder = MarkdownContentBuilder()) {
+    self.contentBuilder = contentBuilder
+  }
 
   public func build(from context: inout CodeConstructContext<Node, Token>) -> Bool {
     let start = context.consuming
@@ -50,6 +54,12 @@ public struct MarkdownBlockquoteNodeBuilder: CodeNodeBuilder {
       let endToken = context.tokens[contentEnd - 1] as! MarkdownToken
       let range = startToken.range.lowerBound..<endToken.range.upperBound
       let para = ParagraphNode(range: range)
+
+      let inlineTokens = Array(context.tokens[contentStart..<contentEnd])
+      var inlineContext = CodeConstructContext(current: para, tokens: inlineTokens, state: context.state)
+      _ = contentBuilder.build(from: &inlineContext)
+      context.errors.append(contentsOf: inlineContext.errors)
+
       bqNode.append(para)
     }
     context.current.append(bqNode)

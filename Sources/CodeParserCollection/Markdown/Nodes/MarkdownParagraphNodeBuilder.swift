@@ -7,7 +7,12 @@ public struct MarkdownParagraphNodeBuilder: CodeNodeBuilder {
   public typealias Node = MarkdownNodeElement
   public typealias Token = MarkdownTokenElement
 
-  public init() {}
+  /// Inline content builder used to parse paragraph text.
+  private let contentBuilder: MarkdownContentBuilder
+
+  public init(contentBuilder: MarkdownContentBuilder = MarkdownContentBuilder()) {
+    self.contentBuilder = contentBuilder
+  }
 
   /// Parse a paragraph from the token stream. This follows the block
   /// structure rules from the CommonMark specification: a paragraph starts
@@ -45,6 +50,15 @@ public struct MarkdownParagraphNodeBuilder: CodeNodeBuilder {
     let endToken = context.tokens[max(startIndex, endIndex - 1)] as! MarkdownToken
     let range = startToken.range.lowerBound..<endToken.range.upperBound
     let node = ParagraphNode(range: range)
+
+    // Parse inline content inside the paragraph.
+    let inlineTokens = Array(context.tokens[startIndex..<endIndex])
+    var inlineContext = CodeConstructContext(
+      current: node, tokens: inlineTokens, state: context.state
+    )
+    _ = contentBuilder.build(from: &inlineContext)
+    context.errors.append(contentsOf: inlineContext.errors)
+
     context.current.append(node)
     context.consuming = current
     return true
