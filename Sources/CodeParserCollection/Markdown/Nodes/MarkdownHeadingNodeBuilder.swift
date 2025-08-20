@@ -7,7 +7,11 @@ public struct MarkdownHeadingNodeBuilder: CodeNodeBuilder {
   public typealias Node = MarkdownNodeElement
   public typealias Token = MarkdownTokenElement
 
-  public init() {}
+  private let contentBuilder: MarkdownContentBuilder
+
+  public init(contentBuilder: MarkdownContentBuilder = MarkdownContentBuilder()) {
+    self.contentBuilder = contentBuilder
+  }
 
   public func build(from context: inout CodeConstructContext<Node, Token>) -> Bool {
     let start = context.consuming
@@ -44,6 +48,12 @@ public struct MarkdownHeadingNodeBuilder: CodeNodeBuilder {
     let endToken = context.tokens[end - 1] as! MarkdownToken
     _ = startToken.range.lowerBound..<endToken.range.upperBound
     let node = HeaderNode(level: level)
+
+    let inlineTokens = Array(context.tokens[current..<end])
+    var inlineContext = CodeConstructContext(current: node, tokens: inlineTokens, state: context.state)
+    _ = contentBuilder.build(from: &inlineContext)
+    context.errors.append(contentsOf: inlineContext.errors)
+
     context.current.append(node)
     context.consuming = end
     return true
