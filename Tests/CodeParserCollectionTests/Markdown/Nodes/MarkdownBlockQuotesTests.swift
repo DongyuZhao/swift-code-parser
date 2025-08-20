@@ -318,7 +318,7 @@ struct MarkdownBlockQuotesTests {
     let children = blockquotes[0].children
     #expect(children.count == 0)
 
-    let expectedSig = "document[blockquote[]]"
+    let expectedSig = "document[blockquote]"
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -339,7 +339,7 @@ struct MarkdownBlockQuotesTests {
     let children = blockquotes[0].children
     #expect(children.count == 0)
 
-    let expectedSig = "document[blockquote[]]"
+    let expectedSig = "document[blockquote]"
     #expect(sig(result.root) == expectedSig)
   }
 

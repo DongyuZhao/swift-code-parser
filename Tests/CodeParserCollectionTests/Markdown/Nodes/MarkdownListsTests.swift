@@ -494,7 +494,7 @@ struct MarkdownListsTests {
     #expect(paragraphs3.count == 1)
     #expect(innerText(paragraphs3[0]) == "c")
 
-    let expectedSig = "document[unordered_list(level:1)[list_item[paragraph[text(\"a\")]],list_item[],list_item[paragraph[text(\"c\")]]]]"
+    let expectedSig = "document[unordered_list(level:1)[list_item[paragraph[text(\"a\")]],list_item,list_item[paragraph[text(\"c\")]]]]"
     #expect(sig(result.root) == expectedSig)
   }
 

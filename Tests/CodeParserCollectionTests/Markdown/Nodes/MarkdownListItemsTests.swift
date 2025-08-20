@@ -642,7 +642,7 @@ struct MarkdownListItemsTests {
     #expect(paragraphs.count == 1)
     #expect(innerText(paragraphs[0]) == "foo")
 
-    let expectedSig = "document[unordered_list(level:1)[list_item[]],paragraph[text(\"foo\")]]"
+    let expectedSig = "document[unordered_list(level:1)[list_item],paragraph[text(\"foo\")]]"
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -670,7 +670,7 @@ struct MarkdownListItemsTests {
 
     #expect(innerText(listItems[2]) == "bar")
 
-    let expectedSig = "document[unordered_list(level:1)[list_item[paragraph[text(\"foo\")]],list_item[],list_item[paragraph[text(\"bar\")]]]]"
+    let expectedSig = "document[unordered_list(level:1)[list_item[paragraph[text(\"foo\")]],list_item,list_item[paragraph[text(\"bar\")]]]]"
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -698,7 +698,7 @@ struct MarkdownListItemsTests {
 
     #expect(innerText(listItems[2]) == "bar")
 
-    let expectedSig = "document[ordered_list(level:1)[list_item[paragraph[text(\"foo\")]],list_item[],list_item[paragraph[text(\"bar\")]]]]"
+    let expectedSig = "document[ordered_list(level:1)[list_item[paragraph[text(\"foo\")]],list_item,list_item[paragraph[text(\"bar\")]]]]"
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -718,7 +718,7 @@ struct MarkdownListItemsTests {
     let itemChildren = listItems[0].children
     #expect(itemChildren.count == 0)
 
-    let expectedSig = "document[unordered_list(level:1)[list_item[]]]"
+    let expectedSig = "document[unordered_list(level:1)[list_item]]"
     #expect(sig(result.root) == expectedSig)
   }
 

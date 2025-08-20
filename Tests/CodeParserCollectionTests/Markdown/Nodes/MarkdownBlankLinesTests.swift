@@ -165,7 +165,7 @@ struct MarkdownBlankLinesTests {
     let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
     #expect(paragraphs.count == 0)
 
-    let expectedSig = "document[]"
+    let expectedSig = "document"
     #expect(sig(result.root) == expectedSig)
   }
 

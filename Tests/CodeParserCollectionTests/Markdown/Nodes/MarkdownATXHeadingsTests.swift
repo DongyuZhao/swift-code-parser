@@ -395,7 +395,7 @@ struct MarkdownATXHeadingsTests {
     }
 
     // Verify AST structure using sig
-    let expectedSig = "document[heading(level:2)[],heading(level:1)[],heading(level:3)[]]"
+    let expectedSig = "document[heading(level:2),heading(level:1),heading(level:3)]"
     #expect(sig(result.root) == expectedSig)
   }
 }
