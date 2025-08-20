@@ -10,7 +10,7 @@ A powerful Swift framework for parsing and analyzing code syntax with support fo
 ## Getting Started
 
 ### Requirements
-- Swift 6.0 or later  
+- Swift 6.0 or later
 - iOS 17.0+ / macOS 14.0+
 - Xcode 15.0+ (for iOS/macOS development)
 
