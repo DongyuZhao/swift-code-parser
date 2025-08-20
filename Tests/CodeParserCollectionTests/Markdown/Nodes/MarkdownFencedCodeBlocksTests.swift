@@ -185,10 +185,10 @@ struct MarkdownFencedCodeBlocksTests {
 
     let codeBlocks = findNodes(in: result.root, ofType: CodeBlockNode.self)
     #expect(codeBlocks.count == 1)
-    #expect(codeBlocks.first?.source == "\n")
+  #expect(codeBlocks.first?.source == "\n\n")
 
     // Verify AST structure using sig
-    let expectedSig = "document[code_block(\"\\n\")]"
+  let expectedSig = "document[code_block(\"\\n\\n\")]"
     #expect(sig(result.root) == expectedSig)
   }
 

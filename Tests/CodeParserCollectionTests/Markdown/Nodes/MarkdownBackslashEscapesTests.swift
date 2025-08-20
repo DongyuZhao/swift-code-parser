@@ -215,12 +215,13 @@ struct MarkdownBackslashEscapesTests {
     let result = parser.parse(input, language: language)
     #expect(result.errors.isEmpty)
 
-    let htmlNodes = findNodes(in: result.root, ofType: HTMLNode.self)
-    #expect(htmlNodes.count == 1)
-    #expect(htmlNodes[0].content == "<a href=\"/bar\\/)\"")
+  // Per HTML blocks (Spec 019) type 7, a complete opening tag on its own line forms an HTML block.
+  let htmlBlocks = findNodes(in: result.root, ofType: HTMLBlockNode.self)
+  #expect(htmlBlocks.count == 1)
+  #expect(htmlBlocks[0].content == "<a href=\"/bar\\/)\">")
 
-    let expectedSig = "document[html(\"<a href=\\\"/bar\\\\/)\\\">\")]"
-    #expect(sig(result.root) == expectedSig)
+  let expectedSig = "document[html_block(name:\"\",content:\"<a href=\\\"/bar\\\\/)\\\">\")]"
+  #expect(sig(result.root) == expectedSig)
   }
 
   @Test("Backslash escapes work in link URLs and titles")

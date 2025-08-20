@@ -2,6 +2,11 @@
 
 A powerful Swift framework for parsing and analyzing code syntax with support for multiple languages, with a focus on Markdown parsing.
 
+## Documentation
+
+- GitHub Flavored Markdown Spec (vendored): `Documents/Spec/Markdown/spec.md`
+- Internal extension: Formula parsing spec: `Documents/Spec/Markdown/spec-900-formula-extension.md`
+
 ## Getting Started
 
 ### Requirements

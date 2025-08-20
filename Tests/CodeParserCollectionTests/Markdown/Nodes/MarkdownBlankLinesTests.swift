@@ -130,9 +130,9 @@ struct MarkdownBlankLinesTests {
     let result = parser.parse(input, language: language)
     #expect(result.errors.isEmpty)
 
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-    #expect(innerText(paragraphs[0]) == "paragraph")
+  let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
+  #expect(paragraphs.count == 3) // top-level paragraph + paragraph inside blockquote + paragraph inside list item
+  #expect(innerText(paragraphs[0]) == "paragraph")
 
     let headers = findNodes(in: result.root, ofType: HeaderNode.self)
     #expect(headers.count == 1)

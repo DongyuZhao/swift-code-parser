@@ -69,8 +69,8 @@ struct MarkdownPrecedenceTests {
     let listItems = findNodes(in: result.root, ofType: ListItemNode.self)
     #expect(listItems.count == 2)
 
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 3) // One in header, two in list items, one standalone
+  let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
+  #expect(paragraphs.count == 3) // Two in list items + one standalone
 
     // Verify inline structure elements are also present within blocks
     let emphasisNodes = findNodes(in: result.root, ofType: EmphasisNode.self)

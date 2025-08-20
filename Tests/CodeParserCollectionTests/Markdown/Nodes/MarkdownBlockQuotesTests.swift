@@ -146,12 +146,12 @@ struct MarkdownBlockQuotesTests {
     let paragraphs = findNodes(in: blockquotes[0], ofType: ParagraphNode.self)
     #expect(paragraphs.count == 1)
 
-    let textNodes = findNodes(in: paragraphs[0], ofType: TextNode.self)
-    #expect(textNodes.count == 3)
-    #expect(textNodes[0].content == "bar")
-    #expect(textNodes[1].content == "baz")
+  let textNodes = findNodes(in: paragraphs[0], ofType: TextNode.self)
+  #expect(textNodes.count == 2)
+  #expect(textNodes[0].content == "bar")
+  #expect(textNodes[1].content == "baz")
 
-    let expectedSig = "document[blockquote[heading(level:1)[text(\"Foo\")],paragraph[text(\"bar\"),text(\"baz\")]]]"
+  let expectedSig = "document[blockquote[heading(level:1)[text(\"Foo\")],paragraph[text(\"bar\"),text(\"baz\")]]]"
     #expect(sig(result.root) == expectedSig)
   }
 
