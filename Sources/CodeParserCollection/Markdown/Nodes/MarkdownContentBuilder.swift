@@ -9,18 +9,11 @@ public class MarkdownContentBuilder: CodeNodeBuilder {
 
   public func build(from context: inout CodeConstructContext<Node, Token>) -> Bool {
     // Traverse the AST to parse all the content nodes
-    var foundContentNodes = 0
     context.root.dfs { node in
       if let node = node as? ContentNode {
-        foundContentNodes += 1
-        print("DEBUG: Found ContentNode with \(node.tokens.count) tokens:")
-        for (i, token) in node.tokens.enumerated() {
-          print("  Token \(i): \(token.element) = '\(token.text)'")
-        }
         process(node)
       }
     }
-    print("DEBUG: ContentBuilder processed \(foundContentNodes) ContentNodes")
     return true
   }
 
@@ -29,17 +22,8 @@ public class MarkdownContentBuilder: CodeNodeBuilder {
     let processor = InlineProcessor(tokens: node.tokens)
     let inlineNodes = processor.process()
     
-    print("DEBUG: InlineProcessor produced \(inlineNodes.count) nodes:")
-    for (i, inlineNode) in inlineNodes.enumerated() {
-      print("  Node \(i): \(inlineNode.element)")
-      if let textNode = inlineNode as? TextNode {
-        print("    TextNode content: '\(textNode.content)'")
-      }
-    }
-    
     // Replace content node with processed inline nodes
     guard let parent = node.parent as? MarkdownNodeBase else { 
-      print("DEBUG: ContentNode has no valid parent!")
       return 
     }
     let index = parent.children.firstIndex { $0 === node } ?? 0
@@ -430,11 +414,19 @@ private class InlineProcessor {
       openersBottom[delimiterType] = [0: stackBottom, 1: stackBottom, 2: stackBottom]
     }
     
-    var currentPosition = stackBottom?.next
+    // Start from the first node after stackBottom, or from the beginning of the stack
+    var currentPosition: DelimiterStackNode?
+    if let stackBottom = stackBottom {
+      currentPosition = stackBottom.next
+    } else {
+      // Start from the beginning of the delimiter stack
+      var iterator = delimiterStack.iterateForward(from: nil)
+      currentPosition = iterator.next()
+    }
     
     while let current = currentPosition {
       // Look for potential closer
-      if (current.delimiterRun.type == .asterisk || current.delimiterRun.type == .underscore) && 
+      if (current.delimiterRun.type == DelimiterType.asterisk || current.delimiterRun.type == DelimiterType.underscore) && 
          current.delimiterRun.canClose {
         
         let delimiterType = current.delimiterRun.type

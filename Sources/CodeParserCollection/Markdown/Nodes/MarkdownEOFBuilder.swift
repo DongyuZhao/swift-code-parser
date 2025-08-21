@@ -12,11 +12,8 @@ public class MarkdownEOFBuilder: CodeNodeBuilder {
   public init() {}
 
   public func build(from context: inout CodeConstructContext<Node, Token>) -> Bool {
-    print("DEBUG: EOF Builder called with \(context.tokens.count) tokens")
-    
     // Check if this is an empty line (which indicates EOF processing)
     guard context.tokens.isEmpty else {
-      print("DEBUG: EOF Builder - not empty line, skipping")
       return false
     }
 
@@ -27,11 +24,8 @@ public class MarkdownEOFBuilder: CodeNodeBuilder {
     
     // Now we should be at document root for EOF processing
     guard context.current === context.root else {
-      print("DEBUG: EOF Builder - still not at document root after closing blocks")
       return false
     }
-
-    print("DEBUG: EOF Builder - running ContentBuilder")
     
     // Process all ContentNodes in the AST using the ContentBuilder
     var contentContext = CodeConstructContext<Node, Token>(
