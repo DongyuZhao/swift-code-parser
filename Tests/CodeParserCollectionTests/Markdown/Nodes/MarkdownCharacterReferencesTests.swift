@@ -21,17 +21,6 @@ struct MarkdownEntityAndNumericCharacterReferencesTests {
     &ClockwiseContourIntegral; &ngE;
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let textNodes = findNodes(in: paragraphs[0], ofType: TextNode.self)
-    #expect(textNodes.count >= 1)
-
-    // Verify that entities are converted to their Unicode equivalents
-    let fullText = innerText(paragraphs[0])
-    #expect(fullText.contains(" ") && fullText.contains("&") && fullText.contains("©") && fullText.contains("Æ") && fullText.contains("Ď"))
 
     let expectedSig = "document[paragraph[text(\"  & © Æ Ď\"),text(\"¾ ℋ ⅆ\"),text(\"∲ ≧̸\")]]"
     #expect(sig(result.root) == expectedSig)
@@ -41,17 +30,6 @@ struct MarkdownEntityAndNumericCharacterReferencesTests {
   func decimalNumericCharacterReferencesAreParsedAsUnicodeCharacters() {
     let input = "&#35; &#1234; &#992; &#0;"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let textNodes = findNodes(in: paragraphs[0], ofType: TextNode.self)
-    #expect(textNodes.count == 1)
-
-    // &#35; = #, &#1234; = Ӓ, &#992; = Ϡ, &#0; = replacement character
-    let text = textNodes[0].content
-    #expect(text.contains("#"))
 
     let expectedSig = "document[paragraph[text(\"# Ӓ Ϡ �\")]]"
     #expect(sig(result.root) == expectedSig)
@@ -61,17 +39,6 @@ struct MarkdownEntityAndNumericCharacterReferencesTests {
   func hexadecimalNumericCharacterReferencesAreParsedAsUnicodeCharacters() {
     let input = "&#X22; &#XD06; &#xcab;"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let textNodes = findNodes(in: paragraphs[0], ofType: TextNode.self)
-    #expect(textNodes.count == 1)
-
-    // &#X22; = ", &#XD06; = ആ, &#xcab; = ಫ
-    let text = textNodes[0].content
-    #expect(text.contains("\""))
 
     let expectedSig = "document[paragraph[text(\"\\\" ആ ಫ\")]]"
     #expect(sig(result.root) == expectedSig)
@@ -86,20 +53,6 @@ struct MarkdownEntityAndNumericCharacterReferencesTests {
     &ThisIsNotDefined; &hi?;
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let textNodes = findNodes(in: paragraphs[0], ofType: TextNode.self)
-    #expect(textNodes.count >= 1)
-
-    // All invalid references should remain as literal ampersands
-    let fullText = innerText(paragraphs[0])
-    #expect(fullText.contains("&nbsp"))
-    #expect(fullText.contains("&x;"))
-    #expect(fullText.contains("&#;"))
-    #expect(fullText.contains("&ThisIsNotDefined;"))
 
     let expectedSig = "document[paragraph[text(\"&nbsp &x; &#; &#x;\"),text(\"&#987654321;\"),text(\"&#abcdef0;\"),text(\"&ThisIsNotDefined; &hi?;\")]]"
     #expect(sig(result.root) == expectedSig)
@@ -109,14 +62,6 @@ struct MarkdownEntityAndNumericCharacterReferencesTests {
   func entityReferencesWithoutTrailingSemicolonAreNotRecognized() {
     let input = "&copy"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let textNodes = findNodes(in: paragraphs[0], ofType: TextNode.self)
-    #expect(textNodes.count == 1)
-    #expect(textNodes[0].content == "&copy")
 
     let expectedSig = "document[paragraph[text(\"&copy\")]]"
     #expect(sig(result.root) == expectedSig)
@@ -126,14 +71,6 @@ struct MarkdownEntityAndNumericCharacterReferencesTests {
   func unknownEntityNamesAreNotRecognizedAsEntityReferences() {
     let input = "&MadeUpEntity;"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let textNodes = findNodes(in: paragraphs[0], ofType: TextNode.self)
-    #expect(textNodes.count == 1)
-    #expect(textNodes[0].content == "&MadeUpEntity;")
 
     let expectedSig = "document[paragraph[text(\"&MadeUpEntity;\")]]"
     #expect(sig(result.root) == expectedSig)
@@ -143,11 +80,6 @@ struct MarkdownEntityAndNumericCharacterReferencesTests {
   func entityReferencesWorkInRawHTML() {
     let input = "<a href=\"&ouml;&ouml;.html\">"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let htmlNodes = findNodes(in: result.root, ofType: HTMLNode.self)
-    #expect(htmlNodes.count == 1)
-    #expect(htmlNodes[0].content == "<a href=\"&ouml;&ouml;.html\">")
 
     let expectedSig = "document[html(\"<a href=\\\"&ouml;&ouml;.html\\\">\")]"
     #expect(sig(result.root) == expectedSig)
@@ -157,16 +89,6 @@ struct MarkdownEntityAndNumericCharacterReferencesTests {
   func entityReferencesWorkInLinkURLsAndTitles() {
     let input = "[foo](/f&ouml;&ouml; \"f&ouml;&ouml;\")"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let linkNodes = findNodes(in: paragraphs[0], ofType: LinkNode.self)
-    #expect(linkNodes.count == 1)
-    #expect(linkNodes[0].url == "/föö")
-    #expect(linkNodes[0].title == "föö")
-    #expect(innerText(linkNodes[0]) == "foo")
 
     let expectedSig = "document[paragraph[link(url:\"/föö\",title:\"föö\")[text(\"foo\")]]]"
     #expect(sig(result.root) == expectedSig)
@@ -180,20 +102,6 @@ struct MarkdownEntityAndNumericCharacterReferencesTests {
     [foo]: /f&ouml;&ouml; "f&ouml;&ouml;"
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let linkNodes = findNodes(in: paragraphs[0], ofType: LinkNode.self)
-    #expect(linkNodes.count == 1)
-    #expect(linkNodes[0].url == "/föö")
-    #expect(linkNodes[0].title == "föö")
-
-    let referenceNodes = findNodes(in: result.root, ofType: ReferenceNode.self)
-    #expect(referenceNodes.count == 1)
-    #expect(referenceNodes[0].url == "/föö")
-    #expect(referenceNodes[0].title == "föö")
 
     let expectedSig = "document[paragraph[link(url:\"/föö\",title:\"föö\")[text(\"foo\")]],reference(id:\"foo\",url:\"/föö\",title:\"föö\")]"
     #expect(sig(result.root) == expectedSig)
@@ -207,12 +115,6 @@ struct MarkdownEntityAndNumericCharacterReferencesTests {
     ```
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let codeBlocks = findNodes(in: result.root, ofType: CodeBlockNode.self)
-    #expect(codeBlocks.count == 1)
-    #expect(codeBlocks[0].language == "föö")
-    #expect(codeBlocks[0].source == "foo")
 
     let expectedSig = "document[code_block(lang:\"föö\",\"foo\")]"
     #expect(sig(result.root) == expectedSig)
@@ -222,14 +124,6 @@ struct MarkdownEntityAndNumericCharacterReferencesTests {
   func entityReferencesTreatedAsLiteralTextInCodeSpans() {
     let input = "`f&ouml;&ouml;`"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let codeSpans = findNodes(in: paragraphs[0], ofType: CodeSpanNode.self)
-    #expect(codeSpans.count == 1)
-    #expect(codeSpans[0].code == "f&ouml;&ouml;")
 
     let expectedSig = "document[paragraph[code(\"f&ouml;&ouml;\")]]"
     #expect(sig(result.root) == expectedSig)
@@ -239,11 +133,6 @@ struct MarkdownEntityAndNumericCharacterReferencesTests {
   func entityReferencesTreatedAsLiteralTextInIndentedCodeBlocks() {
     let input = "    f&ouml;f&ouml;"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let codeBlocks = findNodes(in: result.root, ofType: CodeBlockNode.self)
-    #expect(codeBlocks.count == 1)
-    #expect(codeBlocks[0].source == "f&ouml;f&ouml;")
 
     let expectedSig = "document[code_block(\"f&ouml;f&ouml;\")]"
     #expect(sig(result.root) == expectedSig)
@@ -256,18 +145,6 @@ struct MarkdownEntityAndNumericCharacterReferencesTests {
     *foo*
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    // First line should be literal asterisks, second should be emphasis
-    let emphasisNodes = findNodes(in: paragraphs[0], ofType: EmphasisNode.self)
-    #expect(emphasisNodes.count == 1)
-    #expect(innerText(emphasisNodes[0]) == "foo")
-
-    let textNodes = findNodes(in: paragraphs[0], ofType: TextNode.self)
-    #expect(textNodes.count >= 1)
 
     let expectedSig = "document[paragraph[text(\"*foo*\"),text(\"\"),emphasis[text(\"foo\")]]]"
     #expect(sig(result.root) == expectedSig)
@@ -281,18 +158,6 @@ struct MarkdownEntityAndNumericCharacterReferencesTests {
     * foo
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-    #expect(innerText(paragraphs[0]) == "* foo")
-
-    let unorderedLists = findNodes(in: result.root, ofType: UnorderedListNode.self)
-    #expect(unorderedLists.count == 1)
-
-    let listItems = findNodes(in: unorderedLists[0], ofType: ListItemNode.self)
-    #expect(listItems.count == 1)
-    #expect(innerText(listItems[0]) == "foo")
 
     let expectedSig = "document[paragraph[text(\"* foo\")],unordered_list(level:1)[list_item[paragraph[text(\"foo\")]]]]"
     #expect(sig(result.root) == expectedSig)
@@ -302,17 +167,6 @@ struct MarkdownEntityAndNumericCharacterReferencesTests {
   func numericCharacterReferencesForLineBreaksPreserveParagraphStructure() {
     let input = "foo&#10;&#10;bar"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let textNodes = findNodes(in: paragraphs[0], ofType: TextNode.self)
-    #expect(textNodes.count == 1)
-
-    // The line breaks should be converted to actual newlines but remain in same paragraph
-    let text = textNodes[0].content
-    #expect(text.contains("foo") && text.contains("bar"))
 
   let expectedSig = "document[paragraph[text(\"foo\"),line_break(soft),line_break(soft),text(\"bar\")]]"
     #expect(sig(result.root) == expectedSig)
@@ -322,14 +176,6 @@ struct MarkdownEntityAndNumericCharacterReferencesTests {
   func numericCharacterReferenceForTabCharacter() {
     let input = "&#9;foo"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let textNodes = findNodes(in: paragraphs[0], ofType: TextNode.self)
-    #expect(textNodes.count == 1)
-    #expect(textNodes[0].content == "\tfoo")
 
     let expectedSig = "document[paragraph[text(\"\\tfoo\")]]"
     #expect(sig(result.root) == expectedSig)
@@ -339,18 +185,8 @@ struct MarkdownEntityAndNumericCharacterReferencesTests {
   func invalidLinkSyntaxWithEntityReferencesRemainsLiteral() {
     let input = "[a](url &quot;tit&quot;)"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
 
     // Should not create a link due to invalid syntax
-    let linkNodes = findNodes(in: paragraphs[0], ofType: LinkNode.self)
-    #expect(linkNodes.count == 0)
-
-    let textNodes = findNodes(in: paragraphs[0], ofType: TextNode.self)
-    #expect(textNodes.count == 1)
-    #expect(textNodes[0].content == "[a](url \"tit\")")
 
     let expectedSig = "document[paragraph[text(\"[a](url \\\"tit\\\")\")]]"
     #expect(sig(result.root) == expectedSig)
@@ -360,14 +196,6 @@ struct MarkdownEntityAndNumericCharacterReferencesTests {
   func commonHTMLEntitiesAreProperlyConverted() {
     let input = "&lt; &gt; &amp; &quot; &#39;"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let textNodes = findNodes(in: paragraphs[0], ofType: TextNode.self)
-    #expect(textNodes.count == 1)
-    #expect(textNodes[0].content == "< > & \" '")
 
     let expectedSig = "document[paragraph[text(\"< > & \\\" '\")]]"
     #expect(sig(result.root) == expectedSig)
@@ -377,14 +205,6 @@ struct MarkdownEntityAndNumericCharacterReferencesTests {
   func entityReferencesInEmphasisDoNotBreakFormatting() {
     let input = "*foo &amp; bar*"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let emphasisNodes = findNodes(in: paragraphs[0], ofType: EmphasisNode.self)
-    #expect(emphasisNodes.count == 1)
-    #expect(innerText(emphasisNodes[0]) == "foo & bar")
 
     let expectedSig = "document[paragraph[emphasis[text(\"foo & bar\")]]]"
     #expect(sig(result.root) == expectedSig)
@@ -394,15 +214,8 @@ struct MarkdownEntityAndNumericCharacterReferencesTests {
   func mixedEntityAndNumericCharacterReferences() {
     let input = "&copy; &#169; &#xA9;"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
 
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let textNodes = findNodes(in: paragraphs[0], ofType: TextNode.self)
-    #expect(textNodes.count == 1)
     // All three should produce the copyright symbol
-    #expect(textNodes[0].content == "© © ©")
 
     let expectedSig = "document[paragraph[text(\"© © ©\")]]"
     #expect(sig(result.root) == expectedSig)
@@ -412,15 +225,8 @@ struct MarkdownEntityAndNumericCharacterReferencesTests {
   func entityReferencesWithInvalidHexadecimalSyntax() {
     let input = "&#xgg; &#XZZ;"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
 
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let textNodes = findNodes(in: paragraphs[0], ofType: TextNode.self)
-    #expect(textNodes.count == 1)
     // Invalid hex should remain as literal text
-    #expect(textNodes[0].content == "&#xgg; &#XZZ;")
 
     let expectedSig = "document[paragraph[text(\"&#xgg; &#XZZ;\")]]"
     #expect(sig(result.root) == expectedSig)

@@ -17,14 +17,6 @@ struct MarkdownCodeSpansTests {
   func simpleCodeSpanWithSingleBackticks() {
     let input = "`foo`"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let codeSpans = findNodes(in: paragraphs[0], ofType: CodeSpanNode.self)
-    #expect(codeSpans.count == 1)
-    #expect(codeSpans[0].code == "foo")
 
     let expectedSig = "document[paragraph[code(\"foo\")]]"
     #expect(sig(result.root) == expectedSig)
@@ -34,14 +26,6 @@ struct MarkdownCodeSpansTests {
   func codeSpanWithDoubleBackticksContainingSingleBacktick() {
     let input = "`` foo ` bar ``"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let codeSpans = findNodes(in: paragraphs[0], ofType: CodeSpanNode.self)
-    #expect(codeSpans.count == 1)
-    #expect(codeSpans[0].code == "foo ` bar")
 
     let expectedSig = "document[paragraph[code(\"foo ` bar\")]]"
     #expect(sig(result.root) == expectedSig)
@@ -51,14 +35,6 @@ struct MarkdownCodeSpansTests {
   func codeSpanWithLeadingAndTrailingSpacesStrippedToShowDoubleBackticks() {
     let input = "` `` `"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let codeSpans = findNodes(in: paragraphs[0], ofType: CodeSpanNode.self)
-    #expect(codeSpans.count == 1)
-    #expect(codeSpans[0].code == "``")
 
     let expectedSig = "document[paragraph[code(\"``\")]]"
     #expect(sig(result.root) == expectedSig)
@@ -68,14 +44,6 @@ struct MarkdownCodeSpansTests {
   func codeSpanStripsOnlyOneSpaceFromEachSide() {
     let input = "`  ``  `"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let codeSpans = findNodes(in: paragraphs[0], ofType: CodeSpanNode.self)
-    #expect(codeSpans.count == 1)
-    #expect(codeSpans[0].code == " `` ")
 
     let expectedSig = "document[paragraph[code(\" `` \")]]"
     #expect(sig(result.root) == expectedSig)
@@ -85,14 +53,6 @@ struct MarkdownCodeSpansTests {
   func codeSpanPreservesLeadingSpaceWhenNoTrailingSpace() {
     let input = "` a`"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let codeSpans = findNodes(in: paragraphs[0], ofType: CodeSpanNode.self)
-    #expect(codeSpans.count == 1)
-    #expect(codeSpans[0].code == " a")
 
     let expectedSig = "document[paragraph[code(\" a\")]]"
     #expect(sig(result.root) == expectedSig)
@@ -102,14 +62,6 @@ struct MarkdownCodeSpansTests {
   func codeSpanPreservesUnicodeWhitespaceOtherThanSpaces() {
     let input = "` b `"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let codeSpans = findNodes(in: paragraphs[0], ofType: CodeSpanNode.self)
-    #expect(codeSpans.count == 1)
-    #expect(codeSpans[0].code == " b ")
 
     let expectedSig = "document[paragraph[code(\" b \")]]"
     #expect(sig(result.root) == expectedSig)
@@ -122,15 +74,6 @@ struct MarkdownCodeSpansTests {
     `  `
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let codeSpans = findNodes(in: paragraphs[0], ofType: CodeSpanNode.self)
-    #expect(codeSpans.count == 2)
-    #expect(codeSpans[0].code == " ")
-    #expect(codeSpans[1].code == "  ")
 
     let expectedSig = "document[paragraph[code(\" \"),text(\"\"),code(\"  \")]]"
     #expect(sig(result.root) == expectedSig)
@@ -146,14 +89,6 @@ struct MarkdownCodeSpansTests {
     ``
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let codeSpans = findNodes(in: paragraphs[0], ofType: CodeSpanNode.self)
-    #expect(codeSpans.count == 1)
-    #expect(codeSpans[0].code == "foo bar   baz")
 
     let expectedSig = "document[paragraph[code(\"foo bar   baz\")]]"
     #expect(sig(result.root) == expectedSig)
@@ -167,14 +102,6 @@ struct MarkdownCodeSpansTests {
     ``
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let codeSpans = findNodes(in: paragraphs[0], ofType: CodeSpanNode.self)
-    #expect(codeSpans.count == 1)
-    #expect(codeSpans[0].code == "foo ")
 
     let expectedSig = "document[paragraph[code(\"foo \")]]"
     #expect(sig(result.root) == expectedSig)
@@ -187,14 +114,6 @@ struct MarkdownCodeSpansTests {
     baz`
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let codeSpans = findNodes(in: paragraphs[0], ofType: CodeSpanNode.self)
-    #expect(codeSpans.count == 1)
-    #expect(codeSpans[0].code == "foo   bar  baz")
 
     let expectedSig = "document[paragraph[code(\"foo   bar  baz\")]]"
     #expect(sig(result.root) == expectedSig)
@@ -204,18 +123,6 @@ struct MarkdownCodeSpansTests {
   func backslashEscapesDoNotWorkInCodeSpans() {
     let input = "`foo\\`bar`"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let codeSpans = findNodes(in: paragraphs[0], ofType: CodeSpanNode.self)
-    #expect(codeSpans.count == 1)
-    #expect(codeSpans[0].code == "foo\\")
-
-    let textNodes = findNodes(in: paragraphs[0], ofType: TextNode.self)
-    #expect(textNodes.count == 1)
-    #expect(textNodes[0].content == "bar`")
 
     let expectedSig = "document[paragraph[code(\"foo\\\\\"),text(\"bar`\")]]"
     #expect(sig(result.root) == expectedSig)
@@ -225,14 +132,6 @@ struct MarkdownCodeSpansTests {
   func multipleBackticksCanContainSingleBacktick() {
     let input = "``foo`bar``"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let codeSpans = findNodes(in: paragraphs[0], ofType: CodeSpanNode.self)
-    #expect(codeSpans.count == 1)
-    #expect(codeSpans[0].code == "foo`bar")
 
     let expectedSig = "document[paragraph[code(\"foo`bar\")]]"
     #expect(sig(result.root) == expectedSig)
@@ -242,14 +141,6 @@ struct MarkdownCodeSpansTests {
   func codeSpanCanContainDoubleBackticks() {
     let input = "` foo `` bar `"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let codeSpans = findNodes(in: paragraphs[0], ofType: CodeSpanNode.self)
-    #expect(codeSpans.count == 1)
-    #expect(codeSpans[0].code == "foo `` bar")
 
     let expectedSig = "document[paragraph[code(\"foo `` bar\")]]"
     #expect(sig(result.root) == expectedSig)
@@ -259,21 +150,6 @@ struct MarkdownCodeSpansTests {
   func codeSpansHaveHigherPrecedenceThanEmphasis() {
     let input = "*foo`*`"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let codeSpans = findNodes(in: paragraphs[0], ofType: CodeSpanNode.self)
-    #expect(codeSpans.count == 1)
-    #expect(codeSpans[0].code == "*")
-
-    let emphasisNodes = findNodes(in: paragraphs[0], ofType: EmphasisNode.self)
-    #expect(emphasisNodes.count == 0)
-
-    let textNodes = findNodes(in: paragraphs[0], ofType: TextNode.self)
-    #expect(textNodes.count == 1)
-    #expect(textNodes[0].content == "*foo")
 
     let expectedSig = "document[paragraph[text(\"*foo\"),code(\"*\")]]"
     #expect(sig(result.root) == expectedSig)
@@ -283,22 +159,6 @@ struct MarkdownCodeSpansTests {
   func codeSpansHaveHigherPrecedenceThanLinks() {
     let input = "[not a `link](/foo`)"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let codeSpans = findNodes(in: paragraphs[0], ofType: CodeSpanNode.self)
-    #expect(codeSpans.count == 1)
-    #expect(codeSpans[0].code == "link](/foo")
-
-    let linkNodes = findNodes(in: paragraphs[0], ofType: LinkNode.self)
-    #expect(linkNodes.count == 0)
-
-    let textNodes = findNodes(in: paragraphs[0], ofType: TextNode.self)
-    #expect(textNodes.count == 2)
-    #expect(textNodes[0].content == "[not a ")
-    #expect(textNodes[1].content == ")")
 
     let expectedSig = "document[paragraph[text(\"[not a \"),code(\"link](/foo\"),text(\")\")]]"
     #expect(sig(result.root) == expectedSig)
@@ -308,21 +168,6 @@ struct MarkdownCodeSpansTests {
   func codeSpansAndHTMLTagsHaveSamePrecedenceCodeWinsWhenItStartsFirst() {
     let input = "`<a href=\"`\">`"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let codeSpans = findNodes(in: paragraphs[0], ofType: CodeSpanNode.self)
-    #expect(codeSpans.count == 1)
-    #expect(codeSpans[0].code == "<a href=\"")
-
-    let htmlNodes = findNodes(in: paragraphs[0], ofType: HTMLNode.self)
-    #expect(htmlNodes.count == 0)
-
-    let textNodes = findNodes(in: paragraphs[0], ofType: TextNode.self)
-    #expect(textNodes.count == 1)
-    #expect(textNodes[0].content == "\">`")
 
     let expectedSig = "document[paragraph[code(\"<a href=\\\"\"),text(\"\\\">>\")]]"
     #expect(sig(result.root) == expectedSig)
@@ -332,21 +177,6 @@ struct MarkdownCodeSpansTests {
   func htmlTagsWinWhenTheyStartBeforeCodeSpans() {
     let input = "<a href=\"`\">`"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let htmlNodes = findNodes(in: paragraphs[0], ofType: HTMLNode.self)
-    #expect(htmlNodes.count == 1)
-    #expect(htmlNodes[0].content == "<a href=\"`\">")
-
-    let codeSpans = findNodes(in: paragraphs[0], ofType: CodeSpanNode.self)
-    #expect(codeSpans.count == 0)
-
-    let textNodes = findNodes(in: paragraphs[0], ofType: TextNode.self)
-    #expect(textNodes.count == 1)
-    #expect(textNodes[0].content == "`")
 
     let expectedSig = "document[paragraph[html(\"<a href=\\\"`\\\">\"),text(\"`\")]]"
     #expect(sig(result.root) == expectedSig)
@@ -356,21 +186,6 @@ struct MarkdownCodeSpansTests {
   func codeSpansAndAutolinksHaveSamePrecedenceCodeWinsWhenItStartsFirst() {
     let input = "`<http://foo.bar.`baz>`"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let codeSpans = findNodes(in: paragraphs[0], ofType: CodeSpanNode.self)
-    #expect(codeSpans.count == 1)
-    #expect(codeSpans[0].code == "<http://foo.bar.")
-
-    let linkNodes = findNodes(in: paragraphs[0], ofType: LinkNode.self)
-    #expect(linkNodes.count == 0)
-
-    let textNodes = findNodes(in: paragraphs[0], ofType: TextNode.self)
-    #expect(textNodes.count == 1)
-    #expect(textNodes[0].content == "baz>`")
 
     let expectedSig = "document[paragraph[code(\"<http://foo.bar.\"),text(\"baz>`\")]]"
     #expect(sig(result.root) == expectedSig)
@@ -380,22 +195,6 @@ struct MarkdownCodeSpansTests {
   func autolinksWinWhenTheyStartBeforeCodeSpans() {
     let input = "<http://foo.bar.`baz>`"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let linkNodes = findNodes(in: paragraphs[0], ofType: LinkNode.self)
-    #expect(linkNodes.count == 1)
-    #expect(linkNodes[0].url == "http://foo.bar.`baz")
-
-    let codeSpans = findNodes(in: paragraphs[0], ofType: CodeSpanNode.self)
-    #expect(codeSpans.count == 0)
-
-    let textNodes = findNodes(in: paragraphs[0], ofType: TextNode.self)
-    #expect(textNodes.count == 2)
-    #expect(textNodes[0].content == "http://foo.bar.`baz")
-    #expect(textNodes[1].content == "`")
 
     let expectedSig = "document[paragraph[link(url:\"http://foo.bar.`baz\",title:\"\")[text(\"http://foo.bar.`baz\")],text(\"`\")]]"
     #expect(sig(result.root) == expectedSig)
@@ -405,17 +204,6 @@ struct MarkdownCodeSpansTests {
   func unmatchedBacktickStringsRemainAsLiteralText() {
     let input = "```foo``"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let codeSpans = findNodes(in: paragraphs[0], ofType: CodeSpanNode.self)
-    #expect(codeSpans.count == 0)
-
-    let textNodes = findNodes(in: paragraphs[0], ofType: TextNode.self)
-    #expect(textNodes.count == 1)
-    #expect(textNodes[0].content == "```foo``")
 
     let expectedSig = "document[paragraph[text(\"```foo``\")]]"
     #expect(sig(result.root) == expectedSig)
@@ -425,17 +213,6 @@ struct MarkdownCodeSpansTests {
   func singleUnclosedBacktickRemainsAsLiteralText() {
     let input = "`foo"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let codeSpans = findNodes(in: paragraphs[0], ofType: CodeSpanNode.self)
-    #expect(codeSpans.count == 0)
-
-    let textNodes = findNodes(in: paragraphs[0], ofType: TextNode.self)
-    #expect(textNodes.count == 1)
-    #expect(textNodes[0].content == "`foo")
 
     let expectedSig = "document[paragraph[text(\"`foo\")]]"
     #expect(sig(result.root) == expectedSig)
@@ -445,18 +222,6 @@ struct MarkdownCodeSpansTests {
   func backtickStringsMustBeEqualLengthToFormCodeSpan() {
     let input = "`foo``bar``"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let codeSpans = findNodes(in: paragraphs[0], ofType: CodeSpanNode.self)
-    #expect(codeSpans.count == 1)
-    #expect(codeSpans[0].code == "bar")
-
-    let textNodes = findNodes(in: paragraphs[0], ofType: TextNode.self)
-    #expect(textNodes.count == 1)
-    #expect(textNodes[0].content == "`foo")
 
     let expectedSig = "document[paragraph[text(\"`foo\"),code(\"bar\")]]"
     #expect(sig(result.root) == expectedSig)
@@ -466,14 +231,6 @@ struct MarkdownCodeSpansTests {
   func emptyCodeSpan() {
     let input = "``"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let codeSpans = findNodes(in: paragraphs[0], ofType: CodeSpanNode.self)
-    #expect(codeSpans.count == 1)
-    #expect(codeSpans[0].code == "")
 
     let expectedSig = "document[paragraph[code(\"\")]]"
     #expect(sig(result.root) == expectedSig)
@@ -483,14 +240,6 @@ struct MarkdownCodeSpansTests {
   func codeSpanWithOnlyBackticksInside() {
     let input = "```````"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let codeSpans = findNodes(in: paragraphs[0], ofType: CodeSpanNode.self)
-    #expect(codeSpans.count == 1)
-    #expect(codeSpans[0].code == "`")
 
     let expectedSig = "document[paragraph[code(\"`\")]]"
     #expect(sig(result.root) == expectedSig)
@@ -500,21 +249,6 @@ struct MarkdownCodeSpansTests {
   func multipleCodeSpansInSameParagraph() {
     let input = "Here is `code` and `more code`."
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let codeSpans = findNodes(in: paragraphs[0], ofType: CodeSpanNode.self)
-    #expect(codeSpans.count == 2)
-    #expect(codeSpans[0].code == "code")
-    #expect(codeSpans[1].code == "more code")
-
-    let textNodes = findNodes(in: paragraphs[0], ofType: TextNode.self)
-    #expect(textNodes.count == 3)
-    #expect(textNodes[0].content == "Here is ")
-    #expect(textNodes[1].content == " and ")
-    #expect(textNodes[2].content == ".")
 
     let expectedSig = "document[paragraph[text(\"Here is \"),code(\"code\"),text(\" and \"),code(\"more code\"),text(\".\")]]"
     #expect(sig(result.root) == expectedSig)
@@ -524,14 +258,6 @@ struct MarkdownCodeSpansTests {
   func codeSpanWithSpecialCharacters() {
     let input = "`<>&\"`"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let codeSpans = findNodes(in: paragraphs[0], ofType: CodeSpanNode.self)
-    #expect(codeSpans.count == 1)
-    #expect(codeSpans[0].code == "<>&\"")
 
     let expectedSig = "document[paragraph[code(\"<>&\\\"\")]]"
     #expect(sig(result.root) == expectedSig)

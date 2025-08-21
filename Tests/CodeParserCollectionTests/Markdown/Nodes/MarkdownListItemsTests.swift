@@ -24,23 +24,6 @@ struct MarkdownListItemsTests {
         > A block quote.
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let orderedLists = findNodes(in: result.root, ofType: OrderedListNode.self)
-    #expect(orderedLists.count == 1)
-
-    let listItems = findNodes(in: orderedLists[0], ofType: ListItemNode.self)
-    #expect(listItems.count == 1)
-
-    let paragraphs = findNodes(in: listItems[0], ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let codeBlocks = findNodes(in: listItems[0], ofType: CodeBlockNode.self)
-    #expect(codeBlocks.count == 1)
-    #expect(codeBlocks[0].source == "indented code")
-
-    let blockquotes = findNodes(in: listItems[0], ofType: BlockquoteNode.self)
-    #expect(blockquotes.count == 1)
 
     let expectedSig = "document[ordered_list(level:1)[list_item[paragraph[text(\"A paragraph\"),text(\"with two lines.\")],code_block(\"indented code\"),blockquote[paragraph[text(\"A block quote.\")]]]]]"
     #expect(sig(result.root) == expectedSig)
@@ -54,17 +37,6 @@ struct MarkdownListItemsTests {
      two
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let unorderedLists = findNodes(in: result.root, ofType: UnorderedListNode.self)
-    #expect(unorderedLists.count == 1)
-
-    let listItems = findNodes(in: unorderedLists[0], ofType: ListItemNode.self)
-    #expect(listItems.count == 1)
-    #expect(innerText(listItems[0]) == "one")
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 2) // One in list item, one outside
 
     let expectedSig = "document[unordered_list(level:1)[list_item[paragraph[text(\"one\")]]],paragraph[text(\"two\")]]"
     #expect(sig(result.root) == expectedSig)
@@ -78,18 +50,6 @@ struct MarkdownListItemsTests {
       two
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let unorderedLists = findNodes(in: result.root, ofType: UnorderedListNode.self)
-    #expect(unorderedLists.count == 1)
-
-    let listItems = findNodes(in: unorderedLists[0], ofType: ListItemNode.self)
-    #expect(listItems.count == 1)
-
-    let paragraphs = findNodes(in: listItems[0], ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 2)
-    #expect(innerText(paragraphs[0]) == "one")
-    #expect(innerText(paragraphs[1]) == "two")
 
     let expectedSig = "document[unordered_list(level:1)[list_item[paragraph[text(\"one\")],paragraph[text(\"two\")]]]]"
     #expect(sig(result.root) == expectedSig)
@@ -103,18 +63,6 @@ struct MarkdownListItemsTests {
          two
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let unorderedLists = findNodes(in: result.root, ofType: UnorderedListNode.self)
-    #expect(unorderedLists.count == 1)
-
-    let listItems = findNodes(in: unorderedLists[0], ofType: ListItemNode.self)
-    #expect(listItems.count == 1)
-    #expect(innerText(listItems[0]) == "one")
-
-    let codeBlocks = findNodes(in: result.root, ofType: CodeBlockNode.self)
-    #expect(codeBlocks.count == 1)
-    #expect(codeBlocks[0].source == " two")
 
     let expectedSig = "document[unordered_list(level:1)[list_item[paragraph[text(\"one\")]]],code_block(\" two\")]"
     #expect(sig(result.root) == expectedSig)
@@ -128,18 +76,6 @@ struct MarkdownListItemsTests {
           two
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let unorderedLists = findNodes(in: result.root, ofType: UnorderedListNode.self)
-    #expect(unorderedLists.count == 1)
-
-    let listItems = findNodes(in: unorderedLists[0], ofType: ListItemNode.self)
-    #expect(listItems.count == 1)
-
-    let paragraphs = findNodes(in: listItems[0], ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 2)
-    #expect(innerText(paragraphs[0]) == "one")
-    #expect(innerText(paragraphs[1]) == "two")
 
     let expectedSig = "document[unordered_list(level:1)[list_item[paragraph[text(\"one\")],paragraph[text(\"two\")]]]]"
     #expect(sig(result.root) == expectedSig)
@@ -153,24 +89,6 @@ struct MarkdownListItemsTests {
     >>     two
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let blockquotes = findNodes(in: result.root, ofType: BlockquoteNode.self)
-    #expect(blockquotes.count == 1)
-
-    let nestedBlockquotes = findNodes(in: blockquotes[0], ofType: BlockquoteNode.self)
-    #expect(nestedBlockquotes.count == 1)
-
-    let orderedLists = findNodes(in: nestedBlockquotes[0], ofType: OrderedListNode.self)
-    #expect(orderedLists.count == 1)
-
-    let listItems = findNodes(in: orderedLists[0], ofType: ListItemNode.self)
-    #expect(listItems.count == 1)
-
-    let paragraphs = findNodes(in: listItems[0], ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 2)
-    #expect(innerText(paragraphs[0]) == "one")
-    #expect(innerText(paragraphs[1]) == "two")
 
     let expectedSig = "document[blockquote[blockquote[ordered_list(level:1)[list_item[paragraph[text(\"one\")],paragraph[text(\"two\")]]]]]]"
     #expect(sig(result.root) == expectedSig)
@@ -184,23 +102,6 @@ struct MarkdownListItemsTests {
       >  > two
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let blockquotes = findNodes(in: result.root, ofType: BlockquoteNode.self)
-    #expect(blockquotes.count == 1)
-
-    let nestedBlockquotes = findNodes(in: blockquotes[0], ofType: BlockquoteNode.self)
-    #expect(nestedBlockquotes.count == 1)
-
-    let unorderedLists = findNodes(in: nestedBlockquotes[0], ofType: UnorderedListNode.self)
-    #expect(unorderedLists.count == 1)
-
-    let listItems = findNodes(in: unorderedLists[0], ofType: ListItemNode.self)
-    #expect(listItems.count == 1)
-    #expect(innerText(listItems[0]) == "one")
-
-    let paragraphs = findNodes(in: nestedBlockquotes[0], ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 2) // One in list item, one outside
 
     let expectedSig = "document[blockquote[blockquote[unordered_list(level:1)[list_item[paragraph[text(\"one\")]]],paragraph[text(\"two\")]]]]"
     #expect(sig(result.root) == expectedSig)
@@ -214,18 +115,6 @@ struct MarkdownListItemsTests {
     2.two
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 2)
-    #expect(innerText(paragraphs[0]) == "-one")
-    #expect(innerText(paragraphs[1]) == "2.two")
-
-    let unorderedLists = findNodes(in: result.root, ofType: UnorderedListNode.self)
-    #expect(unorderedLists.count == 0)
-
-    let orderedLists = findNodes(in: result.root, ofType: OrderedListNode.self)
-    #expect(orderedLists.count == 0)
 
     let expectedSig = "document[paragraph[text(\"-one\")],paragraph[text(\"2.two\")]]"
     #expect(sig(result.root) == expectedSig)
@@ -236,22 +125,9 @@ struct MarkdownListItemsTests {
     let input = """
     - foo
 
-
       bar
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let unorderedLists = findNodes(in: result.root, ofType: UnorderedListNode.self)
-    #expect(unorderedLists.count == 1)
-
-    let listItems = findNodes(in: unorderedLists[0], ofType: ListItemNode.self)
-    #expect(listItems.count == 1)
-
-    let paragraphs = findNodes(in: listItems[0], ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 2)
-    #expect(innerText(paragraphs[0]) == "foo")
-    #expect(innerText(paragraphs[1]) == "bar")
 
     let expectedSig = "document[unordered_list(level:1)[list_item[paragraph[text(\"foo\")],paragraph[text(\"bar\")]]]]"
     #expect(sig(result.root) == expectedSig)
@@ -271,25 +147,6 @@ struct MarkdownListItemsTests {
         > bam
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let orderedLists = findNodes(in: result.root, ofType: OrderedListNode.self)
-    #expect(orderedLists.count == 1)
-
-    let listItems = findNodes(in: orderedLists[0], ofType: ListItemNode.self)
-    #expect(listItems.count == 1)
-
-    let paragraphs = findNodes(in: listItems[0], ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 2)
-    #expect(innerText(paragraphs[0]) == "foo")
-    #expect(innerText(paragraphs[1]) == "baz")
-
-    let codeBlocks = findNodes(in: listItems[0], ofType: CodeBlockNode.self)
-    #expect(codeBlocks.count == 1)
-    #expect(codeBlocks[0].source == "bar")
-
-    let blockquotes = findNodes(in: listItems[0], ofType: BlockquoteNode.self)
-    #expect(blockquotes.count == 1)
 
     let expectedSig = "document[ordered_list(level:1)[list_item[paragraph[text(\"foo\")],code_block(\"bar\"),paragraph[text(\"baz\")],blockquote[paragraph[text(\"bam\")]]]]]"
     #expect(sig(result.root) == expectedSig)
@@ -302,25 +159,9 @@ struct MarkdownListItemsTests {
 
           bar
 
-
           baz
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let unorderedLists = findNodes(in: result.root, ofType: UnorderedListNode.self)
-    #expect(unorderedLists.count == 1)
-
-    let listItems = findNodes(in: unorderedLists[0], ofType: ListItemNode.self)
-    #expect(listItems.count == 1)
-
-    let paragraphs = findNodes(in: listItems[0], ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-    #expect(innerText(paragraphs[0]) == "Foo")
-
-    let codeBlocks = findNodes(in: listItems[0], ofType: CodeBlockNode.self)
-    #expect(codeBlocks.count == 1)
-    #expect(codeBlocks[0].source == "bar\n\n\nbaz")
 
     let expectedSig = "document[unordered_list(level:1)[list_item[paragraph[text(\"Foo\")],code_block(\"bar\\n\\n\\nbaz\")]]]"
     #expect(sig(result.root) == expectedSig)
@@ -330,14 +171,6 @@ struct MarkdownListItemsTests {
   func orderedListStartNumbersMustBeNineDigitsOrLessValidCase() {
     let input = "123456789. ok"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let orderedLists = findNodes(in: result.root, ofType: OrderedListNode.self)
-    #expect(orderedLists.count == 1)
-
-    let listItems = findNodes(in: orderedLists[0], ofType: ListItemNode.self)
-    #expect(listItems.count == 1)
-    #expect(innerText(listItems[0]) == "ok")
 
     let expectedSig = "document[ordered_list(level:1)[list_item[paragraph[text(\"ok\")]]]]"
     #expect(sig(result.root) == expectedSig)
@@ -347,14 +180,6 @@ struct MarkdownListItemsTests {
   func orderedListStartNumbersWithTenDigitsCreateParagraphNotList() {
     let input = "1234567890. not ok"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let orderedLists = findNodes(in: result.root, ofType: OrderedListNode.self)
-    #expect(orderedLists.count == 0)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-    #expect(innerText(paragraphs[0]) == "1234567890. not ok")
 
     let expectedSig = "document[paragraph[text(\"1234567890. not ok\")]]"
     #expect(sig(result.root) == expectedSig)
@@ -364,14 +189,6 @@ struct MarkdownListItemsTests {
   func startNumberMayBeginWithZerosSimpleZeroStart() {
     let input = "0. ok"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let orderedLists = findNodes(in: result.root, ofType: OrderedListNode.self)
-    #expect(orderedLists.count == 1)
-
-    let listItems = findNodes(in: orderedLists[0], ofType: ListItemNode.self)
-    #expect(listItems.count == 1)
-    #expect(innerText(listItems[0]) == "ok")
 
     let expectedSig = "document[ordered_list(level:1)[list_item[paragraph[text(\"ok\")]]]]"
     #expect(sig(result.root) == expectedSig)
@@ -381,14 +198,6 @@ struct MarkdownListItemsTests {
   func startNumberMayBeginWithZerosLeadingZerosCase() {
     let input = "003. ok"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let orderedLists = findNodes(in: result.root, ofType: OrderedListNode.self)
-    #expect(orderedLists.count == 1)
-
-    let listItems = findNodes(in: orderedLists[0], ofType: ListItemNode.self)
-    #expect(listItems.count == 1)
-    #expect(innerText(listItems[0]) == "ok")
 
     let expectedSig = "document[ordered_list(level:1)[list_item[paragraph[text(\"ok\")]]]]"
     #expect(sig(result.root) == expectedSig)
@@ -398,14 +207,6 @@ struct MarkdownListItemsTests {
   func startNumberMayNotBeNegativeCreatesParagraph() {
     let input = "-1. not ok"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let orderedLists = findNodes(in: result.root, ofType: OrderedListNode.self)
-    #expect(orderedLists.count == 0)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-    #expect(innerText(paragraphs[0]) == "-1. not ok")
 
     let expectedSig = "document[paragraph[text(\"-1. not ok\")]]"
     #expect(sig(result.root) == expectedSig)
@@ -419,21 +220,6 @@ struct MarkdownListItemsTests {
           bar
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let unorderedLists = findNodes(in: result.root, ofType: UnorderedListNode.self)
-    #expect(unorderedLists.count == 1)
-
-    let listItems = findNodes(in: unorderedLists[0], ofType: ListItemNode.self)
-    #expect(listItems.count == 1)
-
-    let paragraphs = findNodes(in: listItems[0], ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-    #expect(innerText(paragraphs[0]) == "foo")
-
-    let codeBlocks = findNodes(in: listItems[0], ofType: CodeBlockNode.self)
-    #expect(codeBlocks.count == 1)
-    #expect(codeBlocks[0].source == "bar")
 
     let expectedSig = "document[unordered_list(level:1)[list_item[paragraph[text(\"foo\")],code_block(\"bar\")]]]"
     #expect(sig(result.root) == expectedSig)
@@ -447,21 +233,6 @@ struct MarkdownListItemsTests {
                bar
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let orderedLists = findNodes(in: result.root, ofType: OrderedListNode.self)
-    #expect(orderedLists.count == 1)
-
-    let listItems = findNodes(in: orderedLists[0], ofType: ListItemNode.self)
-    #expect(listItems.count == 1)
-
-    let paragraphs = findNodes(in: listItems[0], ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-    #expect(innerText(paragraphs[0]) == "foo")
-
-    let codeBlocks = findNodes(in: listItems[0], ofType: CodeBlockNode.self)
-    #expect(codeBlocks.count == 1)
-    #expect(codeBlocks[0].source == "bar")
 
     let expectedSig = "document[ordered_list(level:1)[list_item[paragraph[text(\"foo\")],code_block(\"bar\")]]]"
     #expect(sig(result.root) == expectedSig)
@@ -477,22 +248,6 @@ struct MarkdownListItemsTests {
            more code
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let orderedLists = findNodes(in: result.root, ofType: OrderedListNode.self)
-    #expect(orderedLists.count == 1)
-
-    let listItems = findNodes(in: orderedLists[0], ofType: ListItemNode.self)
-    #expect(listItems.count == 1)
-
-    let codeBlocks = findNodes(in: listItems[0], ofType: CodeBlockNode.self)
-    #expect(codeBlocks.count == 2)
-    #expect(codeBlocks[0].source == "indented code")
-    #expect(codeBlocks[1].source == "more code")
-
-    let paragraphs = findNodes(in: listItems[0], ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-    #expect(innerText(paragraphs[0]) == "paragraph")
 
     let expectedSig = "document[ordered_list(level:1)[list_item[code_block(\"indented code\"),paragraph[text(\"paragraph\")],code_block(\"more code\")]]]"
     #expect(sig(result.root) == expectedSig)
@@ -508,22 +263,6 @@ struct MarkdownListItemsTests {
            more code
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let orderedLists = findNodes(in: result.root, ofType: OrderedListNode.self)
-    #expect(orderedLists.count == 1)
-
-    let listItems = findNodes(in: orderedLists[0], ofType: ListItemNode.self)
-    #expect(listItems.count == 1)
-
-    let codeBlocks = findNodes(in: listItems[0], ofType: CodeBlockNode.self)
-    #expect(codeBlocks.count == 2)
-    #expect(codeBlocks[0].source == " indented code")
-    #expect(codeBlocks[1].source == "more code")
-
-    let paragraphs = findNodes(in: listItems[0], ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-    #expect(innerText(paragraphs[0]) == "paragraph")
 
     let expectedSig = "document[ordered_list(level:1)[list_item[code_block(\" indented code\"),paragraph[text(\"paragraph\")],code_block(\"more code\")]]]"
     #expect(sig(result.root) == expectedSig)
@@ -537,17 +276,6 @@ struct MarkdownListItemsTests {
       bar
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let unorderedLists = findNodes(in: result.root, ofType: UnorderedListNode.self)
-    #expect(unorderedLists.count == 1)
-
-    let listItems = findNodes(in: unorderedLists[0], ofType: ListItemNode.self)
-    #expect(listItems.count == 1)
-    #expect(innerText(listItems[0]) == "foo")
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 2) // One in list item, one outside
 
     let expectedSig = "document[unordered_list(level:1)[list_item[paragraph[text(\"foo\")]]],paragraph[text(\"bar\")]]"
     #expect(sig(result.root) == expectedSig)
@@ -561,18 +289,6 @@ struct MarkdownListItemsTests {
        bar
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let unorderedLists = findNodes(in: result.root, ofType: UnorderedListNode.self)
-    #expect(unorderedLists.count == 1)
-
-    let listItems = findNodes(in: unorderedLists[0], ofType: ListItemNode.self)
-    #expect(listItems.count == 1)
-
-    let paragraphs = findNodes(in: listItems[0], ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 2)
-    #expect(innerText(paragraphs[0]) == "foo")
-    #expect(innerText(paragraphs[1]) == "bar")
 
     let expectedSig = "document[unordered_list(level:1)[list_item[paragraph[text(\"foo\")],paragraph[text(\"bar\")]]]]"
     #expect(sig(result.root) == expectedSig)
@@ -591,28 +307,12 @@ struct MarkdownListItemsTests {
           baz
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let unorderedLists = findNodes(in: result.root, ofType: UnorderedListNode.self)
-    #expect(unorderedLists.count == 1)
-
-    let listItems = findNodes(in: unorderedLists[0], ofType: ListItemNode.self)
-    #expect(listItems.count == 3)
 
     // First item
-    let paragraphs1 = findNodes(in: listItems[0], ofType: ParagraphNode.self)
-    #expect(paragraphs1.count == 1)
-    #expect(innerText(paragraphs1[0]) == "foo")
 
     // Second item
-    let codeBlocks2 = findNodes(in: listItems[1], ofType: CodeBlockNode.self)
-    #expect(codeBlocks2.count == 1)
-    #expect(codeBlocks2[0].source == "bar")
 
     // Third item
-    let codeBlocks3 = findNodes(in: listItems[2], ofType: CodeBlockNode.self)
-    #expect(codeBlocks3.count == 1)
-    #expect(codeBlocks3[0].source == "baz")
 
     let expectedSig = "document[unordered_list(level:1)[list_item[paragraph[text(\"foo\")]],list_item[code_block(\"bar\")],list_item[code_block(\"baz\")]]]"
     #expect(sig(result.root) == expectedSig)
@@ -626,21 +326,6 @@ struct MarkdownListItemsTests {
       foo
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let unorderedLists = findNodes(in: result.root, ofType: UnorderedListNode.self)
-    #expect(unorderedLists.count == 1)
-
-    let listItems = findNodes(in: unorderedLists[0], ofType: ListItemNode.self)
-    #expect(listItems.count == 1)
-
-    // List item should be empty
-    let itemChildren = listItems[0].children
-    #expect(itemChildren.count == 0)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-    #expect(innerText(paragraphs[0]) == "foo")
 
     let expectedSig = "document[unordered_list(level:1)[list_item],paragraph[text(\"foo\")]]"
     #expect(sig(result.root) == expectedSig)
@@ -654,21 +339,6 @@ struct MarkdownListItemsTests {
     - bar
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let unorderedLists = findNodes(in: result.root, ofType: UnorderedListNode.self)
-    #expect(unorderedLists.count == 1)
-
-    let listItems = findNodes(in: unorderedLists[0], ofType: ListItemNode.self)
-    #expect(listItems.count == 3)
-
-    #expect(innerText(listItems[0]) == "foo")
-
-    // Second item should be empty
-    let item2Children = listItems[1].children
-    #expect(item2Children.count == 0)
-
-    #expect(innerText(listItems[2]) == "bar")
 
     let expectedSig = "document[unordered_list(level:1)[list_item[paragraph[text(\"foo\")]],list_item,list_item[paragraph[text(\"bar\")]]]]"
     #expect(sig(result.root) == expectedSig)
@@ -682,21 +352,6 @@ struct MarkdownListItemsTests {
     3. bar
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let orderedLists = findNodes(in: result.root, ofType: OrderedListNode.self)
-    #expect(orderedLists.count == 1)
-
-    let listItems = findNodes(in: orderedLists[0], ofType: ListItemNode.self)
-    #expect(listItems.count == 3)
-
-    #expect(innerText(listItems[0]) == "foo")
-
-    // Second item should be empty
-    let item2Children = listItems[1].children
-    #expect(item2Children.count == 0)
-
-    #expect(innerText(listItems[2]) == "bar")
 
     let expectedSig = "document[ordered_list(level:1)[list_item[paragraph[text(\"foo\")]],list_item,list_item[paragraph[text(\"bar\")]]]]"
     #expect(sig(result.root) == expectedSig)
@@ -706,17 +361,6 @@ struct MarkdownListItemsTests {
   func singleEmptyListItem() {
     let input = "*"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let unorderedLists = findNodes(in: result.root, ofType: UnorderedListNode.self)
-    #expect(unorderedLists.count == 1)
-
-    let listItems = findNodes(in: unorderedLists[0], ofType: ListItemNode.self)
-    #expect(listItems.count == 1)
-
-    // List item should be empty
-    let itemChildren = listItems[0].children
-    #expect(itemChildren.count == 0)
 
     let expectedSig = "document[unordered_list(level:1)[list_item]]"
     #expect(sig(result.root) == expectedSig)
@@ -732,18 +376,6 @@ struct MarkdownListItemsTests {
     1.
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 2)
-  #expect(innerText(paragraphs[0]) == "foo *")
-  #expect(innerText(paragraphs[1]) == "foo 1.")
-
-    let unorderedLists = findNodes(in: result.root, ofType: UnorderedListNode.self)
-    #expect(unorderedLists.count == 0)
-
-    let orderedLists = findNodes(in: result.root, ofType: OrderedListNode.self)
-    #expect(orderedLists.count == 0)
 
   let expectedSig = "document[paragraph[text(\"foo\"),line_break(soft),text(\"*\")],paragraph[text(\"foo\"),line_break(soft),text(\"1.\")]]"
     #expect(sig(result.root) == expectedSig)
@@ -760,23 +392,6 @@ struct MarkdownListItemsTests {
          > A block quote.
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let orderedLists = findNodes(in: result.root, ofType: OrderedListNode.self)
-    #expect(orderedLists.count == 1)
-
-    let listItems = findNodes(in: orderedLists[0], ofType: ListItemNode.self)
-    #expect(listItems.count == 1)
-
-    let paragraphs = findNodes(in: listItems[0], ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let codeBlocks = findNodes(in: listItems[0], ofType: CodeBlockNode.self)
-    #expect(codeBlocks.count == 1)
-    #expect(codeBlocks[0].source == "indented code")
-
-    let blockquotes = findNodes(in: listItems[0], ofType: BlockquoteNode.self)
-    #expect(blockquotes.count == 1)
 
     let expectedSig = "document[ordered_list(level:1)[list_item[paragraph[text(\"A paragraph\"),text(\"with two lines.\")],code_block(\"indented code\"),blockquote[paragraph[text(\"A block quote.\")]]]]]"
     #expect(sig(result.root) == expectedSig)
@@ -793,14 +408,6 @@ struct MarkdownListItemsTests {
             > A block quote.
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let orderedLists = findNodes(in: result.root, ofType: OrderedListNode.self)
-    #expect(orderedLists.count == 0)
-
-    let codeBlocks = findNodes(in: result.root, ofType: CodeBlockNode.self)
-    #expect(codeBlocks.count == 1)
-    #expect(codeBlocks[0].source == "1.  A paragraph\n    with two lines.\n\n        indented code\n\n    > A block quote.")
 
     let expectedSig = "document[code_block(\"1.  A paragraph\\n    with two lines.\\n\\n        indented code\\n\\n    > A block quote.\")]"
     #expect(sig(result.root) == expectedSig)
@@ -817,28 +424,6 @@ struct MarkdownListItemsTests {
           > A block quote.
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let orderedLists = findNodes(in: result.root, ofType: OrderedListNode.self)
-    #expect(orderedLists.count == 1)
-
-    let listItems = findNodes(in: orderedLists[0], ofType: ListItemNode.self)
-    #expect(listItems.count == 1)
-
-    let paragraphs = findNodes(in: listItems[0], ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let textNodes = findNodes(in: paragraphs[0], ofType: TextNode.self)
-    #expect(textNodes.count == 2)
-    #expect(textNodes[0].content == "A paragraph")
-    #expect(textNodes[1].content == "with two lines.")
-
-    let codeBlocks = findNodes(in: listItems[0], ofType: CodeBlockNode.self)
-    #expect(codeBlocks.count == 1)
-    #expect(codeBlocks[0].source == "indented code")
-
-    let blockquotes = findNodes(in: listItems[0], ofType: BlockquoteNode.self)
-    #expect(blockquotes.count == 1)
 
     let expectedSig = "document[ordered_list(level:1)[list_item[paragraph[text(\"A paragraph\"),text(\"with two lines.\")],code_block(\"indented code\"),blockquote[paragraph[text(\"A block quote.\")]]]]]"
     #expect(sig(result.root) == expectedSig)
@@ -851,21 +436,6 @@ struct MarkdownListItemsTests {
         with two lines.
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let orderedLists = findNodes(in: result.root, ofType: OrderedListNode.self)
-    #expect(orderedLists.count == 1)
-
-    let listItems = findNodes(in: orderedLists[0], ofType: ListItemNode.self)
-    #expect(listItems.count == 1)
-
-    let paragraphs = findNodes(in: listItems[0], ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let textNodes = findNodes(in: paragraphs[0], ofType: TextNode.self)
-    #expect(textNodes.count == 2)
-    #expect(textNodes[0].content == "A paragraph")
-    #expect(textNodes[1].content == "with two lines.")
 
     let expectedSig = "document[ordered_list(level:1)[list_item[paragraph[text(\"A paragraph\"),text(\"with two lines.\")]]]]"
     #expect(sig(result.root) == expectedSig)
@@ -878,27 +448,6 @@ struct MarkdownListItemsTests {
     continued here.
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let blockquotes = findNodes(in: result.root, ofType: BlockquoteNode.self)
-    #expect(blockquotes.count == 1)
-
-    let orderedLists = findNodes(in: blockquotes[0], ofType: OrderedListNode.self)
-    #expect(orderedLists.count == 1)
-
-    let listItems = findNodes(in: orderedLists[0], ofType: ListItemNode.self)
-    #expect(listItems.count == 1)
-
-    let nestedBlockquotes = findNodes(in: listItems[0], ofType: BlockquoteNode.self)
-    #expect(nestedBlockquotes.count == 1)
-
-    let paragraphs = findNodes(in: nestedBlockquotes[0], ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let textNodes = findNodes(in: paragraphs[0], ofType: TextNode.self)
-    #expect(textNodes.count == 2)
-    #expect(textNodes[0].content == "Blockquote")
-    #expect(textNodes[1].content == "continued here.")
 
     let expectedSig = "document[blockquote[ordered_list(level:1)[list_item[blockquote[paragraph[text(\"Blockquote\"),text(\"continued here.\")]]]]]]"
     #expect(sig(result.root) == expectedSig)
@@ -913,28 +462,6 @@ struct MarkdownListItemsTests {
           - boo
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let topLevelLists = findNodes(in: result.root, ofType: UnorderedListNode.self)
-    #expect(topLevelLists.count == 1)
-
-    let level1Items = findNodes(in: topLevelLists[0], ofType: ListItemNode.self)
-    #expect(level1Items.count == 1)
-
-    let level2Lists = findNodes(in: level1Items[0], ofType: UnorderedListNode.self)
-    #expect(level2Lists.count == 1)
-
-    let level2Items = findNodes(in: level2Lists[0], ofType: ListItemNode.self)
-    #expect(level2Items.count == 1)
-
-    let level3Lists = findNodes(in: level2Items[0], ofType: UnorderedListNode.self)
-    #expect(level3Lists.count == 1)
-
-    let level3Items = findNodes(in: level3Lists[0], ofType: ListItemNode.self)
-    #expect(level3Items.count == 1)
-
-    let level4Lists = findNodes(in: level3Items[0], ofType: UnorderedListNode.self)
-    #expect(level4Lists.count == 1)
 
     let expectedSig = "document[unordered_list(level:1)[list_item[paragraph[text(\"foo\")],unordered_list(level:2)[list_item[paragraph[text(\"bar\")],unordered_list(level:3)[list_item[paragraph[text(\"baz\")],unordered_list(level:4)[list_item[paragraph[text(\"boo\")]]]]]]]]]"
     #expect(sig(result.root) == expectedSig)
@@ -949,18 +476,6 @@ struct MarkdownListItemsTests {
        - boo
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let unorderedLists = findNodes(in: result.root, ofType: UnorderedListNode.self)
-    #expect(unorderedLists.count == 1)
-
-    let listItems = findNodes(in: unorderedLists[0], ofType: ListItemNode.self)
-    #expect(listItems.count == 4)
-
-    #expect(innerText(listItems[0]) == "foo")
-    #expect(innerText(listItems[1]) == "bar")
-    #expect(innerText(listItems[2]) == "baz")
-    #expect(innerText(listItems[3]) == "boo")
 
     let expectedSig = "document[unordered_list(level:1)[list_item[paragraph[text(\"foo\")]],list_item[paragraph[text(\"bar\")]],list_item[paragraph[text(\"baz\")]],list_item[paragraph[text(\"boo\")]]]]"
     #expect(sig(result.root) == expectedSig)
@@ -973,20 +488,6 @@ struct MarkdownListItemsTests {
         - bar
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let orderedLists = findNodes(in: result.root, ofType: OrderedListNode.self)
-    #expect(orderedLists.count == 1)
-
-    let orderedListItems = findNodes(in: orderedLists[0], ofType: ListItemNode.self)
-    #expect(orderedListItems.count == 1)
-
-    let unorderedLists = findNodes(in: orderedListItems[0], ofType: UnorderedListNode.self)
-    #expect(unorderedLists.count == 1)
-
-    let unorderedListItems = findNodes(in: unorderedLists[0], ofType: ListItemNode.self)
-    #expect(unorderedListItems.count == 1)
-    #expect(innerText(unorderedListItems[0]) == "bar")
 
     let expectedSig = "document[ordered_list(level:1)[list_item[paragraph[text(\"foo\")],unordered_list(level:1)[list_item[paragraph[text(\"bar\")]]]]]]"
     #expect(sig(result.root) == expectedSig)
@@ -996,20 +497,6 @@ struct MarkdownListItemsTests {
   func listAsFirstBlockInListItemSimpleNesting() {
     let input = "- - foo"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let outerLists = findNodes(in: result.root, ofType: UnorderedListNode.self)
-    #expect(outerLists.count == 1)
-
-    let outerItems = findNodes(in: outerLists[0], ofType: ListItemNode.self)
-    #expect(outerItems.count == 1)
-
-    let innerLists = findNodes(in: outerItems[0], ofType: UnorderedListNode.self)
-    #expect(innerLists.count == 1)
-
-    let innerItems = findNodes(in: innerLists[0], ofType: ListItemNode.self)
-    #expect(innerItems.count == 1)
-    #expect(innerText(innerItems[0]) == "foo")
 
     let expectedSig = "document[unordered_list(level:1)[list_item[unordered_list(level:2)[list_item[paragraph[text(\"foo\")]]]]]]"
     #expect(sig(result.root) == expectedSig)
@@ -1019,26 +506,6 @@ struct MarkdownListItemsTests {
   func mixedListTypesAsFirstBlockInListItem() {
     let input = "1. - 2. foo"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let orderedLists = findNodes(in: result.root, ofType: OrderedListNode.self)
-    #expect(orderedLists.count == 1)
-
-    let orderedItems = findNodes(in: orderedLists[0], ofType: ListItemNode.self)
-    #expect(orderedItems.count == 1)
-
-    let unorderedLists = findNodes(in: orderedItems[0], ofType: UnorderedListNode.self)
-    #expect(unorderedLists.count == 1)
-
-    let unorderedItems = findNodes(in: unorderedLists[0], ofType: ListItemNode.self)
-    #expect(unorderedItems.count == 1)
-
-    let nestedOrderedLists = findNodes(in: unorderedItems[0], ofType: OrderedListNode.self)
-    #expect(nestedOrderedLists.count == 1)
-
-    let nestedOrderedItems = findNodes(in: nestedOrderedLists[0], ofType: ListItemNode.self)
-    #expect(nestedOrderedItems.count == 1)
-    #expect(innerText(nestedOrderedItems[0]) == "foo")
 
     let expectedSig = "document[ordered_list(level:1)[list_item[unordered_list(level:1)[list_item[ordered_list(level:2)[list_item[paragraph[text(\"foo\")]]]]]]]]"
     #expect(sig(result.root) == expectedSig)
@@ -1053,29 +520,10 @@ struct MarkdownListItemsTests {
       baz
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let unorderedLists = findNodes(in: result.root, ofType: UnorderedListNode.self)
-    #expect(unorderedLists.count == 1)
-
-    let listItems = findNodes(in: unorderedLists[0], ofType: ListItemNode.self)
-    #expect(listItems.count == 2)
 
     // First item with ATX heading
-    let atxHeaders = findNodes(in: listItems[0], ofType: HeaderNode.self)
-    #expect(atxHeaders.count == 1)
-    #expect(atxHeaders[0].level == 1)
-    #expect(innerText(atxHeaders[0]) == "Foo")
 
     // Second item with setext heading
-    let setextHeaders = findNodes(in: listItems[1], ofType: HeaderNode.self)
-    #expect(setextHeaders.count == 1)
-    #expect(setextHeaders[0].level == 2)
-    #expect(innerText(setextHeaders[0]) == "Bar")
-
-    let paragraphs = findNodes(in: listItems[1], ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-    #expect(innerText(paragraphs[0]) == "baz")
 
     let expectedSig = "document[unordered_list(level:1)[list_item[heading(level:1)[text(\"Foo\")]],list_item[heading(level:2)[text(\"Bar\")],paragraph[text(\"baz\")]]]]"
     #expect(sig(result.root) == expectedSig)

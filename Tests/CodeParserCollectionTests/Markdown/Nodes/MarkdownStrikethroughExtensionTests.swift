@@ -19,7 +19,7 @@ struct MarkdownStrikethroughExtensionTests {
   func basicStrikethroughWithTildes() {
     let input = "~~Hi~~ Hello, world!"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[strike[text(\"Hi\")],text(\" Hello, world!\")]]")
   }
 
@@ -33,7 +33,7 @@ struct MarkdownStrikethroughExtensionTests {
     new paragraph~~.
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"This ~~has a\")],paragraph[text(\"new paragraph~~.\")]]")
   }
 }

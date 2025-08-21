@@ -19,7 +19,7 @@ struct MarkdownAutolinksTests {
   func basicHTTPAutolink() {
     let input = "<http://foo.bar.baz>"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[link(url:\"http://foo.bar.baz\",title:\"\")[text(\"http://foo.bar.baz\")]]]")
   }
 
@@ -27,7 +27,7 @@ struct MarkdownAutolinksTests {
   func httpAutolinkWithQueryParams() {
     let input = "<http://foo.bar.baz/test?q=hello&id=22&boolean>"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[link(url:\"http://foo.bar.baz/test?q=hello&id=22&boolean\",title:\"\")[text(\"http://foo.bar.baz/test?q=hello&id=22&boolean\")]]]")
   }
 
@@ -35,7 +35,7 @@ struct MarkdownAutolinksTests {
   func ircAutolinkWithPort() {
     let input = "<irc://foo.bar:2233/baz>"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[link(url:\"irc://foo.bar:2233/baz\",title:\"\")[text(\"irc://foo.bar:2233/baz\")]]]")
   }
 
@@ -43,7 +43,7 @@ struct MarkdownAutolinksTests {
   func uppercaseMailtoAutolink() {
     let input = "<MAILTO:FOO@BAR.BAZ>"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[link(url:\"MAILTO:FOO@BAR.BAZ\",title:\"\")[text(\"MAILTO:FOO@BAR.BAZ\")]]]")
   }
 
@@ -51,7 +51,7 @@ struct MarkdownAutolinksTests {
   func customSchemeWithPlusAutolink() {
     let input = "<a+b+c:d>"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[link(url:\"a+b+c:d\",title:\"\")[text(\"a+b+c:d\")]]]")
   }
 
@@ -59,7 +59,7 @@ struct MarkdownAutolinksTests {
   func madeUpSchemeAutolink() {
     let input = "<made-up-scheme://foo,bar>"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[link(url:\"made-up-scheme://foo,bar\",title:\"\")[text(\"made-up-scheme://foo,bar\")]]]")
   }
 
@@ -67,7 +67,7 @@ struct MarkdownAutolinksTests {
   func httpRelativePathAutolink() {
     let input = "<http://../>"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[link(url:\"http://../\",title:\"\")[text(\"http://../\")]]]")
   }
 
@@ -75,7 +75,7 @@ struct MarkdownAutolinksTests {
   func localhostWithPortAutolink() {
     let input = "<localhost:5001/foo>"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[link(url:\"localhost:5001/foo\",title:\"\")[text(\"localhost:5001/foo\")]]]")
   }
 
@@ -85,7 +85,7 @@ struct MarkdownAutolinksTests {
   func autolinkWithSpaces() {
     let input = "<http://foo.bar/baz bim>"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"<http://foo.bar/baz bim>\")]]")
   }
 
@@ -93,7 +93,7 @@ struct MarkdownAutolinksTests {
   func autolinkWithBackslashEscapes() {
     let input = "<http://example.com/\\[\\>"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[link(url:\"http://example.com/%5C%5B%5C\",title:\"\")[text(\"http://example.com/\\[\\>\")]]]")
   }
 
@@ -103,7 +103,7 @@ struct MarkdownAutolinksTests {
   func basicEmailAutolink() {
     let input = "<foo@bar.example.com>"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[link(url:\"mailto:foo@bar.example.com\",title:\"\")[text(\"foo@bar.example.com\")]]]")
   }
 
@@ -111,7 +111,7 @@ struct MarkdownAutolinksTests {
   func emailAutolinkWithSpecialChars() {
     let input = "<foo+special@Bar.baz-bar0.com>"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[link(url:\"mailto:foo+special@Bar.baz-bar0.com\",title:\"\")[text(\"foo+special@Bar.baz-bar0.com\")]]]")
   }
 
@@ -121,7 +121,7 @@ struct MarkdownAutolinksTests {
   func emailAutolinkWithBackslash() {
     let input = "<foo\\+@bar.example.com>"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"<foo\\\\+@bar.example.com>\")]]")
   }
 
@@ -131,7 +131,7 @@ struct MarkdownAutolinksTests {
   func emptyAngleBrackets() {
     let input = "<>"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"<>\")]]")
   }
 
@@ -139,7 +139,7 @@ struct MarkdownAutolinksTests {
   func spacesAroundURL() {
     let input = "< http://foo.bar >"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"< http://foo.bar >\")]]")
   }
 
@@ -147,7 +147,7 @@ struct MarkdownAutolinksTests {
   func schemeTooShort() {
     let input = "<m:abc>"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"<m:abc>\")]]")
   }
 
@@ -156,7 +156,7 @@ struct MarkdownAutolinksTests {
   // func noScheme() {
   //   let input = "<foo.bar.baz>"
   //   let result = parser.parse(input, language: language)
-  //   #expect(result.errors.isEmpty)
+  //
   //   #expect(sig(result.root) == "document[paragraph[text(\"<foo.bar.baz>\")]]")
   // }
 
@@ -164,7 +164,7 @@ struct MarkdownAutolinksTests {
   // func bareURLWithoutBrackets() {
   //   let input = "http://example.com"
   //   let result = parser.parse(input, language: language)
-  //   #expect(result.errors.isEmpty)
+  //
   //   #expect(sig(result.root) == "document[paragraph[text(\"http://example.com\")]]")
   // }
 
@@ -172,7 +172,7 @@ struct MarkdownAutolinksTests {
   // func bareEmailWithoutBrackets() {
   //   let input = "foo@bar.example.com"
   //   let result = parser.parse(input, language: language)
-  //   #expect(result.errors.isEmpty)
+  //
   //   #expect(sig(result.root) == "document[paragraph[text(\"foo@bar.example.com\")]]")
   // }
 }

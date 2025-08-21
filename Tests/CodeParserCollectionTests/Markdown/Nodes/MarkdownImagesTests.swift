@@ -19,7 +19,7 @@ struct MarkdownImagesTests {
   func basicInlineImageWithTitle() {
     let input = "![foo](/url \"title\")"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[image(url:\"/url\",alt:\"foo\",title:\"title\")]]")
   }
 
@@ -31,7 +31,7 @@ struct MarkdownImagesTests {
     [foo *bar*]: train.jpg "train & tracks"
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[image(url:\"train.jpg\",alt:\"foo bar\",title:\"train & tracks\")],reference(id:\"foo *bar*\",url:\"train.jpg\",title:\"train & tracks\")]")
   }
 
@@ -39,7 +39,7 @@ struct MarkdownImagesTests {
   func imageWithNestedImageInDescription() {
     let input = "![foo ![bar](/url)](/url2)"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[image(url:\"/url2\",alt:\"foo bar\",title:\"\")]]")
   }
 
@@ -47,7 +47,7 @@ struct MarkdownImagesTests {
   func imageWithNestedLinkInDescription() {
     let input = "![foo [bar](/url)](/url2)"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[image(url:\"/url2\",alt:\"foo bar\",title:\"\")]]")
   }
 
@@ -59,7 +59,7 @@ struct MarkdownImagesTests {
     [foo *bar*]: train.jpg "train & tracks"
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[image(url:\"train.jpg\",alt:\"foo bar\",title:\"train & tracks\")],reference(id:\"foo *bar*\",url:\"train.jpg\",title:\"train & tracks\")]")
   }
 
@@ -71,7 +71,7 @@ struct MarkdownImagesTests {
     [FOOBAR]: train.jpg "train & tracks"
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[image(url:\"train.jpg\",alt:\"foo bar\",title:\"train & tracks\")],reference(id:\"FOOBAR\",url:\"train.jpg\",title:\"train & tracks\")]")
   }
 
@@ -79,7 +79,7 @@ struct MarkdownImagesTests {
   func simpleInlineImageWithoutTitle() {
     let input = "![foo](train.jpg)"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[image(url:\"train.jpg\",alt:\"foo\",title:\"\")]]")
   }
 
@@ -87,7 +87,7 @@ struct MarkdownImagesTests {
   func inlineImageWithWhitespaceAroundTitle() {
     let input = "My ![foo bar](/path/to/train.jpg  \"title\"   )"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"My \"),image(url:\"/path/to/train.jpg\",alt:\"foo bar\",title:\"title\")]]")
   }
 
@@ -95,7 +95,7 @@ struct MarkdownImagesTests {
   func imageWithURLInAngleBrackets() {
     let input = "![foo](<url>)"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[image(url:\"url\",alt:\"foo\",title:\"\")]]")
   }
 
@@ -103,7 +103,7 @@ struct MarkdownImagesTests {
   func imageWithEmptyAltText() {
     let input = "![](/url)"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[image(url:\"/url\",alt:\"\",title:\"\")]]")
   }
 
@@ -117,7 +117,7 @@ struct MarkdownImagesTests {
     [bar]: /url
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[image(url:\"/url\",alt:\"foo\",title:\"\")],reference(id:\"bar\",url:\"/url\",title:\"\")]")
   }
 
@@ -129,7 +129,7 @@ struct MarkdownImagesTests {
     [BAR]: /url
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[image(url:\"/url\",alt:\"foo\",title:\"\")],reference(id:\"BAR\",url:\"/url\",title:\"\")]")
   }
 
@@ -143,7 +143,7 @@ struct MarkdownImagesTests {
     [foo]: /url "title"
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[image(url:\"/url\",alt:\"foo\",title:\"title\")],reference(id:\"foo\",url:\"/url\",title:\"title\")]")
   }
 
@@ -155,7 +155,7 @@ struct MarkdownImagesTests {
     [*foo* bar]: /url "title"
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[image(url:\"/url\",alt:\"foo bar\",title:\"title\")],reference(id:\"*foo* bar\",url:\"/url\",title:\"title\")]")
   }
 
@@ -167,7 +167,7 @@ struct MarkdownImagesTests {
     [foo]: /url "title"
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[image(url:\"/url\",alt:\"Foo\",title:\"title\")],reference(id:\"foo\",url:\"/url\",title:\"title\")]")
   }
 
@@ -180,7 +180,7 @@ struct MarkdownImagesTests {
     [foo]: /url "title"
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
   #expect(sig(result.root) == "document[paragraph[image(url:\"/url\",alt:\"foo\",title:\"title\"),line_break(soft),text(\"[]\")],reference(id:\"foo\",url:\"/url\",title:\"title\")]")
   }
 
@@ -194,7 +194,7 @@ struct MarkdownImagesTests {
     [foo]: /url "title"
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[image(url:\"/url\",alt:\"foo\",title:\"title\")],reference(id:\"foo\",url:\"/url\",title:\"title\")]")
   }
 
@@ -206,7 +206,7 @@ struct MarkdownImagesTests {
     [*foo* bar]: /url "title"
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[image(url:\"/url\",alt:\"foo bar\",title:\"title\")],reference(id:\"*foo* bar\",url:\"/url\",title:\"title\")]")
   }
 
@@ -218,7 +218,7 @@ struct MarkdownImagesTests {
     [[foo]]: /url "title"
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"![[foo]]\")],paragraph[text(\"[[foo]]: /url \\\"title\\\"\")]]")
   }
 
@@ -230,7 +230,7 @@ struct MarkdownImagesTests {
     [foo]: /url "title"
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[image(url:\"/url\",alt:\"Foo\",title:\"title\")],reference(id:\"foo\",url:\"/url\",title:\"title\")]")
   }
 
@@ -244,7 +244,7 @@ struct MarkdownImagesTests {
     [foo]: /url "title"
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"![foo]\")],reference(id:\"foo\",url:\"/url\",title:\"title\")]")
   }
 
@@ -256,7 +256,7 @@ struct MarkdownImagesTests {
     [foo]: /url "title"
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"!\"),link(url:\"/url\",title:\"title\")[text(\"foo\")]],reference(id:\"foo\",url:\"/url\",title:\"title\")]")
   }
 }

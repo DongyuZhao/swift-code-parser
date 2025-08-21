@@ -6,6 +6,7 @@ open class CodeNode<Node> where Node: CodeNodeElement {
   public let element: Node
   public weak var parent: CodeNode<Node>?
   public var children: [CodeNode<Node>] = []
+  public var closed: Bool = false
 
   /// The node's id relies on its element and children
   public var id: Int {

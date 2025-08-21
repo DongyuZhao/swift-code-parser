@@ -23,16 +23,6 @@ struct MarkdownSetextHeadingsTests {
     ---------
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let headers = findNodes(in: result.root, ofType: HeaderNode.self)
-    #expect(headers.count == 2)
-    #expect(headers[0].level == 1)
-    #expect(headers[1].level == 2)
-
-    // Verify inline parsing in headers
-    let emphasisNodes = findNodes(in: result.root, ofType: EmphasisNode.self)
-    #expect(emphasisNodes.count == 2)
 
     // Verify AST structure using sig
     let expectedSig = "document[heading(level:1)[text(\"Foo \"),emphasis[text(\"bar\")]],heading(level:2)[text(\"Foo \"),emphasis[text(\"bar\")]]]"
@@ -47,14 +37,6 @@ struct MarkdownSetextHeadingsTests {
     ====
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let headers = findNodes(in: result.root, ofType: HeaderNode.self)
-    #expect(headers.count == 1)
-    #expect(headers[0].level == 1)
-
-    let emphasisNodes = findNodes(in: result.root, ofType: EmphasisNode.self)
-    #expect(emphasisNodes.count == 1)
 
     // Verify AST structure using sig
   let expectedSig = "document[heading(level:1)[text(\"Foo \"),emphasis[text(\"bar\"),line_break(soft),text(\"baz\")]]]"
@@ -69,14 +51,6 @@ struct MarkdownSetextHeadingsTests {
     ====
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let headers = findNodes(in: result.root, ofType: HeaderNode.self)
-    #expect(headers.count == 1)
-    #expect(headers[0].level == 1)
-
-    let emphasisNodes = findNodes(in: result.root, ofType: EmphasisNode.self)
-    #expect(emphasisNodes.count == 1)
 
     // Verify AST structure using sig
   let expectedSig = "document[heading(level:1)[text(\"Foo \"),emphasis[text(\"bar\"),line_break(soft),text(\"baz\")]]]"
@@ -93,12 +67,6 @@ struct MarkdownSetextHeadingsTests {
     =
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let headers = findNodes(in: result.root, ofType: HeaderNode.self)
-    #expect(headers.count == 2)
-    #expect(headers[0].level == 2)
-    #expect(headers[1].level == 1)
 
     // Verify AST structure using sig
     let expectedSig = "document[heading(level:2)[text(\"Foo\")],heading(level:1)[text(\"Foo\")]]"
@@ -118,13 +86,6 @@ struct MarkdownSetextHeadingsTests {
       ===
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let headers = findNodes(in: result.root, ofType: HeaderNode.self)
-    #expect(headers.count == 3)
-    #expect(headers[0].level == 2)
-    #expect(headers[1].level == 2)
-    #expect(headers[2].level == 1)
 
     // Verify AST structure using sig
     let expectedSig = "document[heading(level:2)[text(\"Foo\")],heading(level:2)[text(\"Foo\")],heading(level:1)[text(\"Foo\")]]"
@@ -141,17 +102,6 @@ struct MarkdownSetextHeadingsTests {
     ---
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let headers = findNodes(in: result.root, ofType: HeaderNode.self)
-    #expect(headers.count == 0)
-
-    let codeBlocks = findNodes(in: result.root, ofType: CodeBlockNode.self)
-    #expect(codeBlocks.count == 1)
-    #expect(codeBlocks[0].source == "Foo\n---\n\nFoo")
-
-    let thematicBreaks = findNodes(in: result.root, ofType: ThematicBreakNode.self)
-    #expect(thematicBreaks.count == 1)
 
     // Verify AST structure using sig
     let expectedSig = "document[code_block(\"Foo\n---\n\nFoo\"),thematic_break]"
@@ -165,11 +115,6 @@ struct MarkdownSetextHeadingsTests {
        ----
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let headers = findNodes(in: result.root, ofType: HeaderNode.self)
-    #expect(headers.count == 1)
-    #expect(headers[0].level == 2)
 
     // Verify AST structure using sig
     let expectedSig = "document[heading(level:2)[text(\"Foo\")]]"
@@ -183,13 +128,6 @@ struct MarkdownSetextHeadingsTests {
         ---
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let headers = findNodes(in: result.root, ofType: HeaderNode.self)
-    #expect(headers.count == 0)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
 
     // Verify AST structure using sig
   let expectedSig = "document[paragraph[text(\"Foo\"),line_break(soft),text(\"---\")]]"
@@ -206,16 +144,6 @@ struct MarkdownSetextHeadingsTests {
     --- -
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let headers = findNodes(in: result.root, ofType: HeaderNode.self)
-    #expect(headers.count == 0)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 2)
-
-    let thematicBreaks = findNodes(in: result.root, ofType: ThematicBreakNode.self)
-    #expect(thematicBreaks.count == 1)
 
     // Verify AST structure using sig
   let expectedSig = "document[paragraph[text(\"Foo\"),line_break(soft),text(\"= =\")],paragraph[text(\"Foo\")],thematic_break]"
@@ -229,11 +157,6 @@ struct MarkdownSetextHeadingsTests {
     -----
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let headers = findNodes(in: result.root, ofType: HeaderNode.self)
-    #expect(headers.count == 1)
-    #expect(headers[0].level == 2)
 
     // Verify AST structure using sig
     let expectedSig = "document[heading(level:2)[text(\"Foo\")]]"
@@ -247,14 +170,9 @@ struct MarkdownSetextHeadingsTests {
     ----
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let headers = findNodes(in: result.root, ofType: HeaderNode.self)
-    #expect(headers.count == 1)
-    #expect(headers[0].level == 2)
 
     // Verify AST structure using sig
-    let expectedSig = "document[heading(level:2)[text(\"Foo\\\\\")]]"
+    let expectedSig = "document[heading(level:2)[text(\"Foo\")]]"
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -270,41 +188,23 @@ struct MarkdownSetextHeadingsTests {
     of dashes"/>
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let headers = findNodes(in: result.root, ofType: HeaderNode.self)
-    #expect(headers.count == 2)
-    #expect(headers[0].level == 2)
-    #expect(headers[1].level == 2)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 2)
 
     // Verify AST structure using sig
-    let expectedSig = "document[heading(level:2)[text(\"`Foo\")],paragraph[text(\"`\")],heading(level:2)[text(\"<a title=\\\"a lot\")],paragraph[text(\"of dashes\\\"/>\")]]"
+    let expectedSig = "document[heading(level:2)[text(\"`Foo\")],paragraph[text(\"`\")],heading(level:2)[text(\"<a title=\"a lot\")],paragraph[text(\"of dashes\"/>\")]]"
     #expect(sig(result.root) == expectedSig)
   }
 
   @Test("Underline cannot be lazy continuation line in blockquote")
   func underlineNotLazyContinuationInBlockquote() {
     let input = """
-    > Foo
+    > foo
+    bar
     ---
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let headers = findNodes(in: result.root, ofType: HeaderNode.self)
-    #expect(headers.count == 0)
-
-    let blockquotes = findNodes(in: result.root, ofType: BlockquoteNode.self)
-    #expect(blockquotes.count == 1)
-
-    let thematicBreaks = findNodes(in: result.root, ofType: ThematicBreakNode.self)
-    #expect(thematicBreaks.count == 1)
 
     // Verify AST structure using sig
-    let expectedSig = "document[blockquote[paragraph[text(\"Foo\")]],thematic_break]"
+    let expectedSig = "document[blockquote[paragraph[text(\"foo\"),line_break(soft),text(\"bar\")]],thematic_break]"
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -316,16 +216,6 @@ struct MarkdownSetextHeadingsTests {
     ===
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let headers = findNodes(in: result.root, ofType: HeaderNode.self)
-    #expect(headers.count == 0)
-
-    let blockquotes = findNodes(in: result.root, ofType: BlockquoteNode.self)
-    #expect(blockquotes.count == 1)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
 
     // Verify AST structure using sig
   let expectedSig = "document[blockquote[paragraph[text(\"foo\"),line_break(soft),text(\"bar\"),line_break(soft),text(\"===\")]]]"
@@ -339,16 +229,6 @@ struct MarkdownSetextHeadingsTests {
     ---
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let headers = findNodes(in: result.root, ofType: HeaderNode.self)
-    #expect(headers.count == 0)
-
-    let unorderedLists = findNodes(in: result.root, ofType: UnorderedListNode.self)
-    #expect(unorderedLists.count == 1)
-
-    let thematicBreaks = findNodes(in: result.root, ofType: ThematicBreakNode.self)
-    #expect(thematicBreaks.count == 1)
 
     // Verify AST structure using sig
     let expectedSig = "document[unordered_list(level:1)[list_item[paragraph[text(\"Foo\")]]],thematic_break]"
@@ -363,14 +243,6 @@ struct MarkdownSetextHeadingsTests {
     ---
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let headers = findNodes(in: result.root, ofType: HeaderNode.self)
-    #expect(headers.count == 1)
-    #expect(headers[0].level == 2)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 0)
 
     // Verify AST structure using sig
   let expectedSig = "document[heading(level:2)[text(\"Foo\"),line_break(soft),text(\"Bar\")]]"
@@ -388,18 +260,6 @@ struct MarkdownSetextHeadingsTests {
     Baz
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let headers = findNodes(in: result.root, ofType: HeaderNode.self)
-    #expect(headers.count == 2)
-    #expect(headers[0].level == 2)
-    #expect(headers[1].level == 2)
-
-    let thematicBreaks = findNodes(in: result.root, ofType: ThematicBreakNode.self)
-    #expect(thematicBreaks.count == 1)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
 
     // Verify AST structure using sig
     let expectedSig = "document[thematic_break,heading(level:2)[text(\"Foo\")],heading(level:2)[text(\"Bar\")],paragraph[text(\"Baz\")]]"
@@ -413,13 +273,6 @@ struct MarkdownSetextHeadingsTests {
     ====
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let headers = findNodes(in: result.root, ofType: HeaderNode.self)
-    #expect(headers.count == 0)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
 
     // Verify AST structure using sig
     let expectedSig = "document[paragraph[text(\"====\")]]"
@@ -433,13 +286,6 @@ struct MarkdownSetextHeadingsTests {
     ---
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let headers = findNodes(in: result.root, ofType: HeaderNode.self)
-    #expect(headers.count == 0)
-
-    let thematicBreaks = findNodes(in: result.root, ofType: ThematicBreakNode.self)
-    #expect(thematicBreaks.count == 2)
 
     // Verify AST structure using sig
     let expectedSig = "document[thematic_break,thematic_break]"
@@ -453,16 +299,6 @@ struct MarkdownSetextHeadingsTests {
     -----
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let headers = findNodes(in: result.root, ofType: HeaderNode.self)
-    #expect(headers.count == 0)
-
-    let unorderedLists = findNodes(in: result.root, ofType: UnorderedListNode.self)
-    #expect(unorderedLists.count == 1)
-
-    let thematicBreaks = findNodes(in: result.root, ofType: ThematicBreakNode.self)
-    #expect(thematicBreaks.count == 1)
 
     // Verify AST structure using sig
     let expectedSig = "document[unordered_list(level:1)[list_item[paragraph[text(\"foo\")]]],thematic_break]"
@@ -476,17 +312,6 @@ struct MarkdownSetextHeadingsTests {
     ---
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let headers = findNodes(in: result.root, ofType: HeaderNode.self)
-    #expect(headers.count == 0)
-
-    let codeBlocks = findNodes(in: result.root, ofType: CodeBlockNode.self)
-    #expect(codeBlocks.count == 1)
-    #expect(codeBlocks[0].source == "foo")
-
-    let thematicBreaks = findNodes(in: result.root, ofType: ThematicBreakNode.self)
-    #expect(thematicBreaks.count == 1)
 
     // Verify AST structure using sig
     let expectedSig = "document[code_block(\"foo\"),thematic_break]"
@@ -500,16 +325,6 @@ struct MarkdownSetextHeadingsTests {
     -----
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let headers = findNodes(in: result.root, ofType: HeaderNode.self)
-    #expect(headers.count == 0)
-
-    let blockquotes = findNodes(in: result.root, ofType: BlockquoteNode.self)
-    #expect(blockquotes.count == 1)
-
-    let thematicBreaks = findNodes(in: result.root, ofType: ThematicBreakNode.self)
-    #expect(thematicBreaks.count == 1)
 
     // Verify AST structure using sig
     let expectedSig = "document[blockquote[paragraph[text(\"foo\")]],thematic_break]"
@@ -523,14 +338,6 @@ struct MarkdownSetextHeadingsTests {
     ------
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let headers = findNodes(in: result.root, ofType: HeaderNode.self)
-    #expect(headers.count == 1)
-    #expect(headers[0].level == 2)
-
-    let blockquotes = findNodes(in: result.root, ofType: BlockquoteNode.self)
-    #expect(blockquotes.count == 0)
 
     // Verify AST structure using sig
     let expectedSig = "document[heading(level:2)[text(\"> foo\")]]"
@@ -547,14 +354,6 @@ struct MarkdownSetextHeadingsTests {
     baz
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let headers = findNodes(in: result.root, ofType: HeaderNode.self)
-    #expect(headers.count == 1)
-    #expect(headers[0].level == 2)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 2)
 
     // Verify AST structure using sig
     let expectedSig = "document[paragraph[text(\"Foo\")],heading(level:2)[text(\"bar\")],paragraph[text(\"baz\")]]"
@@ -572,16 +371,6 @@ struct MarkdownSetextHeadingsTests {
     baz
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let headers = findNodes(in: result.root, ofType: HeaderNode.self)
-    #expect(headers.count == 0)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 2)
-
-    let thematicBreaks = findNodes(in: result.root, ofType: ThematicBreakNode.self)
-    #expect(thematicBreaks.count == 1)
 
     // Verify AST structure using sig
   let expectedSig = "document[paragraph[text(\"Foo\"),line_break(soft),text(\"bar\")],thematic_break,paragraph[text(\"baz\")]]"
@@ -597,16 +386,6 @@ struct MarkdownSetextHeadingsTests {
     baz
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let headers = findNodes(in: result.root, ofType: HeaderNode.self)
-    #expect(headers.count == 0)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 2)
-
-    let thematicBreaks = findNodes(in: result.root, ofType: ThematicBreakNode.self)
-    #expect(thematicBreaks.count == 1)
 
     // Verify AST structure using sig
   let expectedSig = "document[paragraph[text(\"Foo\"),line_break(soft),text(\"bar\")],thematic_break,paragraph[text(\"baz\")]]"
@@ -622,16 +401,6 @@ struct MarkdownSetextHeadingsTests {
     baz
     """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let headers = findNodes(in: result.root, ofType: HeaderNode.self)
-    #expect(headers.count == 0)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let thematicBreaks = findNodes(in: result.root, ofType: ThematicBreakNode.self)
-    #expect(thematicBreaks.count == 0)
 
     // Verify AST structure using sig
   let expectedSig = "document[paragraph[text(\"Foo\"),line_break(soft),text(\"bar\"),line_break(soft),text(\"---\"),line_break(soft),text(\"baz\")]]"

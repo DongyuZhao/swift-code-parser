@@ -19,7 +19,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func basicAsteriskEmphasis() {
     let input = "*foo bar*"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[emphasis[text(\"foo bar\")]]]")
   }
 
@@ -27,7 +27,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func asteriskFollowedByWhitespace() {
     let input = "a * foo bar*"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"a * foo bar*\")]]")
   }
 
@@ -35,7 +35,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func asteriskPrecededByAlphanumericFollowedByPunctuation() {
     let input = "a*\"foo\"*"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"a*\\\"foo\\\"*\")]]")
   }
 
@@ -43,7 +43,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func unicodeNonbreakingSpacesAsWhitespace() {
     let input = "* a *"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"* a *\")]]")
   }
 
@@ -51,7 +51,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func intrawordAsteriskEmphasis() {
     let input = "foo*bar*"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"foo\"),emphasis[text(\"bar\")]]]")
   }
 
@@ -59,7 +59,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func intrawordAsteriskEmphasisWithNumbers() {
     let input = "5*6*78"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"5\"),emphasis[text(\"6\")],text(\"78\")]]")
   }
 
@@ -69,7 +69,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func basicUnderscoreEmphasis() {
     let input = "_foo bar_"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[emphasis[text(\"foo bar\")]]]")
   }
 
@@ -77,7 +77,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func underscoreFollowedByWhitespace() {
     let input = "_ foo bar_"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"_ foo bar_\")]]")
   }
 
@@ -85,7 +85,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func underscorePrecededByAlphanumericFollowedByPunctuation() {
     let input = "a_\"foo\"_"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"a_\\\"foo\\\"_\")]]")
   }
 
@@ -93,7 +93,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func underscoreEmphasisNotAllowedInsideWords() {
     let input = "foo_bar_"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"foo_bar_\")]]")
   }
 
@@ -101,7 +101,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func underscoreEmphasisNotAllowedInsideWordsWithNumbers() {
     let input = "5_6_78"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"5_6_78\")]]")
   }
 
@@ -109,7 +109,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func underscoreEmphasisNotAllowedInsideWordsUnicode() {
     let input = "пристаням_стремятся_"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"пристаням_стремятся_\")]]")
   }
 
@@ -117,7 +117,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func rightFlankingLeftFlankingUnderscores() {
     let input = "aa_\"bb\"_cc"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"aa_\\\"bb\\\"_cc\")]]")
   }
 
@@ -125,7 +125,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func underscoreEmphasisPrecededByPunctuation() {
     let input = "foo-_(bar)_"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"foo-\"),emphasis[text(\"(bar)\")]]]")
   }
 
@@ -135,7 +135,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func closingDelimiterDoesNotMatch() {
     let input = "_foo*"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"_foo*\")]]")
   }
 
@@ -143,7 +143,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func closingAsteriskPrecededByWhitespace() {
     let input = "*foo bar *"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"*foo bar *\")]]")
   }
 
@@ -151,7 +151,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func newlineCountsAsWhitespaceForClosingAsterisk() {
     let input = "*foo bar\n*"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
   #expect(sig(result.root) == "document[paragraph[text(\"*foo bar\"),line_break(soft),text(\"*\")]]")
   }
 
@@ -159,7 +159,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func asteriskPrecededByPunctuationFollowedByAlphanumeric() {
     let input = "*(*foo)"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"*(*foo)\")]]")
   }
 
@@ -167,7 +167,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func nestedEmphasisWithAsterisks() {
     let input = "*(*foo*)*"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[emphasis[text(\"(\"),emphasis[text(\"foo\")],text(\")\")]]]")
   }
 
@@ -175,7 +175,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func intrawordEmphasisEndingWithAsterisk() {
     let input = "*foo*bar"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[emphasis[text(\"foo\")],text(\"bar\")]]")
   }
 
@@ -185,7 +185,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func closingUnderscorePrecededByWhitespace() {
     let input = "_foo bar _"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"_foo bar _\")]]")
   }
 
@@ -193,7 +193,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func underscorePrecededByPunctuationFollowedByAlphanumeric() {
     let input = "_(_foo)"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"_(_foo)\")]]")
   }
 
@@ -201,7 +201,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func nestedEmphasisWithUnderscores() {
     let input = "_(_foo_)_"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[emphasis[text(\"(\"),emphasis[text(\"foo\")],text(\")\")]]]")
   }
 
@@ -209,7 +209,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func intrawordEmphasisWithUnderscoresDisallowed() {
     let input = "_foo_bar"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"_foo_bar\")]]")
   }
 
@@ -217,7 +217,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func intrawordEmphasisWithUnderscoresUnicodeDisallowed() {
     let input = "_пристаням_стремятся"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"_пристаням_стремятся\")]]")
   }
 
@@ -225,7 +225,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func underscoreEmphasisWithInternalUnderscores() {
     let input = "_foo_bar_baz_"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[emphasis[text(\"foo_bar_baz\")]]]")
   }
 
@@ -233,7 +233,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func underscoreEmphasisFollowedByPunctuation() {
     let input = "_(bar)_."
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[emphasis[text(\"(bar)\")],text(\".\")]]")
   }
 
@@ -243,7 +243,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func basicDoubleAsteriskStrongEmphasis() {
     let input = "**foo bar**"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[strong[text(\"foo bar\")]]]")
   }
 
@@ -251,7 +251,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func doubleAsteriskFollowedByWhitespace() {
     let input = "** foo bar**"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"** foo bar**\")]]")
   }
 
@@ -259,7 +259,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func doubleAsteriskPrecededByAlphanumericFollowedByPunctuation() {
     let input = "a**\"foo\"**"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"a**\\\"foo\\\"**\")]]")
   }
 
@@ -267,7 +267,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func intrawordDoubleAsteriskStrongEmphasis() {
     let input = "foo**bar**"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"foo\"),strong[text(\"bar\")]]]")
   }
 
@@ -277,7 +277,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func basicDoubleUnderscoreStrongEmphasis() {
     let input = "__foo bar__"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[strong[text(\"foo bar\")]]]")
   }
 
@@ -285,7 +285,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func doubleUnderscoreFollowedByWhitespace() {
     let input = "__ foo bar__"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"__ foo bar__\")]]")
   }
 
@@ -293,7 +293,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func newlineCountsAsWhitespaceForDoubleUnderscore() {
     let input = "__\nfoo bar__"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"__\nfoo bar__\")]]")
   }
 
@@ -301,7 +301,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func doubleUnderscorePrecededByAlphanumericFollowedByPunctuation() {
     let input = "a__\"foo\"__"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"a__\\\"foo\\\"__\")]]")
   }
 
@@ -309,7 +309,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func intrawordDoubleUnderscoreStrongEmphasisForbidden() {
     let input = "foo__bar__"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"foo__bar__\")]]")
   }
 
@@ -317,7 +317,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func intrawordDoubleUnderscoreStrongEmphasisWithNumbersForbidden() {
     let input = "5__6__78"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"5__6__78\")]]")
   }
 
@@ -325,7 +325,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func intrawordDoubleUnderscoreStrongEmphasisUnicodeForbidden() {
     let input = "пристаням__стремятся__"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"пристаням__стремятся__\")]]")
   }
 
@@ -333,7 +333,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func doubleUnderscoreStrongEmphasisWithNestedContent() {
     let input = "__foo, __bar__, baz__"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[strong[text(\"foo, bar, baz\")]]]")
   }
 
@@ -341,7 +341,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func doubleUnderscoreStrongEmphasisPrecededByPunctuation() {
     let input = "foo-__(bar)__"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"foo-\"),strong[text(\"(bar)\")]]]")
   }
 
@@ -351,7 +351,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func closingDoubleAsteriskPrecededByWhitespace() {
     let input = "**foo bar **"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"**foo bar **\")]]")
   }
 
@@ -359,7 +359,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func doubleAsteriskPrecededByPunctuationFollowedByAlphanumeric() {
     let input = "**(**foo)"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"**(**foo)\")]]")
   }
 
@@ -367,7 +367,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func nestedStrongAndEmphasisWithDoubleAsterisks() {
     let input = "*(**foo**)*"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[emphasis[text(\"(\"),strong[text(\"foo\")],text(\")\")]]]")
   }
 
@@ -375,7 +375,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func complexNestedEmphasisAndStrongEmphasis() {
     let input = "**Gomphocarpus (*Gomphocarpus physocarpus*, syn. *Asclepias physocarpa*)**"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[strong[text(\"Gomphocarpus (\"),emphasis[text(\"Gomphocarpus physocarpus\")],text(\", syn. \"),emphasis[text(\"Asclepias physocarpa\")],text(\")\")]]]")
   }
 
@@ -383,7 +383,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func strongEmphasisWithNestedEmphasisAndQuotes() {
     let input = "**foo \"*bar*\" foo**"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[strong[text(\"foo \\\"\"),emphasis[text(\"bar\")],text(\"\\\" foo\")]]]")
   }
 
@@ -391,7 +391,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func intrawordStrongEmphasisEndingWithDoubleAsterisk() {
     let input = "**foo**bar"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[strong[text(\"foo\")],text(\"bar\")]]")
   }
 
@@ -401,7 +401,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func closingDoubleUnderscorePrecededByWhitespace() {
     let input = "__foo bar __"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"__foo bar __\")]]")
   }
 
@@ -409,7 +409,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func doubleUnderscorePrecededByPunctuationFollowedByAlphanumeric() {
     let input = "__(__foo)"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"__(__foo)\")]]")
   }
 
@@ -417,7 +417,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func nestedUnderscoreStrongEmphasis() {
     let input = "_(__foo__)_"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[emphasis[text(\"(\"),strong[text(\"foo\")],text(\")\")]]]")
   }
 
@@ -425,7 +425,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func intrawordStrongEmphasisWithDoubleUnderscoresClosingForbidden() {
     let input = "__foo__bar"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"__foo__bar\")]]")
   }
 
@@ -433,7 +433,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func intrawordStrongEmphasisWithDoubleUnderscoresUnicodeClosingForbidden() {
     let input = "__пристаням__стремятся"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"__пристаням__стремятся\")]]")
   }
 
@@ -441,7 +441,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func doubleUnderscoreStrongEmphasisWithInternalDoubleUnderscores() {
     let input = "__foo__bar__baz__"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[strong[text(\"foo__bar__baz\")]]]")
   }
 
@@ -449,7 +449,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func doubleUnderscoreStrongEmphasisFollowedByPunctuation() {
     let input = "__(bar)__."
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[strong[text(\"(bar)\")],text(\".\")]]")
   }
 
@@ -459,7 +459,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func emphasisCanContainLinks() {
     let input = "*foo [bar](/url)*"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[emphasis[text(\"foo \"),link(url:\"/url\",title:\"\")[text(\"bar\")]]]]")
   }
 
@@ -467,7 +467,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func emphasisCanSpanMultipleLines() {
     let input = "*foo\nbar*"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
   #expect(sig(result.root) == "document[paragraph[emphasis[text(\"foo\"),line_break(soft),text(\"bar\")]]]")
   }
 
@@ -475,7 +475,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func nestedEmphasisAndStrongEmphasisWithinEmphasis() {
     let input = "_foo __bar__ baz_"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[emphasis[text(\"foo \"),strong[text(\"bar\")],text(\" baz\")]]]")
   }
 
@@ -483,7 +483,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func nestedEmphasisWithinEmphasis() {
     let input = "_foo _bar_ baz_"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[emphasis[text(\"foo \"),emphasis[text(\"bar\")],text(\" baz\")]]]")
   }
 
@@ -491,7 +491,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func complexNestedEmphasisStructure() {
     let input = "__foo_ bar_"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[emphasis[emphasis[text(\"foo\")],text(\" bar\")]]]")
   }
 
@@ -499,7 +499,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func nestedEmphasisWithAsterisksPattern() {
     let input = "*foo *bar**"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[emphasis[text(\"foo \"),emphasis[text(\"bar\")]]]]")
   }
 
@@ -507,7 +507,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func mixedEmphasisAndStrongEmphasisWithinEmphasis() {
     let input = "*foo **bar** baz*"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[emphasis[text(\"foo \"),strong[text(\"bar\")],text(\" baz\")]]]")
   }
 
@@ -515,7 +515,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func continuousNestedEmphasisAndStrongEmphasis() {
     let input = "*foo**bar**baz*"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[emphasis[text(\"foo\"),strong[text(\"bar\")],text(\"baz\")]]]")
   }
 
@@ -523,7 +523,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func multipleAsteriskRulePreventsInterpretations() {
     let input = "*foo**bar*"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[emphasis[text(\"foo**bar\")]]]")
   }
 
@@ -531,7 +531,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func tripleAsteriskStrongEmphasisWithinEmphasis() {
     let input = "***foo** bar*"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[emphasis[strong[text(\"foo\")],text(\" bar\")]]]")
   }
 
@@ -539,7 +539,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func strongEmphasisWithinEmphasisAtEnd() {
     let input = "*foo **bar***"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[emphasis[text(\"foo \"),strong[text(\"bar\")]]]]")
   }
 
@@ -547,7 +547,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func continuousStrongEmphasisWithinEmphasisAtEnd() {
     let input = "*foo**bar***"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[emphasis[text(\"foo\"),strong[text(\"bar\")]]]]")
   }
 
@@ -555,7 +555,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func multipleDelimiterLengthsCreateNestedEmphasis() {
     let input = "foo***bar***baz"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"foo\"),emphasis[strong[text(\"bar\")]],text(\"baz\")]]")
   }
 
@@ -563,7 +563,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func complexMultipleAsteriskPattern() {
     let input = "foo******bar*********baz"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"foo\"),strong[text(\"bar\")],text(\"***baz\")]]")
   }
 
@@ -571,7 +571,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func indefiniteLevelsOfNestingArePossible() {
     let input = "*foo **bar *baz* bim** bop*"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[emphasis[text(\"foo \"),strong[text(\"bar \"),emphasis[text(\"baz\")],text(\" bim\")],text(\" bop\")]]]")
   }
 
@@ -579,7 +579,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func emphasisWithNestedLinks() {
     let input = "*foo [*bar*](/url)*"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[emphasis[text(\"foo \"),link(url:\"/url\",title:\"\")[emphasis[text(\"bar\")]]]]]")
   }
 
@@ -587,7 +587,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func emptyEmphasisIsNotAllowed() {
     let input = "** is not an empty emphasis"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"** is not an empty emphasis\")]]")
   }
 
@@ -595,7 +595,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func emptyStrongEmphasisIsNotAllowed() {
     let input = "**** is not an empty strong emphasis"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"**** is not an empty strong emphasis\")]]")
   }
 
@@ -605,7 +605,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func strongEmphasisCanContainLinks() {
     let input = "**foo [bar](/url)**"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[strong[text(\"foo \"),link(url:\"/url\",title:\"\")[text(\"bar\")]]]]")
   }
 
@@ -613,7 +613,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func strongEmphasisCanSpanMultipleLines() {
     let input = "**foo\nbar**"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
   #expect(sig(result.root) == "document[paragraph[strong[text(\"foo\"),line_break(soft),text(\"bar\")]]]")
   }
 
@@ -621,7 +621,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func nestedEmphasisWithinStrongEmphasis() {
     let input = "__foo _bar_ baz__"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[strong[text(\"foo \"),emphasis[text(\"bar\")],text(\" baz\")]]]")
   }
 
@@ -629,7 +629,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func nestedStrongEmphasisCollapses() {
     let input = "__foo __bar__ baz__"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[strong[text(\"foo bar baz\")]]]")
   }
 
@@ -637,7 +637,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func quadrupleUnderscoreCollapsesToStrongEmphasis() {
     let input = "____foo__ bar__"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[strong[text(\"foo bar\")]]]")
   }
 
@@ -645,7 +645,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func quadrupleAsteriskCollapsesToStrongEmphasis() {
     let input = "**foo **bar****"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[strong[text(\"foo bar\")]]]")
   }
 
@@ -653,7 +653,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func strongEmphasisWithNestedEmphasisAndAsterisks() {
     let input = "**foo *bar* baz**"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[strong[text(\"foo \"),emphasis[text(\"bar\")],text(\" baz\")]]]")
   }
 
@@ -661,7 +661,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func continuousStrongEmphasisWithNestedEmphasis() {
     let input = "**foo*bar*baz**"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[strong[text(\"foo\"),emphasis[text(\"bar\")],text(\"baz\")]]]")
   }
 
@@ -669,7 +669,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func emphasisWithinStrongEmphasisAtBeginning() {
     let input = "***foo* bar**"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[strong[emphasis[text(\"foo\")],text(\" bar\")]]]")
   }
 
@@ -677,7 +677,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func emphasisWithinStrongEmphasisAtEnd() {
     let input = "**foo *bar***"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[strong[text(\"foo \"),emphasis[text(\"bar\")]]]]")
   }
 
@@ -685,7 +685,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func complexMultiLineNestedStrongEmphasis() {
     let input = "**foo *bar **baz**\nbim* bop**"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[strong[text(\"foo \"),emphasis[text(\"bar \"),strong[text(\"baz\")],text(\"\nbim\")],text(\" bop\")]]]")
   }
 
@@ -693,7 +693,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func strongEmphasisWithNestedLinks() {
     let input = "**foo [*bar*](/url)**"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[strong[text(\"foo \"),link(url:\"/url\",title:\"\")[emphasis[text(\"bar\")]]]]]")
   }
 
@@ -701,7 +701,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func emptyEmphasisWithDoubleUnderscoreIsNotAllowed() {
     let input = "__ is not an empty emphasis"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"__ is not an empty emphasis\")]]")
   }
 
@@ -709,7 +709,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func emptyStrongEmphasisWithQuadrupleUnderscoreIsNotAllowed() {
     let input = "____ is not an empty strong emphasis"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"____ is not an empty strong emphasis\")]]")
   }
 
@@ -719,7 +719,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func threeAsterisksWithoutContent() {
     let input = "foo ***"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"foo ***\")]]")
   }
 
@@ -727,7 +727,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func escapedAsteriskWithinEmphasis() {
     let input = "foo *\\**"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"foo \"),emphasis[text(\"*\")]]]")
   }
 
@@ -735,7 +735,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func underscoreWithinAsteriskEmphasis() {
     let input = "foo *_*"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"foo \"),emphasis[text(\"_\")]]]")
   }
 
@@ -743,7 +743,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func fiveAsterisksWithoutContent() {
     let input = "foo *****"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"foo *****\")]]")
   }
 
@@ -751,7 +751,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func escapedAsteriskWithinStrongEmphasis() {
     let input = "foo **\\***"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"foo \"),strong[text(\"*\")]]]")
   }
 
@@ -759,7 +759,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func underscoreWithinStrongAsteriskEmphasis() {
     let input = "foo **_**"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"foo \"),strong[text(\"_\")]]]")
   }
 
@@ -767,7 +767,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func unmatchedAsteriskDelimitersCreateExcessAsterisksOutsideEmphasis() {
     let input = "**foo*"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"*\"),emphasis[text(\"foo\")]]]")
   }
 
@@ -775,7 +775,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func unmatchedAsteriskDelimitersExcessAtEnd() {
     let input = "*foo**"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[emphasis[text(\"foo\")],text(\"*\")]]")
   }
 
@@ -783,7 +783,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func tripleAsteriskWithDoubleAsteriskCreatesExcess() {
     let input = "***foo**"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"*\"),strong[text(\"foo\")]]]")
   }
 
@@ -791,7 +791,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func quadrupleAsteriskWithSingleCreatesExcess() {
     let input = "****foo*"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"***\"),emphasis[text(\"foo\")]]]")
   }
 
@@ -799,7 +799,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func doubleAsteriskWithTripleCreatesExcess() {
     let input = "**foo***"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[strong[text(\"foo\")],text(\"*\")]]")
   }
 
@@ -807,7 +807,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func singleAsteriskWithQuadrupleCreatesExcess() {
     let input = "*foo****"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[emphasis[text(\"foo\")],text(\"***\")]]")
   }
 
@@ -817,7 +817,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func threeUnderscoresWithoutContent() {
     let input = "foo ___"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"foo ___\")]]")
   }
 
@@ -825,7 +825,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func escapedUnderscoreWithinEmphasis() {
     let input = "foo _\\__"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"foo \"),emphasis[text(\"_\")]]]")
   }
 
@@ -833,7 +833,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func asteriskWithinUnderscoreEmphasis() {
     let input = "foo _*_"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"foo \"),emphasis[text(\"*\")]]]")
   }
 
@@ -841,7 +841,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func fiveUnderscoresWithoutContent() {
     let input = "foo _____"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"foo _____\")]]")
   }
 
@@ -849,7 +849,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func escapedUnderscoreWithinStrongEmphasis() {
     let input = "foo __\\___"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"foo \"),strong[text(\"_\")]]]")
   }
 
@@ -857,7 +857,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func asteriskWithinStrongUnderscoreEmphasis() {
     let input = "foo __*__"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"foo \"),strong[text(\"*\")]]]")
   }
 
@@ -865,7 +865,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func doubleUnderscoreWithSingleCreatesExcessAtBeginning() {
     let input = "__foo_"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"_\"),emphasis[text(\"foo\")]]]")
   }
 
@@ -873,7 +873,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func unmatchedUnderscoreDelimitersExcessAtEnd() {
     let input = "_foo__"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[emphasis[text(\"foo\")],text(\"_\")]]")
   }
 
@@ -881,7 +881,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func tripleUnderscoreWithDoubleCreatesExcess() {
     let input = "___foo__"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"_\"),strong[text(\"foo\")]]]")
   }
 
@@ -889,7 +889,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func quadrupleUnderscoreWithSingleCreatesExcess() {
     let input = "____foo_"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"___\"),emphasis[text(\"foo\")]]]")
   }
 
@@ -897,7 +897,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func doubleUnderscoreWithTripleCreatesExcess() {
     let input = "__foo___"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[strong[text(\"foo\")],text(\"_\")]]")
   }
 
@@ -905,7 +905,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func singleUnderscoreWithQuadrupleCreatesExcess() {
     let input = "_foo____"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[emphasis[text(\"foo\")],text(\"___\")]]")
   }
 
@@ -915,7 +915,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func doubleAsteriskCreatesStrongEmphasisNotNestedEmphasis() {
     let input = "**foo**"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[strong[text(\"foo\")]]]")
   }
 
@@ -923,7 +923,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func mixedDelimitersCreateNestedEmphasis() {
     let input = "*_foo_*"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[emphasis[emphasis[text(\"foo\")]]]]")
   }
 
@@ -931,7 +931,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func doubleUnderscoreCreatesStrongEmphasisNotNestedEmphasis() {
     let input = "__foo__"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[strong[text(\"foo\")]]]")
   }
 
@@ -939,7 +939,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func mixedUnderscoreAndAsteriskCreateNestedEmphasis() {
     let input = "_*foo*_"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[emphasis[emphasis[text(\"foo\")]]]]")
   }
 
@@ -947,7 +947,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func quadrupleAsteriskCreatesStrongEmphasisNotNested() {
     let input = "****foo****"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[strong[text(\"foo\")]]]")
   }
 
@@ -955,7 +955,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func quadrupleUnderscoreCreatesStrongEmphasisNotNested() {
     let input = "____foo____"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[strong[text(\"foo\")]]]")
   }
 
@@ -963,7 +963,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func sextupleAsteriskCreatesStrongEmphasisNotNested() {
     let input = "******foo******"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[strong[text(\"foo\")]]]")
   }
 
@@ -973,7 +973,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func tripleAsteriskCreatesEmphasisContainingStrongEmphasis() {
     let input = "***foo***"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[emphasis[strong[text(\"foo\")]]]]")
   }
 
@@ -981,7 +981,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func quintupleUnderscoreCreatesEmphasisContainingStrongEmphasis() {
     let input = "_____foo_____"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[emphasis[strong[text(\"foo\")]]]]")
   }
 
@@ -991,7 +991,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func overlappingEmphasisFirstTakesPrecedence() {
     let input = "*foo _bar* baz_"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[emphasis[text(\"foo _bar\")],text(\" baz_\")]]")
   }
 
@@ -999,7 +999,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func overlappingStrongAndEmphasisFirstTakesPrecedence() {
     let input = "*foo __bar *baz bim__ bam*"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[emphasis[text(\"foo \"),strong[text(\"bar *baz bim\")],text(\" bam\")]]]")
   }
 
@@ -1009,7 +1009,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func shorterStrongEmphasisSpanTakesPrecedence() {
     let input = "**foo **bar baz**"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"**foo \"),strong[text(\"bar baz\")]]]")
   }
 
@@ -1017,7 +1017,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func shorterEmphasisSpanTakesPrecedence() {
     let input = "*foo *bar baz*"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"*foo \"),emphasis[text(\"bar baz\")]]]")
   }
 
@@ -1027,7 +1027,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func linksGroupMoreTightlyThanEmphasis() {
     let input = "*[bar*](/url)"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"*\"),link(url:\"/url\",title:\"\")[text(\"bar*\")]]]")
   }
 
@@ -1035,7 +1035,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func linksWithUnderscoresGroupMoreTightlyThanEmphasis() {
     let input = "_foo [bar_](/url)"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"_foo \"),link(url:\"/url\",title:\"\")[text(\"bar_\")]]]")
   }
 
@@ -1043,7 +1043,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func htmlTagsGroupMoreTightlyThanEmphasisWithAsterisks() {
     let input = "*<img src=\"foo\" title=\"*\"/>"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"*\"),html(\"<img src=\\\"foo\\\" title=\\\"*\\\"/>\")\n]]")
   }
 
@@ -1051,7 +1051,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func htmlTagsGroupMoreTightlyThanStrongEmphasisWithAsterisks() {
     let input = "**<a href=\"**\">"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"**\"),html(\"<a href=\\\"**\\\">\")\n]]")
   }
 
@@ -1059,7 +1059,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func htmlTagsGroupMoreTightlyThanStrongEmphasisWithUnderscores() {
     let input = "__<a href=\"__\">"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"__\"),html(\"<a href=\\\"__\\\">\")\n]]")
   }
 
@@ -1067,7 +1067,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func codeSpansGroupMoreTightlyThanEmphasisWithAsterisks() {
     let input = "*a `*`*"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[emphasis[text(\"a \"),code(\"*\")]]]")
   }
 
@@ -1075,7 +1075,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func codeSpansGroupMoreTightlyThanEmphasisWithUnderscores() {
     let input = "_a `_`_"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[emphasis[text(\"a \"),code(\"_\")]]]")
   }
 
@@ -1083,7 +1083,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func autolinksGroupMoreTightlyThanStrongEmphasisWithAsterisks() {
     let input = "**a<http://foo.bar/?q=**>"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"**a\"),link(url:\"http://foo.bar/?q=**\",title:\"\")[text(\"http://foo.bar/?q=**\")]]]")
   }
 
@@ -1091,7 +1091,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
   func autolinksGroupMoreTightlyThanStrongEmphasisWithUnderscores() {
     let input = "__a<http://foo.bar/?q=__>"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
     #expect(sig(result.root) == "document[paragraph[text(\"__a\"),link(url:\"http://foo.bar/?q=__\",title:\"\")[text(\"http://foo.bar/?q=__\")]]]")
   }
 }

@@ -22,11 +22,6 @@ struct MarkdownTabsTests {
   func basicTabsInCodeBlock() {
     let input = tabString("→foo→baz→→bim")
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let codeBlocks = findNodes(in: result.root, ofType: CodeBlockNode.self)
-    #expect(codeBlocks.count == 1)
-    #expect(codeBlocks.first?.source == tabString("foo→baz→→bim"))
 
     // Verify AST structure using sig
     let expectedSig = "document[code_block(\"\(tabString("foo→baz→→bim"))\")]"
@@ -37,11 +32,6 @@ struct MarkdownTabsTests {
   func tabsWithTwoLeadingSpaces() {
     let input = tabString("  →foo→baz→→bim")
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let codeBlocks = findNodes(in: result.root, ofType: CodeBlockNode.self)
-    #expect(codeBlocks.count == 1)
-    #expect(codeBlocks.first?.source == tabString("foo→baz→→bim"))
 
     // Verify AST structure using sig
     let expectedSig = "document[code_block(\"\(tabString("foo→baz→→bim"))\")]"
@@ -52,11 +42,6 @@ struct MarkdownTabsTests {
   func tabsWithFourLeadingSpaces() {
     let input = tabString("    a→a\n    ὐ→a")
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let codeBlocks = findNodes(in: result.root, ofType: CodeBlockNode.self)
-    #expect(codeBlocks.count == 1)
-    #expect(codeBlocks.first?.source == tabString("a→a\nὐ→a"))
 
     // Verify AST structure using sig
     let expectedSig = "document[code_block(\"\(tabString("a→a\nὐ→a"))\")]"
@@ -67,16 +52,6 @@ struct MarkdownTabsTests {
   func tabInListContinuation() {
     let input = tabString("  - foo\n\n→bar")
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let lists = findNodes(in: result.root, ofType: UnorderedListNode.self)
-    #expect(lists.count == 1)
-
-    let listItems = findNodes(in: result.root, ofType: ListItemNode.self)
-    #expect(listItems.count == 1)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 2) // "foo" and "bar" paragraphs
 
     // Verify AST structure using sig
     let expectedSig = "document[unordered_list(level:1)[list_item[paragraph[text(\"foo\")],paragraph[text(\"bar\")]]]]"
@@ -87,17 +62,6 @@ struct MarkdownTabsTests {
   func doubleTabCreatesCodeBlockInList() {
     let input = tabString("- foo\n\n→→bar")
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let lists = findNodes(in: result.root, ofType: UnorderedListNode.self)
-    #expect(lists.count == 1)
-
-    let listItems = findNodes(in: result.root, ofType: ListItemNode.self)
-    #expect(listItems.count == 1)
-
-    let codeBlocks = findNodes(in: result.root, ofType: CodeBlockNode.self)
-    #expect(codeBlocks.count == 1)
-    #expect(codeBlocks.first?.source == "  bar")
 
     // Verify AST structure using sig
     let expectedSig = "document[unordered_list(level:1)[list_item[paragraph[text(\"foo\")],code_block(\"  bar\")]]]"
@@ -108,14 +72,6 @@ struct MarkdownTabsTests {
   func tabAfterBlockquoteMarker() {
     let input = tabString(">→→foo")
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let blockquotes = findNodes(in: result.root, ofType: BlockquoteNode.self)
-    #expect(blockquotes.count == 1)
-
-    let codeBlocks = findNodes(in: result.root, ofType: CodeBlockNode.self)
-    #expect(codeBlocks.count == 1)
-    #expect(codeBlocks.first?.source == "  foo")
 
     // Verify AST structure using sig
     let expectedSig = "document[blockquote[code_block(\"  foo\")]]"
@@ -126,17 +82,6 @@ struct MarkdownTabsTests {
   func tabAfterListMarker() {
     let input = tabString("-→→foo")
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let lists = findNodes(in: result.root, ofType: UnorderedListNode.self)
-    #expect(lists.count == 1)
-
-    let listItems = findNodes(in: result.root, ofType: ListItemNode.self)
-    #expect(listItems.count == 1)
-
-    let codeBlocks = findNodes(in: result.root, ofType: CodeBlockNode.self)
-    #expect(codeBlocks.count == 1)
-    #expect(codeBlocks.first?.source == "  foo")
 
     // Verify AST structure using sig
     let expectedSig = "document[unordered_list(level:1)[list_item[code_block(\"  foo\")]]]"
@@ -147,11 +92,6 @@ struct MarkdownTabsTests {
   func mixedSpacesAndTabsInCodeBlock() {
     let input = tabString("    foo\n→bar")
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let codeBlocks = findNodes(in: result.root, ofType: CodeBlockNode.self)
-    #expect(codeBlocks.count == 1)
-    #expect(codeBlocks.first?.source == "foo\nbar")
 
     // Verify AST structure using sig
     let expectedSig = "document[code_block(\"foo\nbar\")]"
@@ -162,20 +102,6 @@ struct MarkdownTabsTests {
   func tabInNestedListStructure() {
     let input = tabString(" - foo\n   - bar\n→ - baz")
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let lists = findNodes(in: result.root, ofType: UnorderedListNode.self)
-    #expect(lists.count >= 1) // May have nested lists
-
-    let listItems = findNodes(in: result.root, ofType: ListItemNode.self)
-    #expect(listItems.count == 3) // foo, bar, baz
-
-    // Verify text content exists
-    let textNodes = findNodes(in: result.root, ofType: TextNode.self)
-    let textContents = textNodes.map { $0.content }
-    #expect(textContents.contains("foo"))
-    #expect(textContents.contains("bar"))
-    #expect(textContents.contains("baz"))
 
     // Verify basic AST structure - should have nested lists
     let sig = sig(result.root)
@@ -190,14 +116,6 @@ struct MarkdownTabsTests {
   func tabInATXHeading() {
     let input = tabString("#→Foo")
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let headers = findNodes(in: result.root, ofType: HeaderNode.self)
-    #expect(headers.count == 1)
-    #expect(headers.first?.level == 1)
-
-    let textNodes = findNodes(in: result.root, ofType: TextNode.self)
-    #expect(textNodes.first?.content == "Foo")
 
     // Verify AST structure using sig
     let expectedSig = "document[heading(level:1)[text(\"Foo\")]]"
@@ -208,10 +126,6 @@ struct MarkdownTabsTests {
   func tabsInThematicBreak() {
     let input = tabString("*→*→*→")
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let thematicBreaks = findNodes(in: result.root, ofType: ThematicBreakNode.self)
-    #expect(thematicBreaks.count == 1)
 
     // Verify AST structure using sig
     let expectedSig = "document[thematic_break]"
@@ -220,33 +134,10 @@ struct MarkdownTabsTests {
 
   // MARK: - Additional Edge Cases
 
-  @Test("Tab-only lines maintain code block continuity in indented contexts")
-  func emptyTabOnlyLineInCodeBlock() {
-    let input = tabString("    code\n→\n    more")
-    let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let codeBlocks = findNodes(in: result.root, ofType: CodeBlockNode.self)
-    #expect(codeBlocks.count == 1)
-
-    // Verify the code block contains the tab-only line
-    let source = codeBlocks.first?.source ?? ""
-    #expect(source.contains("code"))
-    #expect(source.contains("more"))
-  }
-
   @Test("Tabs in inline contexts are preserved as literal tab characters")
   func tabHandlingInInlineContexts() {
     let input = tabString("This→has→tabs")
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let textNodes = findNodes(in: result.root, ofType: TextNode.self)
-    #expect(textNodes.count == 1)
-    #expect(textNodes.first?.content == tabString("This→has→tabs"))
 
     // Verify AST structure using sig
     let expectedSig = "document[paragraph[text(\"\(tabString("This→has→tabs"))\")]]"

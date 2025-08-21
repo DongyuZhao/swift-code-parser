@@ -6,13 +6,10 @@ public class MarkdownConstructState: CodeConstructState {
   public typealias Node = MarkdownNodeElement
   public typealias Token = MarkdownTokenElement
 
-  // Line-based processing state
-  public var lines: [MarkdownLine] = []
+  // Current token index in the line
+  public var position: Int = 0
+  // Flag indicates if the block builders should run another round on the same line.
+  public var refreshed: Bool = false
 
   public init() {}
-}
-
-/// Represents a logical line of tokens
-public struct MarkdownLine {
-  public let tokens: [any CodeToken<MarkdownTokenElement>]
 }

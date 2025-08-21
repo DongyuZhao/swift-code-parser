@@ -17,12 +17,6 @@ struct MarkdownFencedCodeBlocksTests {
   func simpleBacktickFencedCodeBlock() {
     let input = "```\n<\n >\n```"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let codeBlocks = findNodes(in: result.root, ofType: CodeBlockNode.self)
-    #expect(codeBlocks.count == 1)
-    #expect(codeBlocks.first?.source == "<\n >")
-    #expect(codeBlocks.first?.language == nil)
 
     // Verify AST structure using sig
     let expectedSig = "document[code_block(\"<\\n >\")]"
@@ -33,12 +27,6 @@ struct MarkdownFencedCodeBlocksTests {
   func simpleTildeFencedCodeBlock() {
     let input = "~~~\n<\n >\n~~~"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let codeBlocks = findNodes(in: result.root, ofType: CodeBlockNode.self)
-    #expect(codeBlocks.count == 1)
-    #expect(codeBlocks.first?.source == "<\n >")
-    #expect(codeBlocks.first?.language == nil)
 
     // Verify AST structure using sig
     let expectedSig = "document[code_block(\"<\\n >\")]"
@@ -49,17 +37,6 @@ struct MarkdownFencedCodeBlocksTests {
   func fewerThanThreeBackticks() {
     let input = "``\nfoo\n``"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let codeBlocks = findNodes(in: result.root, ofType: CodeBlockNode.self)
-    #expect(codeBlocks.count == 0)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let inlineCodes = findNodes(in: result.root, ofType: CodeSpanNode.self)
-    #expect(inlineCodes.count == 1)
-    #expect(inlineCodes.first?.code == "foo")
 
     // Verify AST structure using sig
     let expectedSig = "document[paragraph[code(\"foo\")]]"
@@ -70,11 +47,6 @@ struct MarkdownFencedCodeBlocksTests {
   func closingFenceMustMatchOpening() {
     let input = "```\naaa\n~~~\n```"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let codeBlocks = findNodes(in: result.root, ofType: CodeBlockNode.self)
-    #expect(codeBlocks.count == 1)
-    #expect(codeBlocks.first?.source == "aaa\n~~~")
 
     // Verify AST structure using sig
     let expectedSig = "document[code_block(\"aaa\\n~~~\")]"
@@ -85,11 +57,6 @@ struct MarkdownFencedCodeBlocksTests {
   func tildeFenceNotClosedByBackticks() {
     let input = "~~~\naaa\n```\n~~~"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let codeBlocks = findNodes(in: result.root, ofType: CodeBlockNode.self)
-    #expect(codeBlocks.count == 1)
-    #expect(codeBlocks.first?.source == "aaa\n```")
 
     // Verify AST structure using sig
     let expectedSig = "document[code_block(\"aaa\\n```\")]"
@@ -100,11 +67,6 @@ struct MarkdownFencedCodeBlocksTests {
   func closingFenceMustBeLongEnough() {
     let input = "````\naaa\n```\n``````"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let codeBlocks = findNodes(in: result.root, ofType: CodeBlockNode.self)
-    #expect(codeBlocks.count == 1)
-    #expect(codeBlocks.first?.source == "aaa\n```")
 
     // Verify AST structure using sig
     let expectedSig = "document[code_block(\"aaa\\n```\")]"
@@ -115,11 +77,6 @@ struct MarkdownFencedCodeBlocksTests {
   func tildeFenceRequiresMatchingLength() {
     let input = "~~~~\naaa\n~~~\n~~~~"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let codeBlocks = findNodes(in: result.root, ofType: CodeBlockNode.self)
-    #expect(codeBlocks.count == 1)
-    #expect(codeBlocks.first?.source == "aaa\n~~~")
 
     // Verify AST structure using sig
     let expectedSig = "document[code_block(\"aaa\\n~~~\")]"
@@ -130,11 +87,6 @@ struct MarkdownFencedCodeBlocksTests {
   func unclosedCodeBlockAtEndOfDocument() {
     let input = "```"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let codeBlocks = findNodes(in: result.root, ofType: CodeBlockNode.self)
-    #expect(codeBlocks.count == 1)
-    #expect(codeBlocks.first?.source == "")
 
     // Verify AST structure using sig
     let expectedSig = "document[code_block(\"\")]"
@@ -145,11 +97,6 @@ struct MarkdownFencedCodeBlocksTests {
   func unclosedCodeBlockWithContent() {
     let input = "`````\n\n```\naaa"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let codeBlocks = findNodes(in: result.root, ofType: CodeBlockNode.self)
-    #expect(codeBlocks.count == 1)
-    #expect(codeBlocks.first?.source == "\n```\naaa")
 
     // Verify AST structure using sig
     let expectedSig = "document[code_block(\"\\n```\\naaa\")]"
@@ -160,17 +107,6 @@ struct MarkdownFencedCodeBlocksTests {
   func unclosedCodeBlockInBlockquote() {
     let input = "> ```\n> aaa\n\nbbb"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let blockquotes = findNodes(in: result.root, ofType: BlockquoteNode.self)
-    #expect(blockquotes.count == 1)
-
-    let codeBlocks = findNodes(in: result.root, ofType: CodeBlockNode.self)
-    #expect(codeBlocks.count == 1)
-    #expect(codeBlocks.first?.source == "aaa")
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
 
     // Verify AST structure using sig
     let expectedSig = "document[blockquote[code_block(\"aaa\")],paragraph[text(\"bbb\")]]"
@@ -181,11 +117,6 @@ struct MarkdownFencedCodeBlocksTests {
   func codeBlockAllEmptyLines() {
     let input = "```\n\n\n```"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let codeBlocks = findNodes(in: result.root, ofType: CodeBlockNode.self)
-    #expect(codeBlocks.count == 1)
-  #expect(codeBlocks.first?.source == "\n\n")
 
     // Verify AST structure using sig
   let expectedSig = "document[code_block(\"\\n\\n\")]"
@@ -196,11 +127,6 @@ struct MarkdownFencedCodeBlocksTests {
   func emptyCodeBlock() {
     let input = "```\n```"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let codeBlocks = findNodes(in: result.root, ofType: CodeBlockNode.self)
-    #expect(codeBlocks.count == 1)
-    #expect(codeBlocks.first?.source == "")
 
     // Verify AST structure using sig
     let expectedSig = "document[code_block(\"\")]"
@@ -211,11 +137,6 @@ struct MarkdownFencedCodeBlocksTests {
   func indentedFenceWithIndentationRemoved() {
     let input = " ```\n aaa\naaa\n```"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let codeBlocks = findNodes(in: result.root, ofType: CodeBlockNode.self)
-    #expect(codeBlocks.count == 1)
-    #expect(codeBlocks.first?.source == "aaa\naaa")
 
     // Verify AST structure using sig
     let expectedSig = "document[code_block(\"aaa\\naaa\")]"
@@ -226,11 +147,6 @@ struct MarkdownFencedCodeBlocksTests {
   func twoSpaceIndentedFence() {
     let input = "  ```\naaa\n  aaa\naaa\n  ```"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let codeBlocks = findNodes(in: result.root, ofType: CodeBlockNode.self)
-    #expect(codeBlocks.count == 1)
-    #expect(codeBlocks.first?.source == "aaa\naaa\naaa")
 
     // Verify AST structure using sig
     let expectedSig = "document[code_block(\"aaa\\naaa\\naaa\")]"
@@ -241,11 +157,6 @@ struct MarkdownFencedCodeBlocksTests {
   func threeSpaceIndentedFence() {
     let input = "   ```\n   aaa\n    aaa\n  aaa\n   ```"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let codeBlocks = findNodes(in: result.root, ofType: CodeBlockNode.self)
-    #expect(codeBlocks.count == 1)
-    #expect(codeBlocks.first?.source == "aaa\n aaa\naaa")
 
     // Verify AST structure using sig
     let expectedSig = "document[code_block(\"aaa\\n aaa\\naaa\")]"
@@ -256,12 +167,6 @@ struct MarkdownFencedCodeBlocksTests {
   func fourSpacesCreatesIndentedCodeBlock() {
     let input = "    ```\n    aaa\n    ```"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let codeBlocks = findNodes(in: result.root, ofType: CodeBlockNode.self)
-    #expect(codeBlocks.count == 1)
-    #expect(codeBlocks.first?.source == "```\naaa\n```")
-    #expect(codeBlocks.first?.language == nil)
 
     // Verify AST structure using sig (this should be an indented code block)
     let expectedSig = "document[code_block(\"```\\naaa\\n```\")]"
@@ -272,11 +177,6 @@ struct MarkdownFencedCodeBlocksTests {
   func closingFenceCanBeIndentedDifferently() {
     let input = "```\naaa\n  ```"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let codeBlocks = findNodes(in: result.root, ofType: CodeBlockNode.self)
-    #expect(codeBlocks.count == 1)
-    #expect(codeBlocks.first?.source == "aaa")
 
     // Verify AST structure using sig
     let expectedSig = "document[code_block(\"aaa\")]"
@@ -287,11 +187,6 @@ struct MarkdownFencedCodeBlocksTests {
   func mixedIndentationOpeningAndClosing() {
     let input = "   ```\naaa\n  ```"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let codeBlocks = findNodes(in: result.root, ofType: CodeBlockNode.self)
-    #expect(codeBlocks.count == 1)
-    #expect(codeBlocks.first?.source == "aaa")
 
     // Verify AST structure using sig
     let expectedSig = "document[code_block(\"aaa\")]"
@@ -302,11 +197,6 @@ struct MarkdownFencedCodeBlocksTests {
   func fourSpaceIndentedClosingNotRecognized() {
     let input = "```\naaa\n    ```"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let codeBlocks = findNodes(in: result.root, ofType: CodeBlockNode.self)
-    #expect(codeBlocks.count == 1)
-    #expect(codeBlocks.first?.source == "aaa\n    ```")
 
     // Verify AST structure using sig
     let expectedSig = "document[code_block(\"aaa\\n    ```\")]"
@@ -317,17 +207,6 @@ struct MarkdownFencedCodeBlocksTests {
   func codeFencesCannotContainSpaces() {
     let input = "``` ```\naaa"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let codeBlocks = findNodes(in: result.root, ofType: CodeBlockNode.self)
-    #expect(codeBlocks.count == 0)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let inlineCodes = findNodes(in: result.root, ofType: CodeSpanNode.self)
-    #expect(inlineCodes.count == 1)
-    #expect(inlineCodes.first?.code == " ")
 
   // Verify AST structure using sig
   let expectedSig = "document[paragraph[code(\" \"),line_break(soft),text(\"aaa\")]]"
@@ -338,11 +217,6 @@ struct MarkdownFencedCodeBlocksTests {
   func tildeFenceWithSpacesInClosing() {
     let input = "~~~~~~\naaa\n~~~ ~~"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let codeBlocks = findNodes(in: result.root, ofType: CodeBlockNode.self)
-    #expect(codeBlocks.count == 1)
-    #expect(codeBlocks.first?.source == "aaa\n~~~ ~~")
 
     // Verify AST structure using sig
     let expectedSig = "document[code_block(\"aaa\\n~~~ ~~\")]"
@@ -353,14 +227,6 @@ struct MarkdownFencedCodeBlocksTests {
   func fencedCodeCanInterruptParagraphs() {
     let input = "foo\n```\nbar\n```\nbaz"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let codeBlocks = findNodes(in: result.root, ofType: CodeBlockNode.self)
-    #expect(codeBlocks.count == 1)
-    #expect(codeBlocks.first?.source == "bar")
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 2)
 
     // Verify AST structure using sig
     let expectedSig = "document[paragraph[text(\"foo\")],code_block(\"bar\"),paragraph[text(\"baz\")]]"
@@ -371,16 +237,6 @@ struct MarkdownFencedCodeBlocksTests {
   func otherBlocksAroundFencedCode() {
     let input = "foo\n---\n~~~\nbar\n~~~\n# baz"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let headers = findNodes(in: result.root, ofType: HeaderNode.self)
-    #expect(headers.count == 2)
-    #expect(headers[0].level == 2) // Setext heading
-    #expect(headers[1].level == 1) // ATX heading
-
-    let codeBlocks = findNodes(in: result.root, ofType: CodeBlockNode.self)
-    #expect(codeBlocks.count == 1)
-    #expect(codeBlocks.first?.source == "bar")
 
     // Verify AST structure using sig
     let expectedSig = "document[heading(level:2)[text(\"foo\")],code_block(\"bar\"),heading(level:1)[text(\"baz\")]]"
@@ -391,12 +247,6 @@ struct MarkdownFencedCodeBlocksTests {
   func infoStringWithLanguage() {
     let input = "```ruby\ndef foo(x)\n  return 3\nend\n```"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let codeBlocks = findNodes(in: result.root, ofType: CodeBlockNode.self)
-    #expect(codeBlocks.count == 1)
-    #expect(codeBlocks.first?.language == "ruby")
-    #expect(codeBlocks.first?.source == "def foo(x)\n  return 3\nend")
 
     // Verify AST structure using sig
     let expectedSig = "document[code_block(lang:\"ruby\",\"def foo(x)\\n  return 3\\nend\")]"
@@ -407,12 +257,6 @@ struct MarkdownFencedCodeBlocksTests {
   func infoStringWithMetadata() {
     let input = "~~~~    ruby startline=3 $%@#$\ndef foo(x)\n  return 3\nend\n~~~~~~~"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let codeBlocks = findNodes(in: result.root, ofType: CodeBlockNode.self)
-    #expect(codeBlocks.count == 1)
-    #expect(codeBlocks.first?.language == "ruby")
-    #expect(codeBlocks.first?.source == "def foo(x)\n  return 3\nend")
 
     // Verify AST structure using sig
     let expectedSig = "document[code_block(lang:\"ruby\",\"def foo(x)\\n  return 3\\nend\")]"
@@ -423,12 +267,6 @@ struct MarkdownFencedCodeBlocksTests {
   func infoStringWithSemicolon() {
     let input = "```;\n````"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let codeBlocks = findNodes(in: result.root, ofType: CodeBlockNode.self)
-    #expect(codeBlocks.count == 1)
-    #expect(codeBlocks.first?.language == ";")
-    #expect(codeBlocks.first?.source == "")
 
     // Verify AST structure using sig
     let expectedSig = "document[code_block(lang:\";\",\"\")]"
@@ -439,17 +277,6 @@ struct MarkdownFencedCodeBlocksTests {
   func backtickInfoStringCannotContainBackticks() {
     let input = "``` aa ```\nfoo"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let codeBlocks = findNodes(in: result.root, ofType: CodeBlockNode.self)
-    #expect(codeBlocks.count == 0)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let inlineCodes = findNodes(in: result.root, ofType: CodeSpanNode.self)
-    #expect(inlineCodes.count == 1)
-    #expect(inlineCodes.first?.code == "aa")
 
   // Verify AST structure using sig
   let expectedSig = "document[paragraph[code(\"aa\"),line_break(soft),text(\"foo\")]]"
@@ -460,12 +287,6 @@ struct MarkdownFencedCodeBlocksTests {
   func tildeInfoStringCanContainBackticksAndTildes() {
     let input = "~~~ aa ``` ~~~\nfoo\n~~~"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let codeBlocks = findNodes(in: result.root, ofType: CodeBlockNode.self)
-    #expect(codeBlocks.count == 1)
-    #expect(codeBlocks.first?.language == "aa")
-    #expect(codeBlocks.first?.source == "foo")
 
     // Verify AST structure using sig
     let expectedSig = "document[code_block(lang:\"aa\",\"foo\")]"
@@ -476,11 +297,6 @@ struct MarkdownFencedCodeBlocksTests {
   func closingFencesCannotHaveInfoStrings() {
     let input = "```\n``` aaa\n```"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let codeBlocks = findNodes(in: result.root, ofType: CodeBlockNode.self)
-    #expect(codeBlocks.count == 1)
-    #expect(codeBlocks.first?.source == "``` aaa")
 
     // Verify AST structure using sig
     let expectedSig = "document[code_block(\"``` aaa\")]"

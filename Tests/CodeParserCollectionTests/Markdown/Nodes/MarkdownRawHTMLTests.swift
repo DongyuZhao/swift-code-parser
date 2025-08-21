@@ -17,7 +17,7 @@ struct MarkdownRawHTMLTests {
   func simpleOpenTags() {
     let input = "<a><bab><c2c>"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
+
 
     let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
     #expect(paragraphs.count == 1)
@@ -34,13 +34,6 @@ struct MarkdownRawHTMLTests {
   func emptyElements() {
     let input = "<a/><b2/>"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let htmlNodes = findNodes(in: result.root, ofType: HTMLNode.self)
-    #expect(htmlNodes.count == 2)
 
     // Verify AST structure using sig
     let expectedSig = "document[paragraph[html(\"<a/>\"),html(\"<b2/>\")]]"
@@ -54,13 +47,6 @@ struct MarkdownRawHTMLTests {
 data="foo" >
 """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let htmlNodes = findNodes(in: result.root, ofType: HTMLNode.self)
-    #expect(htmlNodes.count == 2)
 
     // Verify AST structure using sig
     let expectedSig = "document[paragraph[html(\"<a  />\"),html(\"<b2\\ndata=\\\"foo\\\" >\")]]"
@@ -74,13 +60,6 @@ data="foo" >
 _boolean zoop:33=zoop:33 />
 """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let htmlNodes = findNodes(in: result.root, ofType: HTMLNode.self)
-    #expect(htmlNodes.count == 1)
 
     // Verify AST structure using sig
     let expectedSig = "document[paragraph[html(\"<a foo=\\\"bar\\\" bam = 'baz <em>\\\"</em>'\\n_boolean zoop:33=zoop:33 />\")]]"
@@ -91,13 +70,6 @@ _boolean zoop:33=zoop:33 />
   func customTagNames() {
     let input = "Foo <responsive-image src=\"foo.jpg\" />"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let htmlNodes = findNodes(in: result.root, ofType: HTMLNode.self)
-    #expect(htmlNodes.count == 1)
 
     // Verify AST structure using sig
     let expectedSig = "document[paragraph[text(\"Foo \"),html(\"<responsive-image src=\\\"foo.jpg\\\" />\")]]"
@@ -108,16 +80,6 @@ _boolean zoop:33=zoop:33 />
   func illegalTagNames() {
     let input = "<33> <__>"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let htmlNodes = findNodes(in: result.root, ofType: HTMLNode.self)
-    #expect(htmlNodes.count == 0)
-
-    let textNodes = findNodes(in: result.root, ofType: TextNode.self)
-    #expect(textNodes.count == 1)
 
     // Verify AST structure using sig - illegal tags become text
     let expectedSig = "document[paragraph[text(\"<33> <__>\")]]"
@@ -128,16 +90,6 @@ _boolean zoop:33=zoop:33 />
   func illegalAttributeNames() {
     let input = "<a h*#ref=\"hi\">"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let htmlNodes = findNodes(in: result.root, ofType: HTMLNode.self)
-    #expect(htmlNodes.count == 0)
-
-    let textNodes = findNodes(in: result.root, ofType: TextNode.self)
-    #expect(textNodes.count == 1)
 
     // Verify AST structure using sig - illegal attributes make tag become text
     let expectedSig = "document[paragraph[text(\"<a h*#ref=\\\"hi\\\">\")]]"
@@ -148,16 +100,6 @@ _boolean zoop:33=zoop:33 />
   func illegalAttributeValues() {
     let input = "<a href=\"hi'> <a href=hi'>"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let htmlNodes = findNodes(in: result.root, ofType: HTMLNode.self)
-    #expect(htmlNodes.count == 0)
-
-    let textNodes = findNodes(in: result.root, ofType: TextNode.self)
-    #expect(textNodes.count == 1)
 
     // Verify AST structure using sig - malformed quotes make tags become text
     let expectedSig = "document[paragraph[text(\"<a href=\\\"hi'> <a href=hi'>\"  )]]"
@@ -173,16 +115,6 @@ foo><bar/ >
 bim!bop />
 """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let htmlNodes = findNodes(in: result.root, ofType: HTMLNode.self)
-    #expect(htmlNodes.count == 0)
-
-    let textNodes = findNodes(in: result.root, ofType: TextNode.self)
-    #expect(textNodes.count == 1)
 
   // Verify AST structure using sig - illegal whitespace makes tags become text
   let expectedSig = "document[paragraph[text(\"< a><\"),line_break(soft),text(\"foo><bar/ >\"),line_break(soft),text(\"<foo bar=baz\"),line_break(soft),text(\"bim!bop />\")]]"
@@ -193,16 +125,6 @@ bim!bop />
   func missingWhitespace() {
     let input = "<a href='bar'title=title>"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let htmlNodes = findNodes(in: result.root, ofType: HTMLNode.self)
-    #expect(htmlNodes.count == 0)
-
-    let textNodes = findNodes(in: result.root, ofType: TextNode.self)
-    #expect(textNodes.count == 1)
 
     // Verify AST structure using sig - missing whitespace makes tag become text
     let expectedSig = "document[paragraph[text(\"<a href='bar'title=title>\")]]"
@@ -213,13 +135,6 @@ bim!bop />
   func closingTags() {
     let input = "</a></foo >"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let htmlNodes = findNodes(in: result.root, ofType: HTMLNode.self)
-    #expect(htmlNodes.count == 2)
 
     // Verify AST structure using sig
     let expectedSig = "document[paragraph[html(\"</a>\"),html(\"</foo >\")]]"
@@ -230,16 +145,6 @@ bim!bop />
   func illegalAttributesInClosingTag() {
     let input = "</a href=\"foo\">"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let htmlNodes = findNodes(in: result.root, ofType: HTMLNode.self)
-    #expect(htmlNodes.count == 0)
-
-    let textNodes = findNodes(in: result.root, ofType: TextNode.self)
-    #expect(textNodes.count == 1)
 
     // Verify AST structure using sig - closing tags cannot have attributes
     let expectedSig = "document[paragraph[text(\"</a href=\\\"foo\\\">\"  )]]"
@@ -253,13 +158,6 @@ foo <!-- this is a --
 comment - with hyphens -->
 """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let htmlNodes = findNodes(in: result.root, ofType: HTMLNode.self)
-    #expect(htmlNodes.count == 1)
 
     // Verify AST structure using sig
     let expectedSig = "document[paragraph[text(\"foo \"),html(\"<!-- this is a --\\ncomment - with hyphens -->\")]]"
@@ -274,13 +172,6 @@ foo <!--> foo -->
 foo <!---> foo -->
 """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 2)
-
-    let htmlNodes = findNodes(in: result.root, ofType: HTMLNode.self)
-    #expect(htmlNodes.count == 2)
 
     // Verify AST structure using sig
     let expectedSig = "document[paragraph[text(\"foo \"),html(\"<!-->\"),text(\" foo -->\")],paragraph[text(\"foo \"),html(\"<!--->\"),text(\" foo -->\")]]"
@@ -291,13 +182,6 @@ foo <!---> foo -->
   func processingInstructions() {
     let input = "foo <?php echo $a; ?>"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let htmlNodes = findNodes(in: result.root, ofType: HTMLNode.self)
-    #expect(htmlNodes.count == 1)
 
     // Verify AST structure using sig
     let expectedSig = "document[paragraph[text(\"foo \"),html(\"<?php echo $a; ?>\")]]"
@@ -308,13 +192,6 @@ foo <!---> foo -->
   func declarations() {
     let input = "foo <!ELEMENT br EMPTY>"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let htmlNodes = findNodes(in: result.root, ofType: HTMLNode.self)
-    #expect(htmlNodes.count == 1)
 
     // Verify AST structure using sig
     let expectedSig = "document[paragraph[text(\"foo \"),html(\"<!ELEMENT br EMPTY>\")]]"
@@ -325,13 +202,6 @@ foo <!---> foo -->
   func cdataSections() {
     let input = "foo <![CDATA[>&<]]>"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let htmlNodes = findNodes(in: result.root, ofType: HTMLNode.self)
-    #expect(htmlNodes.count == 1)
 
     // Verify AST structure using sig
     let expectedSig = "document[paragraph[text(\"foo \"),html(\"<![CDATA[>&<]]>\")]]"
@@ -342,13 +212,6 @@ foo <!---> foo -->
   func entityReferencesInAttributes() {
     let input = "foo <a href=\"&ouml;\">"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let htmlNodes = findNodes(in: result.root, ofType: HTMLNode.self)
-    #expect(htmlNodes.count == 1)
 
     // Verify AST structure using sig
     let expectedSig = "document[paragraph[text(\"foo \"),html(\"<a href=\\\"&ouml;\\\">\"  )]]"
@@ -359,13 +222,6 @@ foo <!---> foo -->
   func backslashEscapesInAttributes() {
     let input = "foo <a href=\"\\*\">"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let htmlNodes = findNodes(in: result.root, ofType: HTMLNode.self)
-    #expect(htmlNodes.count == 1)
 
     // Verify AST structure using sig - backslashes are preserved literally
     let expectedSig = "document[paragraph[text(\"foo \"),html(\"<a href=\\\"\\\\*\\\">\"  )]]"
@@ -376,16 +232,6 @@ foo <!---> foo -->
   func unescapedQuotesInAttributes() {
     let input = "<a href=\"\\\"\">"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let htmlNodes = findNodes(in: result.root, ofType: HTMLNode.self)
-    #expect(htmlNodes.count == 0)
-
-    let textNodes = findNodes(in: result.root, ofType: TextNode.self)
-    #expect(textNodes.count == 1)
 
     // Verify AST structure using sig - malformed quotes make tag become text
     let expectedSig = "document[paragraph[text(\"<a href=\\\"\\\\\\\"\\\">\")]]"

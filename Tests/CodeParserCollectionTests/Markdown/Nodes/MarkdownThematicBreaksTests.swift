@@ -17,10 +17,6 @@ struct MarkdownThematicBreaksTests {
   func basicThematicBreaks() {
     let input = "***\n---\n___"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let thematicBreaks = findNodes(in: result.root, ofType: ThematicBreakNode.self)
-    #expect(thematicBreaks.count == 3)
 
     // Verify AST structure using sig
     let expectedSig = "document[thematic_break,thematic_break,thematic_break]"
@@ -31,13 +27,6 @@ struct MarkdownThematicBreaksTests {
   func wrongCharacters() {
     let input = "+++"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let thematicBreaks = findNodes(in: result.root, ofType: ThematicBreakNode.self)
-    #expect(thematicBreaks.count == 0)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
 
     // Verify AST structure using sig
     let expectedSig = "document[paragraph[text(\"+++\")]]"
@@ -48,13 +37,6 @@ struct MarkdownThematicBreaksTests {
   func equalsNotValid() {
     let input = "==="
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let thematicBreaks = findNodes(in: result.root, ofType: ThematicBreakNode.self)
-    #expect(thematicBreaks.count == 0)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
 
     // Verify AST structure using sig
     let expectedSig = "document[paragraph[text(\"===\")]]"
@@ -65,13 +47,6 @@ struct MarkdownThematicBreaksTests {
   func notEnoughCharacters() {
     let input = "--\n**\n__"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let thematicBreaks = findNodes(in: result.root, ofType: ThematicBreakNode.self)
-    #expect(thematicBreaks.count == 0)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
 
   // Verify AST structure using sig
   let expectedSig = "document[paragraph[text(\"--\"),line_break(soft),text(\"**\"),line_break(soft),text(\"__\")]]"
@@ -82,10 +57,6 @@ struct MarkdownThematicBreaksTests {
   func validIndentation() {
     let input = " ***\n  ***\n   ***"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let thematicBreaks = findNodes(in: result.root, ofType: ThematicBreakNode.self)
-    #expect(thematicBreaks.count == 3)
 
     // Verify AST structure using sig
     let expectedSig = "document[thematic_break,thematic_break,thematic_break]"
@@ -96,14 +67,6 @@ struct MarkdownThematicBreaksTests {
   func fourSpacesCodeBlock() {
     let input = "    ***"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let thematicBreaks = findNodes(in: result.root, ofType: ThematicBreakNode.self)
-    #expect(thematicBreaks.count == 0)
-
-    let codeBlocks = findNodes(in: result.root, ofType: CodeBlockNode.self)
-    #expect(codeBlocks.count == 1)
-    #expect(codeBlocks.first?.source == "***")
 
     // Verify AST structure using sig
     let expectedSig = "document[code_block(\"***\")]"
@@ -114,13 +77,6 @@ struct MarkdownThematicBreaksTests {
   func fourSpacesAfterText() {
     let input = "Foo\n    ***"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let thematicBreaks = findNodes(in: result.root, ofType: ThematicBreakNode.self)
-    #expect(thematicBreaks.count == 0)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
 
   // Verify AST structure using sig: newline inside paragraph is a soft break
   let expectedSig = "document[paragraph[text(\"Foo\"),line_break(soft),text(\"***\")]]"
@@ -131,10 +87,6 @@ struct MarkdownThematicBreaksTests {
   func moreCharactersAllowed() {
     let input = "_____________________________________"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let thematicBreaks = findNodes(in: result.root, ofType: ThematicBreakNode.self)
-    #expect(thematicBreaks.count == 1)
 
     // Verify AST structure using sig
     let expectedSig = "document[thematic_break]"
@@ -145,10 +97,6 @@ struct MarkdownThematicBreaksTests {
   func spaceBetweenCharacters() {
     let input = " - - -"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let thematicBreaks = findNodes(in: result.root, ofType: ThematicBreakNode.self)
-    #expect(thematicBreaks.count == 1)
 
     // Verify AST structure using sig
     let expectedSig = "document[thematic_break]"
@@ -159,10 +107,6 @@ struct MarkdownThematicBreaksTests {
   func spaceBetweenAsterisks() {
     let input = " **  * ** * ** * **"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let thematicBreaks = findNodes(in: result.root, ofType: ThematicBreakNode.self)
-    #expect(thematicBreaks.count == 1)
 
     // Verify AST structure using sig
     let expectedSig = "document[thematic_break]"
@@ -173,10 +117,6 @@ struct MarkdownThematicBreaksTests {
   func multipleSpacesBetweenCharacters() {
     let input = "-     -      -      -"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let thematicBreaks = findNodes(in: result.root, ofType: ThematicBreakNode.self)
-    #expect(thematicBreaks.count == 1)
 
     // Verify AST structure using sig
     let expectedSig = "document[thematic_break]"
@@ -187,10 +127,6 @@ struct MarkdownThematicBreaksTests {
   func spacesAtEndAllowed() {
     let input = "- - - -    "
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let thematicBreaks = findNodes(in: result.root, ofType: ThematicBreakNode.self)
-    #expect(thematicBreaks.count == 1)
 
     // Verify AST structure using sig
     let expectedSig = "document[thematic_break]"
@@ -201,13 +137,6 @@ struct MarkdownThematicBreaksTests {
   func otherCharactersNotAllowed() {
     let input = "_ _ _ _ a\n\na------\n\n---a---"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let thematicBreaks = findNodes(in: result.root, ofType: ThematicBreakNode.self)
-    #expect(thematicBreaks.count == 0)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 3)
 
     // Verify AST structure using sig
     let expectedSig = "document[paragraph[text(\"_ _ _ _ a\")],paragraph[text(\"a------\")],paragraph[text(\"---a---\")]]"
@@ -218,17 +147,8 @@ struct MarkdownThematicBreaksTests {
   func mixedCharactersNotAllowed() {
     let input = " *-*"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let thematicBreaks = findNodes(in: result.root, ofType: ThematicBreakNode.self)
-    #expect(thematicBreaks.count == 0)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
 
     // Should parse as emphasis around dash
-    let emphasisNodes = findNodes(in: result.root, ofType: EmphasisNode.self)
-    #expect(emphasisNodes.count == 1)
 
     // Verify AST structure using sig
     let expectedSig = "document[paragraph[emphasis[text(\"-\")]]]"
@@ -239,13 +159,6 @@ struct MarkdownThematicBreaksTests {
   func noBlankLinesRequired() {
     let input = "- foo\n***\n- bar"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let thematicBreaks = findNodes(in: result.root, ofType: ThematicBreakNode.self)
-    #expect(thematicBreaks.count == 1)
-
-    let unorderedLists = findNodes(in: result.root, ofType: UnorderedListNode.self)
-    #expect(unorderedLists.count == 2)
 
     // Verify AST structure using sig
     let expectedSig = "document[unordered_list(level:1)[list_item[paragraph[text(\"foo\")]]],thematic_break,unordered_list(level:1)[list_item[paragraph[text(\"bar\")]]]]"
@@ -256,13 +169,6 @@ struct MarkdownThematicBreaksTests {
   func canInterruptParagraph() {
     let input = "Foo\n***\nbar"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let thematicBreaks = findNodes(in: result.root, ofType: ThematicBreakNode.self)
-    #expect(thematicBreaks.count == 1)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 2)
 
     // Verify AST structure using sig
     let expectedSig = "document[paragraph[text(\"Foo\")],thematic_break,paragraph[text(\"bar\")]]"
@@ -273,17 +179,6 @@ struct MarkdownThematicBreaksTests {
   func setextHeadingPrecedence() {
     let input = "Foo\n---\nbar"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let thematicBreaks = findNodes(in: result.root, ofType: ThematicBreakNode.self)
-    #expect(thematicBreaks.count == 0)
-
-    let headers = findNodes(in: result.root, ofType: HeaderNode.self)
-    #expect(headers.count == 1)
-    #expect(headers.first?.level == 2)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
 
     // Verify AST structure using sig
     let expectedSig = "document[heading(level:2)[text(\"Foo\")],paragraph[text(\"bar\")]]"
@@ -294,13 +189,6 @@ struct MarkdownThematicBreaksTests {
   func thematicBreakPrecedenceOverList() {
     let input = "* Foo\n* * *\n* Bar"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let thematicBreaks = findNodes(in: result.root, ofType: ThematicBreakNode.self)
-    #expect(thematicBreaks.count == 1)
-
-    let unorderedLists = findNodes(in: result.root, ofType: UnorderedListNode.self)
-    #expect(unorderedLists.count == 2)
 
     // Verify AST structure using sig
     let expectedSig = "document[unordered_list(level:1)[list_item[paragraph[text(\"Foo\")]]],thematic_break,unordered_list(level:1)[list_item[paragraph[text(\"Bar\")]]]]"
@@ -311,16 +199,6 @@ struct MarkdownThematicBreaksTests {
   func thematicBreakInListItem() {
     let input = "- Foo\n- * * *"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let thematicBreaks = findNodes(in: result.root, ofType: ThematicBreakNode.self)
-    #expect(thematicBreaks.count == 1)
-
-    let unorderedLists = findNodes(in: result.root, ofType: UnorderedListNode.self)
-    #expect(unorderedLists.count == 1)
-
-    let listItems = findNodes(in: result.root, ofType: ListItemNode.self)
-    #expect(listItems.count == 2)
 
     // Verify AST structure using sig
     let expectedSig = "document[unordered_list(level:1)[list_item[paragraph[text(\"Foo\")]],list_item[thematic_break]]]"

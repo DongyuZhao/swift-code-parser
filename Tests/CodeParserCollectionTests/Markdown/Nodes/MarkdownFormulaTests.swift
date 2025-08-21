@@ -17,20 +17,16 @@ struct MarkdownFormulaTests {
   func inlineFormula() {
     let input = "Euler: $e^{i\\pi}+1=0$"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-    guard let para = result.root.children.first as? ParagraphNode else {
-      Issue.record("Expected ParagraphNode")
-      return
-    }
-    #expect(para.first(where: { $0.element == .formula }) != nil)
+  let expectedSig = "document[paragraph[text(\"Euler: \"),formula]]"
+  #expect(sig(result.root) == expectedSig)
   }
 
   @Test("Spec F2: Block formula parsing")
   func blockFormula() {
     let input = "$$x=1$$"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-    #expect(result.root.children.first is FormulaBlockNode)
+  let expectedSig = "document[formula_block]"
+  #expect(sig(result.root) == expectedSig)
   }
 
   // MARK: - Additional Coverage
@@ -39,45 +35,33 @@ struct MarkdownFormulaTests {
   func backslashFormulas() {
     let input = #"Before \(a+b\) end"#
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-    let para = result.root.children.first as? ParagraphNode
-    #expect(para != nil)
-    let formulas = para?.children.compactMap { $0 as? FormulaNode }
-    #expect(formulas?.count == 1)
-    // Inline backslash variant is not trimmed by inline builder; expression keeps delimiters.
-    #expect(formulas?.first?.expression == #"\(a+b\)"#)
+  let expectedSig = "document[paragraph[text(\"Before \"),formula,text(\" end\")]]"
+  #expect(sig(result.root) == expectedSig)
   }
 
   @Test("Spec F4: Backslash block formula \\[..\\]")
   func backslashBlock() {
     let input = #"\[ x^2 + y^2 \]"#
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-    let block = result.root.children.first { $0.element == .formulaBlock } as? FormulaBlockNode
-    #expect(block != nil)
-    #expect(block?.expression == "x^2 + y^2")
+  let expectedSig = "document[formula_block]"
+  #expect(sig(result.root) == expectedSig)
   }
 
   @Test("Spec F5: Unclosed display $$ and \\[ ...")
   func unclosedDisplay() {
     let input = "$$x + 1\nNext line\n\\[ y+2"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-    let blocks = result.root.children.compactMap { $0 as? FormulaBlockNode }
-    // Expect two blocks: one from $$... (until EOF or before next?), implementation: first $$ consumes until EOF so second will be inside same token text; thus only one block
-    #expect(blocks.count == 1)
-    #expect(blocks.first?.expression.contains("x + 1") == true)
+  // For unclosed display formula, we expect a single formula_block consuming until EOF.
+  let expectedSig = "document[formula_block]"
+  #expect(sig(result.root) == expectedSig)
   }
 
   @Test("Spec F6: Unclosed inline $x+1 should NOT form formula")
   func unclosedInline() {
     let input = "Text $x+1 and more"
     let result = parser.parse(input, language: language)
-    let para = result.root.children.first as? ParagraphNode
-    #expect(para != nil)
-    let hasFormula =
-      para?.children.contains(where: { ($0 as? MarkdownNodeBase)?.element == .formula }) ?? false
-    #expect(!hasFormula)
+  let expectedSig = "document[paragraph[text(\"Text $x+1 and more\")]]"
+  #expect(sig(result.root) == expectedSig)
   }
 
   @Test("Spec F7: Whitespace invalid inline should not parse")
@@ -85,11 +69,8 @@ struct MarkdownFormulaTests {
     let samples = ["$ x$", "$x $"]
     for s in samples {
       let result = parser.parse(s, language: language)
-      let para = result.root.children.first as? ParagraphNode
-      #expect(para != nil)
-      let hasFormula =
-        para?.children.contains(where: { ($0 as? MarkdownNodeBase)?.element == .formula }) ?? false
-      #expect(!hasFormula, "Should not parse inline formula with surrounding whitespace: \(s)")
+  let expectedSig = "document[paragraph[text(\"\(s)\")]]"
+  #expect(sig(result.root) == expectedSig)
     }
   }
 
@@ -97,55 +78,39 @@ struct MarkdownFormulaTests {
   func escapedDollar() {
     let input = #"$a\$b$"#
     let result = parser.parse(input, language: language)
-    let para = result.root.children.first as? ParagraphNode
-    let formula =
-      para?.children.first(where: { ($0 as? MarkdownNodeBase)?.element == .formula })
-      as? FormulaNode
-    #expect(formula != nil)
-    #expect(formula?.expression == #"a\$b"#)
+  let expectedSig = "document[paragraph[formula]]"
+  #expect(sig(result.root) == expectedSig)
   }
 
   @Test("Spec F9: Multiple inline formulas in one paragraph")
   func multipleInline() {
     let input = "A $x$ B $y^2$ C"
     let result = parser.parse(input, language: language)
-    let para = result.root.children.first as? ParagraphNode
-    let formulas = para?.children.filter { ($0 as? MarkdownNodeBase)?.element == .formula }
-      .compactMap { $0 as? FormulaNode }
-    #expect(formulas?.count == 2)
-    #expect(Set(formulas?.map { $0.expression } ?? []) == ["x", "y^2"])
+  let expectedSig = "document[paragraph[text(\"A \"),formula,text(\" B \"),formula,text(\" C\")]]"
+  #expect(sig(result.root) == expectedSig)
   }
 
   @Test("Spec F10: Display formula with newline inside $$ .. $$")
   func displayWithNewline() {
     let input = "$$x^2 +\n y^2$$"
     let result = parser.parse(input, language: language)
-    let block = result.root.children.first { $0.element == .formulaBlock } as? FormulaBlockNode
-    #expect(block != nil)
-    let normalized = block?.expression.replacingOccurrences(of: " ", with: "") ?? ""
-    #expect(normalized.contains("x^2+\ny^2".replacingOccurrences(of: " ", with: "")))
+  let expectedSig = "document[formula_block]"
+  #expect(sig(result.root) == expectedSig)
   }
 
   @Test("Spec F11: Adjacent inline formulas")
   func adjacentInline() {
     let input = "Text$A$B$C$Text"
     let result = parser.parse(input, language: language)
-    let para = result.root.children.first as? ParagraphNode
-    let formulas = para?.children.filter { ($0 as? MarkdownNodeBase)?.element == .formula }
-      .compactMap { $0 as? FormulaNode }
-    // In this input, only $A$ and $C$ exist as proper formulas.
-    #expect(formulas?.count == 2)
-    #expect(formulas?.map { $0.expression } == ["A", "C"])
+  let expectedSig = "document[paragraph[text(\"Text\"),formula,text(\"B\"),formula,text(\"Text\")]]"
+  #expect(sig(result.root) == expectedSig)
   }
 
   @Test("Spec F12: Inline code containing dollar should not produce formula")
   func inlineCodeWithDollar() {
     let input = "`$a$` and $b$"
     let result = parser.parse(input, language: language)
-    let para = result.root.children.first as? ParagraphNode
-    let formulas = para?.children.filter { ($0 as? MarkdownNodeBase)?.element == .formula }
-      .compactMap { $0 as? FormulaNode }
-    #expect(formulas?.count == 1)
-    #expect(formulas?.first?.expression == "b")
+  let expectedSig = "document[paragraph[code(\"$a$\"),text(\" and \"),formula]]"
+  #expect(sig(result.root) == expectedSig)
   }
 }

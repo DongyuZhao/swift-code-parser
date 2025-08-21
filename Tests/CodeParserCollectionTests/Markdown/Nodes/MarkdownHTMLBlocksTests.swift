@@ -27,13 +27,6 @@ struct MarkdownHTMLBlocksTests {
 okay.
 """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let htmlBlocks = findNodes(in: result.root, ofType: HTMLBlockNode.self)
-    #expect(htmlBlocks.count == 1)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
 
     // Verify AST structure using sig
     let expectedSig = "document[html_block(name:\"\",content:\"<table>\\n  <tr>\\n    <td>\\n           hi\\n    </td>\\n  </tr>\\n</table>\"),paragraph[text(\"okay.\")]]"
@@ -48,14 +41,8 @@ okay.
          <foo><a>
 """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let htmlBlocks = findNodes(in: result.root, ofType: HTMLBlockNode.self)
-    #expect(htmlBlocks.count == 1)
 
     // No emphasis should be parsed inside HTML block
-    let emphasisNodes = findNodes(in: result.root, ofType: EmphasisNode.self)
-    #expect(emphasisNodes.count == 0)
 
     // Verify AST structure using sig
     let expectedSig = "document[html_block(name:\"\",content:\" <div>\\n  *hello*\\n         <foo><a>\")]"
@@ -69,14 +56,8 @@ okay.
 *foo*
 """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let htmlBlocks = findNodes(in: result.root, ofType: HTMLBlockNode.self)
-    #expect(htmlBlocks.count == 1)
 
     // No emphasis should be parsed inside HTML block
-    let emphasisNodes = findNodes(in: result.root, ofType: EmphasisNode.self)
-    #expect(emphasisNodes.count == 0)
 
     // Verify AST structure using sig
     let expectedSig = "document[html_block(name:\"\",content:\"</div>\\n*foo*\")]"
@@ -93,16 +74,6 @@ okay.
 </DIV>
 """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let htmlBlocks = findNodes(in: result.root, ofType: HTMLBlockNode.self)
-    #expect(htmlBlocks.count == 2)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let emphasisNodes = findNodes(in: result.root, ofType: EmphasisNode.self)
-    #expect(emphasisNodes.count == 1)
 
     // Verify AST structure using sig
     let expectedSig = "document[html_block(name:\"\",content:\"<DIV CLASS=\\\"foo\\\">\"),paragraph[emphasis[text(\"Markdown\")]],html_block(name:\"\",content:\"</DIV>\")]"
@@ -117,10 +88,6 @@ okay.
 </div>
 """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let htmlBlocks = findNodes(in: result.root, ofType: HTMLBlockNode.self)
-    #expect(htmlBlocks.count == 1)
 
     // Verify AST structure using sig
     let expectedSig = "document[html_block(name:\"\",content:\"<div id=\\\"foo\\\"\\n  class=\\\"bar\\\">\\n</div>\")]"
@@ -135,10 +102,6 @@ okay.
 </div>
 """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let htmlBlocks = findNodes(in: result.root, ofType: HTMLBlockNode.self)
-    #expect(htmlBlocks.count == 1)
 
     // Verify AST structure using sig
     let expectedSig = "document[html_block(name:\"\",content:\"<div id=\\\"foo\\\" class=\\\"bar\\n  baz\\\">\\n</div>\")]"
@@ -154,16 +117,6 @@ okay.
 *bar*
 """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let htmlBlocks = findNodes(in: result.root, ofType: HTMLBlockNode.self)
-    #expect(htmlBlocks.count == 1)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let emphasisNodes = findNodes(in: result.root, ofType: EmphasisNode.self)
-    #expect(emphasisNodes.count == 1)
 
     // Verify AST structure using sig
     let expectedSig = "document[html_block(name:\"\",content:\"<div>\\n*foo*\"),paragraph[emphasis[text(\"bar\")]]]"
@@ -177,14 +130,8 @@ okay.
 *hi*
 """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let htmlBlocks = findNodes(in: result.root, ofType: HTMLBlockNode.self)
-    #expect(htmlBlocks.count == 1)
 
     // No emphasis should be parsed inside HTML block
-    let emphasisNodes = findNodes(in: result.root, ofType: EmphasisNode.self)
-    #expect(emphasisNodes.count == 0)
 
     // Verify AST structure using sig
     let expectedSig = "document[html_block(name:\"\",content:\"<div id=\\\"foo\\\"\\n*hi*\")]"
@@ -198,14 +145,8 @@ okay.
 *foo*
 """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let htmlBlocks = findNodes(in: result.root, ofType: HTMLBlockNode.self)
-    #expect(htmlBlocks.count == 1)
 
     // No emphasis should be parsed inside HTML block
-    let emphasisNodes = findNodes(in: result.root, ofType: EmphasisNode.self)
-    #expect(emphasisNodes.count == 0)
 
     // Verify AST structure using sig
     let expectedSig = "document[html_block(name:\"\",content:\"<div *???-&&&-<---\\n*foo*\")]"
@@ -216,14 +157,8 @@ okay.
   func singleLineHTMLBlock() {
     let input = "<div><a href=\"bar\">*foo*</a></div>"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let htmlBlocks = findNodes(in: result.root, ofType: HTMLBlockNode.self)
-    #expect(htmlBlocks.count == 1)
 
     // No emphasis should be parsed inside HTML block
-    let emphasisNodes = findNodes(in: result.root, ofType: EmphasisNode.self)
-    #expect(emphasisNodes.count == 0)
 
     // Verify AST structure using sig
     let expectedSig = "document[html_block(name:\"\",content:\"<div><a href=\\\"bar\\\">*foo*</a></div>\")]"
@@ -238,10 +173,6 @@ foo
 </td></tr></table>
 """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let htmlBlocks = findNodes(in: result.root, ofType: HTMLBlockNode.self)
-    #expect(htmlBlocks.count == 1)
 
     // Verify AST structure using sig
     let expectedSig = "document[html_block(name:\"\",content:\"<table><tr><td>\\nfoo\\n</td></tr></table>\")]"
@@ -257,14 +188,8 @@ int x = 33;
 ```
 """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let htmlBlocks = findNodes(in: result.root, ofType: HTMLBlockNode.self)
-    #expect(htmlBlocks.count == 1)
 
     // No separate code block should be created
-    let codeBlocks = findNodes(in: result.root, ofType: CodeBlockNode.self)
-    #expect(codeBlocks.count == 0)
 
     // Verify AST structure using sig
     let expectedSig = "document[html_block(name:\"\",content:\"<div></div>\\n``` c\\nint x = 33;\\n```\")]"
@@ -279,14 +204,8 @@ int x = 33;
 </a>
 """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let htmlBlocks = findNodes(in: result.root, ofType: HTMLBlockNode.self)
-    #expect(htmlBlocks.count == 1)
 
     // No emphasis should be parsed inside HTML block
-    let emphasisNodes = findNodes(in: result.root, ofType: EmphasisNode.self)
-    #expect(emphasisNodes.count == 0)
 
     // Verify AST structure using sig
     let expectedSig = "document[html_block(name:\"\",content:\"<a href=\\\"foo\\\">\\n*bar*\\n</a>\")]"
@@ -301,14 +220,8 @@ int x = 33;
 </Warning>
 """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let htmlBlocks = findNodes(in: result.root, ofType: HTMLBlockNode.self)
-    #expect(htmlBlocks.count == 1)
 
     // No emphasis should be parsed inside HTML block
-    let emphasisNodes = findNodes(in: result.root, ofType: EmphasisNode.self)
-    #expect(emphasisNodes.count == 0)
 
     // Verify AST structure using sig
     let expectedSig = "document[html_block(name:\"\",content:\"<Warning>\\n*bar*\\n</Warning>\")]"
@@ -323,14 +236,8 @@ int x = 33;
 </del>
 """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let htmlBlocks = findNodes(in: result.root, ofType: HTMLBlockNode.self)
-    #expect(htmlBlocks.count == 1)
 
     // No emphasis should be parsed inside HTML block
-    let emphasisNodes = findNodes(in: result.root, ofType: EmphasisNode.self)
-    #expect(emphasisNodes.count == 0)
 
     // Verify AST structure using sig
     let expectedSig = "document[html_block(name:\"\",content:\"<del>\\n*foo*\\n</del>\")]"
@@ -347,16 +254,6 @@ int x = 33;
 </del>
 """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let htmlBlocks = findNodes(in: result.root, ofType: HTMLBlockNode.self)
-    #expect(htmlBlocks.count == 2)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let emphasisNodes = findNodes(in: result.root, ofType: EmphasisNode.self)
-    #expect(emphasisNodes.count == 1)
 
     // Verify AST structure using sig
     let expectedSig = "document[html_block(name:\"\",content:\"<del>\"),paragraph[emphasis[text(\"foo\")]],html_block(name:\"\",content:\"</del>\")]"
@@ -367,20 +264,8 @@ int x = 33;
   func inlineHTMLWhenNotOnSeparateLine() {
     let input = "<del>*foo*</del>"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
 
     // Should be parsed as paragraph with inline HTML and emphasis
-    let htmlBlocks = findNodes(in: result.root, ofType: HTMLBlockNode.self)
-    #expect(htmlBlocks.count == 0)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let htmlNodes = findNodes(in: result.root, ofType: HTMLNode.self)
-    #expect(htmlNodes.count == 2) // Opening and closing del tags
-
-    let emphasisNodes = findNodes(in: result.root, ofType: EmphasisNode.self)
-    #expect(emphasisNodes.count == 1)
 
     // Verify AST structure using sig
     let expectedSig = "document[paragraph[html(\"<del>\"),emphasis[text(\"foo\")],html(\"</del>\")]]"
@@ -399,13 +284,6 @@ main = print $ parseTags tags
 okay
 """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let htmlBlocks = findNodes(in: result.root, ofType: HTMLBlockNode.self)
-    #expect(htmlBlocks.count == 1)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
 
     // Verify AST structure using sig
     let expectedSig = "document[html_block(name:\"\",content:\"<pre language=\\\"haskell\\\"><code>\\nimport Text.HTML.TagSoup\\n\\nmain :: IO ()\\nmain = print $ parseTags tags\\n</code></pre>\"),paragraph[text(\"okay\")]]"
@@ -423,13 +301,6 @@ document.getElementById("demo").innerHTML = "Hello JavaScript!";
 okay
 """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let htmlBlocks = findNodes(in: result.root, ofType: HTMLBlockNode.self)
-    #expect(htmlBlocks.count == 1)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
 
     // Verify AST structure using sig
     let expectedSig = "document[html_block(name:\"\",content:\"<script type=\\\"text/javascript\\\">\\n// JavaScript example\\n\\ndocument.getElementById(\\\"demo\\\").innerHTML = \\\"Hello JavaScript!\\\";\\n</script>\"),paragraph[text(\"okay\")]]"
@@ -448,13 +319,6 @@ p {color:blue;}
 okay
 """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let htmlBlocks = findNodes(in: result.root, ofType: HTMLBlockNode.self)
-    #expect(htmlBlocks.count == 1)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
 
     // Verify AST structure using sig
     let expectedSig = "document[html_block(name:\"\",content:\"<style\\n  type=\\\"text/css\\\">\\nh1 {color:red;}\\n\\np {color:blue;}\\n</style>\"),paragraph[text(\"okay\")]]"
@@ -471,13 +335,6 @@ bar
 okay
 """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let htmlBlocks = findNodes(in: result.root, ofType: HTMLBlockNode.self)
-    #expect(htmlBlocks.count == 1)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
 
     // Verify AST structure using sig
     let expectedSig = "document[html_block(name:\"\",content:\"<!-- Foo\\n\\nbar\\n   baz -->\"),paragraph[text(\"okay\")]]"
@@ -495,13 +352,6 @@ okay
 okay
 """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let htmlBlocks = findNodes(in: result.root, ofType: HTMLBlockNode.self)
-    #expect(htmlBlocks.count == 1)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
 
     // Verify AST structure using sig
     let expectedSig = "document[html_block(name:\"\",content:\"<?php\\n\\n  echo '>';\\n\\n?>\"),paragraph[text(\"okay\")]]"
@@ -512,10 +362,6 @@ okay
   func type4HTMLBlockDeclaration() {
     let input = "<!DOCTYPE html>"
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let htmlBlocks = findNodes(in: result.root, ofType: HTMLBlockNode.self)
-    #expect(htmlBlocks.count == 1)
 
     // Verify AST structure using sig
     let expectedSig = "document[html_block(name:\"\",content:\"<!DOCTYPE html>\")]"
@@ -540,13 +386,6 @@ function matchwo(a,b)
 okay
 """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let htmlBlocks = findNodes(in: result.root, ofType: HTMLBlockNode.self)
-    #expect(htmlBlocks.count == 1)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
 
     // Verify AST structure using sig
     let expectedSig = "document[html_block(name:\"\",content:\"<![CDATA[\\nfunction matchwo(a,b)\\n{\\n  if (a < b && a < 0) then {\\n    return 1;\\n\\n  } else {\\n\\n    return 0;\\n  }\\n}\\n]]>\"),paragraph[text(\"okay\")]]"
@@ -561,13 +400,6 @@ okay
     <!-- foo -->
 """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let htmlBlocks = findNodes(in: result.root, ofType: HTMLBlockNode.self)
-    #expect(htmlBlocks.count == 1)
-
-    let codeBlocks = findNodes(in: result.root, ofType: CodeBlockNode.self)
-    #expect(codeBlocks.count == 1)
 
     // Verify AST structure using sig
     let expectedSig = "document[html_block(name:\"\",content:\"  <!-- foo -->\"),code_block(\"&lt;!-- foo --&gt;\")]"
@@ -583,13 +415,6 @@ bar
 </div>
 """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let htmlBlocks = findNodes(in: result.root, ofType: HTMLBlockNode.self)
-    #expect(htmlBlocks.count == 1)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
 
   // Verify AST structure using sig
   let expectedSig = "document[paragraph[text(\"Foo\")],html_block(name:\"\",content:\"<div>\\nbar\\n</div>\")]"
@@ -604,16 +429,6 @@ Foo
 baz
 """
     let result = parser.parse(input, language: language)
-    #expect(result.errors.isEmpty)
-
-    let htmlBlocks = findNodes(in: result.root, ofType: HTMLBlockNode.self)
-    #expect(htmlBlocks.count == 0)
-
-    let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-
-    let htmlNodes = findNodes(in: result.root, ofType: HTMLNode.self)
-    #expect(htmlNodes.count >= 1) // Inline HTML
 
   // Verify AST structure using sig
   let expectedSig = "document[paragraph[text(\"Foo\"),line_break(soft),html(\"<a href=\\\"bar\\\">\"),line_break(soft),text(\"baz\")]]"

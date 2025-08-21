@@ -12,13 +12,16 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
   public init() {
     self.builders = [
       // Order is important - more specific builders should come first
-      MarkdownEOFBuilder(), // EOF should be checked first
-      MarkdownATXHeadingBuilder(),
-      MarkdownThematicBreakBuilder(),
-      MarkdownSetextHeadingBuilder(),
-      MarkdownBlockQuoteBuilder(),
-      MarkdownIndentedCodeBlockBuilder(),
-      MarkdownParagraphBuilder(), // Paragraph should be last as it's the fallback
+      MarkdownEOFBuilder()  // EOF should be checked first
+      // MarkdownATXHeadingBuilder(),
+      // MarkdownSetextHeadingBuilder(), // Check before thematic break since - can be both
+      // MarkdownThematicBreakBuilder(),
+      // MarkdownBlockQuoteBuilder(),
+      // MarkdownListBuilder(), // Lists before indented code blocks
+      // MarkdownListItemBuilder(), // List item continuation
+      // MarkdownFencedCodeBlockBuilder(), // Fenced code blocks before indented
+      // MarkdownIndentedCodeBlockBuilder(),
+      // MarkdownParagraphBuilder(), // Paragraph should be last as it's the fallback
     ]
   }
 
@@ -27,117 +30,90 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
       return false
     }
 
-    guard let state = context.state as? MarkdownConstructState else {
-      // If no state is available, we cannot process block-level nodes
-      return false
-    }
+    let lines = lines(from: context)
+    guard !lines.isEmpty else { return false }
 
-    // If this is the first time, organize tokens into lines
-    if state.lines.isEmpty {
-      state.lines = lines(from: context)
-    }
-
-    guard !state.lines.isEmpty else { return false }
-
-    var processed = false
-    for line in state.lines {
-      if process(line: line, context: &context) {
-        processed = true
-      }
+    for line in lines {
+      process(line: line, context: &context)
     }
 
     // Consume all tokens since we processed all lines
     context.consuming = context.tokens.count
 
-    return processed
-  }
-
-  /// Organizes tokens into logical lines based on CommonMark line break rules
-  private func lines(from context: CodeConstructContext<Node, Token>) -> [MarkdownLine] {
-    var lines: [MarkdownLine] = []
-    var currentLineTokens: [any CodeToken<MarkdownTokenElement>] = []
-    var tokenIndex = context.consuming
-
-    while tokenIndex < context.tokens.count {
-      let token = context.tokens[tokenIndex]
-
-      if token.element == .eof {
-        // Handle EOF: if not after newline, insert newline and treat EOF as blank line
-        if !currentLineTokens.isEmpty {
-          // Add current line with synthetic newline
-          currentLineTokens.append(
-            MarkdownToken(element: .newline, text: token.text, range: token.range))
-          lines.append(MarkdownLine(tokens: currentLineTokens))
-        }
-        // Add empty line for EOF
-        lines.append(MarkdownLine(tokens: []))
-        break
-      } else if token.element == .newline {
-        // Include newline token at end of line and preserve empty lines
-        currentLineTokens.append(token)
-        lines.append(MarkdownLine(tokens: currentLineTokens))
-        currentLineTokens = []
-        tokenIndex += 1
-      } else {
-        currentLineTokens.append(token)
-        tokenIndex += 1
-      }
-    }
-
-    return lines
-  }
-
-  /// Process current line with appropriate node builder
-  private func process(line: MarkdownLine, context: inout CodeConstructContext<Node, Token>) -> Bool
-  {
-    if line.tokens.count == 1 && line.tokens[0].element == .newline {
-      // Handle blank line - close certain types of blocks
-      handleBlankLine(&context)
-      return true
-    }
-
-    let linectx = CodeConstructContext<Node, Token>(
-      root: context.root,
-      current: context.current,
-      tokens: line.tokens,
-      state: context.state
-    )
-
-    // Try each builder until one handles the line
-    for builder in builders {
-      var ctx = linectx
-      if builder.build(from: &ctx) {
-        // Builder handled the line, update context
-        context.current = ctx.current
-        return true
-      }
-    }
-
-    // If no builder handled the line, we still consumed it (it's processed as part of block structure)
+    // Return true to prevent further processing
     return true
   }
 
-  private func handleBlankLine(_ context: inout CodeConstructContext<Node, Token>) {
-    // Blank lines close certain types of blocks according to CommonMark spec
-    switch context.current {
-    case is ParagraphNode:
-      // Blank line closes a paragraph
-      if let parent = context.current.parent {
-        context.current = parent
+  private func process(
+    line: [any CodeToken<MarkdownTokenElement>], context: inout CodeConstructContext<Node, Token>
+  ) {
+    guard let state = context.state as? MarkdownConstructState else {
+      return
+    }
+
+    // Ensure the state is initialized
+    state.position = 0
+
+    repeat {
+      state.refreshed = false
+      state.refreshed = false
+
+      let tokens = line.suffix(from: state.position)
+
+      for builder in builders {
+        var ctx = CodeConstructContext<Node, Token>(
+          root: context.root,
+          current: context.current,
+          tokens: Array(tokens),
+          state: context.state
+        )
+
+        if builder.build(from: &ctx) {
+          // Builder handled the tokens, update context
+          context.current = ctx.current
+
+          if state.refreshed {
+            // tokens refreshed, stop the builder loop to reprocess the line from new position
+            break
+          } else {
+            // tokens not refreshed, we're done with this line
+            return
+          }
+        }
       }
-    case is CodeBlockNode:
-      // Blank lines are part of code blocks (indented code blocks)
-      // Don't close them here
-      break
-    case is BlockquoteNode:
-      // Blank lines can be part of block quotes (lazy continuation)
-      // Don't close immediately
-      break
-    default:
-      // For other block types, move to parent if available
-      if let parent = context.current.parent {
-        context.current = parent
+    } while state.refreshed
+  }
+
+  private func lines(from context: CodeConstructContext<Node, Token>) -> [[any CodeToken<MarkdownTokenElement>]] {
+    var result: [[any CodeToken<MarkdownTokenElement>]] = []
+    var line: [any CodeToken<MarkdownTokenElement>] = []
+    var index = context.consuming
+
+    while index < context.tokens.count {
+      let token = context.tokens[index]
+
+      if token.element == .eof {
+        // Handle EOF: if not after newline, insert newline and treat EOF as blank line
+        if !line.isEmpty {
+          // Add current line with synthetic newline
+          line.append(MarkdownToken(element: .newline, text: token.text, range: token.range))
+          result.append(line)
+        }
+        // Add empty line for EOF
+        result.append([])
+        break
+      } else if token.element == .newline {
+        // Include newline token at end of line and preserve empty lines
+        line.append(token)
+        result.append(line)
+        line = []
+        index += 1
+      } else {
+        line.append(token)
+        index += 1
       }
     }
+
+    return result
   }
 }
