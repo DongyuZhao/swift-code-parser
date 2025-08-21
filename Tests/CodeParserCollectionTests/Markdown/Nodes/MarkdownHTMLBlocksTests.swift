@@ -591,8 +591,8 @@ bar
     let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
     #expect(paragraphs.count == 1)
 
-    // Verify AST structure using sig
-    let expectedSig = "document[paragraph[text(\"Foo\")],html_block(name:\"\",content:\"<div>\\nbar\\n</div>\")]"
+  // Verify AST structure using sig
+  let expectedSig = "document[paragraph[text(\"Foo\")],html_block(name:\"\",content:\"<div>\\nbar\\n</div>\")]"
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -615,8 +615,8 @@ baz
     let htmlNodes = findNodes(in: result.root, ofType: HTMLNode.self)
     #expect(htmlNodes.count >= 1) // Inline HTML
 
-    // Verify AST structure using sig
-    let expectedSig = "document[paragraph[text(\"Foo\\n\"),html(\"<a href=\\\"bar\\\">\"),text(\"\\nbaz\")]]"
+  // Verify AST structure using sig
+  let expectedSig = "document[paragraph[text(\"Foo\"),line_break(soft),html(\"<a href=\\\"bar\\\">\"),line_break(soft),text(\"baz\")]]"
     #expect(sig(result.root) == expectedSig)
   }
 }

@@ -224,10 +224,10 @@ struct MarkdownTaskListItemsExtensionTests {
     #expect(taskItems.count == 0)
 
     let paragraphs = findNodes(in: listItems[0], ofType: ParagraphNode.self)
-    #expect(paragraphs.count == 1)
-    #expect(innerText(paragraphs[0]) == "Some text\n[ ] this is not a task item")
+  #expect(paragraphs.count == 1)
+  #expect(innerText(paragraphs[0]) == "Some text [ ] this is not a task item")
 
-    let expectedSig = "document[unordered_list(level:1)[list_item[paragraph[text(\"Some text\"),text(\"[ ] this is not a task item\")]]]]"
+  let expectedSig = "document[unordered_list(level:1)[list_item[paragraph[text(\"Some text\"),line_break(soft),text(\"[ ] this is not a task item\")]]]]"
     #expect(sig(result.root) == expectedSig)
   }
 

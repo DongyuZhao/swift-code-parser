@@ -736,8 +736,8 @@ struct MarkdownListItemsTests {
 
     let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
     #expect(paragraphs.count == 2)
-    #expect(innerText(paragraphs[0]) == "foo\n*")
-    #expect(innerText(paragraphs[1]) == "foo\n1.")
+  #expect(innerText(paragraphs[0]) == "foo *")
+  #expect(innerText(paragraphs[1]) == "foo 1.")
 
     let unorderedLists = findNodes(in: result.root, ofType: UnorderedListNode.self)
     #expect(unorderedLists.count == 0)
@@ -745,7 +745,7 @@ struct MarkdownListItemsTests {
     let orderedLists = findNodes(in: result.root, ofType: OrderedListNode.self)
     #expect(orderedLists.count == 0)
 
-    let expectedSig = "document[paragraph[text(\"foo\"),text(\"*\")],paragraph[text(\"foo\"),text(\"1.\")]]"
+  let expectedSig = "document[paragraph[text(\"foo\"),line_break(soft),text(\"*\")],paragraph[text(\"foo\"),line_break(soft),text(\"1.\")]]"
     #expect(sig(result.root) == expectedSig)
   }
 

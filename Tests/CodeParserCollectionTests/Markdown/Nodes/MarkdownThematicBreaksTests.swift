@@ -73,8 +73,8 @@ struct MarkdownThematicBreaksTests {
     let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
     #expect(paragraphs.count == 1)
 
-    // Verify AST structure using sig
-    let expectedSig = "document[paragraph[text(\"--\n**\n__\")]]"
+  // Verify AST structure using sig
+  let expectedSig = "document[paragraph[text(\"--\"),line_break(soft),text(\"**\"),line_break(soft),text(\"__\")]]"
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -122,8 +122,8 @@ struct MarkdownThematicBreaksTests {
     let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
     #expect(paragraphs.count == 1)
 
-    // Verify AST structure using sig
-    let expectedSig = "document[paragraph[text(\"Foo\n***\")]]"
+  // Verify AST structure using sig: newline inside paragraph is a soft break
+  let expectedSig = "document[paragraph[text(\"Foo\"),line_break(soft),text(\"***\")]]"
     #expect(sig(result.root) == expectedSig)
   }
 

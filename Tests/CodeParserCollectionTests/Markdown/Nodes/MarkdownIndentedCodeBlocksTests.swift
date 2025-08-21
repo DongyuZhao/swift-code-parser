@@ -135,8 +135,8 @@ struct MarkdownIndentedCodeBlocksTests {
     let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
     #expect(paragraphs.count == 1)
 
-    // Verify AST structure using sig
-    let expectedSig = "document[paragraph[text(\"Foo\\nbar\")]]"
+  // Verify AST structure using sig
+  let expectedSig = "document[paragraph[text(\"Foo\"),line_break(soft),text(\"bar\")]]"
     #expect(sig(result.root) == expectedSig)
   }
 

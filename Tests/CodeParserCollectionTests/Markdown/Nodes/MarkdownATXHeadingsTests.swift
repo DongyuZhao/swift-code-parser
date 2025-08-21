@@ -186,8 +186,8 @@ struct MarkdownATXHeadingsTests {
     let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
     #expect(paragraphs.count == 1)
 
-    // Verify AST structure using sig
-    let expectedSig = "document[paragraph[text(\"foo\n# bar\")]]"
+  // Verify AST structure using sig: newline inside paragraph is a soft break
+  let expectedSig = "document[paragraph[text(\"foo\"),line_break(soft),text(\"# bar\")]]"
     #expect(sig(result.root) == expectedSig)
   }
 

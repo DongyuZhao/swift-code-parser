@@ -106,12 +106,12 @@ struct MarkdownListsTests {
 
     let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
     #expect(paragraphs.count == 1)
-    #expect(innerText(paragraphs[0]) == "The number of windows in my house is\n14.  The number of doors is 6.")
+  #expect(innerText(paragraphs[0]) == "The number of windows in my house is 14.  The number of doors is 6.")
 
     let orderedLists = findNodes(in: result.root, ofType: OrderedListNode.self)
     #expect(orderedLists.count == 0)
 
-    let expectedSig = "document[paragraph[text(\"The number of windows in my house is\"),text(\"14.  The number of doors is 6.\")]]"
+  let expectedSig = "document[paragraph[text(\"The number of windows in my house is\"),line_break(soft),text(\"14.  The number of doors is 6.\")]]"
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -389,9 +389,9 @@ struct MarkdownListsTests {
     #expect(innerText(listItems[0]) == "a")
     #expect(innerText(listItems[1]) == "b")
     #expect(innerText(listItems[2]) == "c")
-    #expect(innerText(listItems[3]) == "d\n- e")
+  #expect(innerText(listItems[3]) == "d - e")
 
-    let expectedSig = "document[unordered_list(level:1)[list_item[paragraph[text(\"a\")]],list_item[paragraph[text(\"b\")]],list_item[paragraph[text(\"c\")]],list_item[paragraph[text(\"d\"),text(\"- e\")]]]]"
+  let expectedSig = "document[unordered_list(level:1)[list_item[paragraph[text(\"a\")]],list_item[paragraph[text(\"b\")]],list_item[paragraph[text(\"c\")]],list_item[paragraph[text(\"d\"),line_break(soft),text(\"- e\")]]]]"
     #expect(sig(result.root) == expectedSig)
   }
 

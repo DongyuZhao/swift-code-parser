@@ -152,7 +152,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
     let input = "*foo bar\n*"
     let result = parser.parse(input, language: language)
     #expect(result.errors.isEmpty)
-    #expect(sig(result.root) == "document[paragraph[text(\"*foo bar\n*\")]]")
+  #expect(sig(result.root) == "document[paragraph[text(\"*foo bar\"),line_break(soft),text(\"*\")]]")
   }
 
   @Test("Asterisk preceded by punctuation and followed by alphanumeric is not right-flanking")
@@ -468,7 +468,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
     let input = "*foo\nbar*"
     let result = parser.parse(input, language: language)
     #expect(result.errors.isEmpty)
-    #expect(sig(result.root) == "document[paragraph[emphasis[text(\"foo\nbar\")]]]")
+  #expect(sig(result.root) == "document[paragraph[emphasis[text(\"foo\"),line_break(soft),text(\"bar\")]]]")
   }
 
   @Test("Nested emphasis and strong emphasis within emphasis")
@@ -614,7 +614,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
     let input = "**foo\nbar**"
     let result = parser.parse(input, language: language)
     #expect(result.errors.isEmpty)
-    #expect(sig(result.root) == "document[paragraph[strong[text(\"foo\nbar\")]]]")
+  #expect(sig(result.root) == "document[paragraph[strong[text(\"foo\"),line_break(soft),text(\"bar\")]]]")
   }
 
   @Test("Nested emphasis within strong emphasis")

@@ -329,8 +329,8 @@ struct MarkdownFencedCodeBlocksTests {
     #expect(inlineCodes.count == 1)
     #expect(inlineCodes.first?.code == " ")
 
-    // Verify AST structure using sig
-    let expectedSig = "document[paragraph[code(\" \"),text(\"\\naaa\")]]"
+  // Verify AST structure using sig
+  let expectedSig = "document[paragraph[code(\" \"),line_break(soft),text(\"aaa\")]]"
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -451,8 +451,8 @@ struct MarkdownFencedCodeBlocksTests {
     #expect(inlineCodes.count == 1)
     #expect(inlineCodes.first?.code == "aa")
 
-    // Verify AST structure using sig
-    let expectedSig = "document[paragraph[code(\"aa\"),text(\"\\nfoo\")]]"
+  // Verify AST structure using sig
+  let expectedSig = "document[paragraph[code(\"aa\"),line_break(soft),text(\"foo\")]]"
     #expect(sig(result.root) == expectedSig)
   }
 

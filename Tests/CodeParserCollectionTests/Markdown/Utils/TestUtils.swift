@@ -29,7 +29,23 @@ func findNodes<T: CodeNode<MarkdownNodeElement>>(
 
 // Shared strict helpers: childrenTypes and sig for unique AST structure checks
 func innerText(_ node: CodeNode<MarkdownNodeElement>) -> String {
-  findNodes(in: node, ofType: TextNode.self).map { $0.content }.joined()
+  // Render-like concatenation: text nodes + line breaks
+  var parts: [String] = []
+  func walk(_ n: CodeNode<MarkdownNodeElement>) {
+    if let t = n as? TextNode {
+      parts.append(t.content)
+    } else if let br = n as? LineBreakNode {
+      switch br.variant {
+      case .soft:
+        parts.append(" ")
+      case .hard:
+        parts.append("\n")
+      }
+    }
+    for c in n.children { walk(c) }
+  }
+  walk(node)
+  return parts.joined()
 }
 
 func childrenTypes(_ node: CodeNode<MarkdownNodeElement>) -> [MarkdownNodeElement] {

@@ -613,10 +613,10 @@ struct MarkdownLinkReferenceDefinitionsTests {
     // Should create paragraphs
     let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
     #expect(paragraphs.count == 2)
-    #expect(innerText(paragraphs[0]) == "Foo\n[bar]: /baz")
+  #expect(innerText(paragraphs[0]) == "Foo [bar]: /baz")
     #expect(innerText(paragraphs[1]) == "[bar]")
 
-    let expectedSig = "document[paragraph[text(\"Foo\"),text(\"[bar]: /baz\")],paragraph[text(\"[bar]\")]]"
+  let expectedSig = "document[paragraph[text(\"Foo\"),line_break(soft),text(\"[bar]: /baz\")],paragraph[text(\"[bar]\")]]"
     #expect(sig(result.root) == expectedSig)
   }
 

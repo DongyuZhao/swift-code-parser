@@ -114,7 +114,7 @@ struct MarkdownPrecedenceTests {
     #expect(blockquoteContent.contains("Blockquote line 2"))
 
     // Verify AST structure
-    let expectedSig = "document[blockquote[paragraph[text(\"Blockquote line 1\\nBlockquote line 2\")]],paragraph[text(\"Regular paragraph\")]]"
+  let expectedSig = "document[blockquote[paragraph[text(\"Blockquote line 1\"),line_break(soft),text(\"Blockquote line 2\")]],paragraph[text(\"Regular paragraph\")]]"
     #expect(sig(result.root) == expectedSig)
   }
 

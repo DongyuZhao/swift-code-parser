@@ -184,8 +184,8 @@ bim!bop />
     let textNodes = findNodes(in: result.root, ofType: TextNode.self)
     #expect(textNodes.count == 1)
 
-    // Verify AST structure using sig - illegal whitespace makes tags become text
-    let expectedSig = "document[paragraph[text(\"< a><\\nfoo><bar/ >\\n<foo bar=baz\\nbim!bop />\")]]"
+  // Verify AST structure using sig - illegal whitespace makes tags become text
+  let expectedSig = "document[paragraph[text(\"< a><\"),line_break(soft),text(\"foo><bar/ >\"),line_break(soft),text(\"<foo bar=baz\"),line_break(soft),text(\"bim!bop />\")]]"
     #expect(sig(result.root) == expectedSig)
   }
 

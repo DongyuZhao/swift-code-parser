@@ -314,7 +314,7 @@ struct MarkdownEntityAndNumericCharacterReferencesTests {
     let text = textNodes[0].content
     #expect(text.contains("foo") && text.contains("bar"))
 
-    let expectedSig = "document[paragraph[text(\"foo\\n\\nbar\")]]"
+  let expectedSig = "document[paragraph[text(\"foo\"),line_break(soft),line_break(soft),text(\"bar\")]]"
     #expect(sig(result.root) == expectedSig)
   }
 

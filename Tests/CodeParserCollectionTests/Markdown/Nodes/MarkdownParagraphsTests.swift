@@ -48,17 +48,23 @@ struct MarkdownParagraphsTests {
     let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
     #expect(paragraphs.count == 2)
 
-    let textNodes1 = findNodes(in: paragraphs[0], ofType: TextNode.self)
-    #expect(textNodes1.count == 2)
-    #expect(textNodes1[0].content == "aaa")
-    #expect(textNodes1[1].content == "bbb")
+  let textNodes1 = findNodes(in: paragraphs[0], ofType: TextNode.self)
+  #expect(textNodes1.count == 2)
+  #expect(textNodes1[0].content == "aaa")
+  #expect(textNodes1[1].content == "bbb")
+  let breaks1 = findNodes(in: paragraphs[0], ofType: LineBreakNode.self)
+  #expect(breaks1.count == 1)
+  #expect(breaks1[0].variant == .soft)
 
-    let textNodes2 = findNodes(in: paragraphs[1], ofType: TextNode.self)
-    #expect(textNodes2.count == 2)
-    #expect(textNodes2[0].content == "ccc")
-    #expect(textNodes2[1].content == "ddd")
+  let textNodes2 = findNodes(in: paragraphs[1], ofType: TextNode.self)
+  #expect(textNodes2.count == 2)
+  #expect(textNodes2[0].content == "ccc")
+  #expect(textNodes2[1].content == "ddd")
+  let breaks2 = findNodes(in: paragraphs[1], ofType: LineBreakNode.self)
+  #expect(breaks2.count == 1)
+  #expect(breaks2[0].variant == .soft)
 
-    let expectedSig = "document[paragraph[text(\"aaa\"),text(\"bbb\")],paragraph[text(\"ccc\"),text(\"ddd\")]]"
+  let expectedSig = "document[paragraph[text(\"aaa\"),line_break(soft),text(\"bbb\")],paragraph[text(\"ccc\"),line_break(soft),text(\"ddd\")]]"
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -95,12 +101,15 @@ struct MarkdownParagraphsTests {
     let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
     #expect(paragraphs.count == 1)
 
-    let textNodes = findNodes(in: paragraphs[0], ofType: TextNode.self)
-    #expect(textNodes.count == 2)
-    #expect(textNodes[0].content == "aaa")
-    #expect(textNodes[1].content == "bbb")
+  let textNodes = findNodes(in: paragraphs[0], ofType: TextNode.self)
+  #expect(textNodes.count == 2)
+  #expect(textNodes[0].content == "aaa")
+  #expect(textNodes[1].content == "bbb")
+  let breaks = findNodes(in: paragraphs[0], ofType: LineBreakNode.self)
+  #expect(breaks.count == 1)
+  #expect(breaks[0].variant == .soft)
 
-    let expectedSig = "document[paragraph[text(\"aaa\"),text(\"bbb\")]]"
+  let expectedSig = "document[paragraph[text(\"aaa\"),line_break(soft),text(\"bbb\")]]"
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -117,13 +126,16 @@ struct MarkdownParagraphsTests {
     let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
     #expect(paragraphs.count == 1)
 
-    let textNodes = findNodes(in: paragraphs[0], ofType: TextNode.self)
-    #expect(textNodes.count == 3)
-    #expect(textNodes[0].content == "aaa")
-    #expect(textNodes[1].content == "bbb")
-    #expect(textNodes[2].content == "ccc")
+  let textNodes = findNodes(in: paragraphs[0], ofType: TextNode.self)
+  #expect(textNodes.count == 3)
+  #expect(textNodes[0].content == "aaa")
+  #expect(textNodes[1].content == "bbb")
+  #expect(textNodes[2].content == "ccc")
+  let breaks = findNodes(in: paragraphs[0], ofType: LineBreakNode.self)
+  #expect(breaks.count == 2)
+  #expect(breaks.allSatisfy { $0.variant == .soft })
 
-    let expectedSig = "document[paragraph[text(\"aaa\"),text(\"bbb\"),text(\"ccc\")]]"
+  let expectedSig = "document[paragraph[text(\"aaa\"),line_break(soft),text(\"bbb\"),line_break(soft),text(\"ccc\")]]"
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -139,16 +151,19 @@ struct MarkdownParagraphsTests {
     let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
     #expect(paragraphs.count == 1)
 
-    let textNodes = findNodes(in: paragraphs[0], ofType: TextNode.self)
-    #expect(textNodes.count == 2)
-    #expect(textNodes[0].content == "aaa")
-    #expect(textNodes[1].content == "bbb")
+  let textNodes = findNodes(in: paragraphs[0], ofType: TextNode.self)
+  #expect(textNodes.count == 2)
+  #expect(textNodes[0].content == "aaa")
+  #expect(textNodes[1].content == "bbb")
+  let breaks = findNodes(in: paragraphs[0], ofType: LineBreakNode.self)
+  #expect(breaks.count == 1)
+  #expect(breaks[0].variant == .soft)
 
     // Should not create a code block
     let codeBlocks = findNodes(in: result.root, ofType: CodeBlockNode.self)
     #expect(codeBlocks.count == 0)
 
-    let expectedSig = "document[paragraph[text(\"aaa\"),text(\"bbb\")]]"
+  let expectedSig = "document[paragraph[text(\"aaa\"),line_break(soft),text(\"bbb\")]]"
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -270,17 +285,17 @@ struct MarkdownParagraphsTests {
     let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
     #expect(paragraphs.count == 1)
 
-    // Single trailing space should not create hard line break
-    let textNodes = findNodes(in: paragraphs[0], ofType: TextNode.self)
-    #expect(textNodes.count == 2)
-    #expect(textNodes[0].content == "aaa")
-    #expect(textNodes[1].content == "bbb")
+  // Single trailing space should not create hard line break, but newline is a soft break
+  let textNodes = findNodes(in: paragraphs[0], ofType: TextNode.self)
+  #expect(textNodes.count == 2)
+  #expect(textNodes[0].content == "aaa")
+  #expect(textNodes[1].content == "bbb")
 
-    // Should not have line break nodes
-    let lineBreaks = findNodes(in: paragraphs[0], ofType: LineBreakNode.self)
-    #expect(lineBreaks.count == 0)
+  let lineBreaks = findNodes(in: paragraphs[0], ofType: LineBreakNode.self)
+  #expect(lineBreaks.count == 1)
+  #expect(lineBreaks[0].variant == .soft)
 
-    let expectedSig = "document[paragraph[text(\"aaa\"),text(\"bbb\")]]"
+  let expectedSig = "document[paragraph[text(\"aaa\"),line_break(soft),text(\"bbb\")]]"
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -297,13 +312,16 @@ struct MarkdownParagraphsTests {
     let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
     #expect(paragraphs.count == 1)
 
-    let textNodes = findNodes(in: paragraphs[0], ofType: TextNode.self)
-    #expect(textNodes.count == 3)
-    #expect(textNodes[0].content == "This is a paragraph")
-    #expect(textNodes[1].content == "with multiple lines")
-    #expect(textNodes[2].content == "and some content.")
+  let textNodes = findNodes(in: paragraphs[0], ofType: TextNode.self)
+  #expect(textNodes.count == 3)
+  #expect(textNodes[0].content == "This is a paragraph")
+  #expect(textNodes[1].content == "with multiple lines")
+  #expect(textNodes[2].content == "and some content.")
+  let breaks = findNodes(in: paragraphs[0], ofType: LineBreakNode.self)
+  #expect(breaks.count == 2)
+  #expect(breaks.allSatisfy { $0.variant == .soft })
 
-    let expectedSig = "document[paragraph[text(\"This is a paragraph\"),text(\"with multiple lines\"),text(\"and some content.\")]]"
+  let expectedSig = "document[paragraph[text(\"This is a paragraph\"),line_break(soft),text(\"with multiple lines\"),line_break(soft),text(\"and some content.\")]]"
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -336,17 +354,20 @@ struct MarkdownParagraphsTests {
     let paragraphs = findNodes(in: result.root, ofType: ParagraphNode.self)
     #expect(paragraphs.count == 1)
 
-    let textNodes = findNodes(in: paragraphs[0], ofType: TextNode.self)
-    #expect(textNodes.count == 3)
-    #expect(textNodes[0].content == "aaa")
-    #expect(textNodes[1].content == "bbb")
-    #expect(textNodes[2].content == "ccc")
+  let textNodes = findNodes(in: paragraphs[0], ofType: TextNode.self)
+  #expect(textNodes.count == 3)
+  #expect(textNodes[0].content == "aaa")
+  #expect(textNodes[1].content == "bbb")
+  #expect(textNodes[2].content == "ccc")
+  let breaks = findNodes(in: paragraphs[0], ofType: LineBreakNode.self)
+  #expect(breaks.count == 2)
+  #expect(breaks.allSatisfy { $0.variant == .soft })
 
     // Should not create code block
     let codeBlocks = findNodes(in: result.root, ofType: CodeBlockNode.self)
     #expect(codeBlocks.count == 0)
 
-    let expectedSig = "document[paragraph[text(\"aaa\"),text(\"bbb\"),text(\"ccc\")]]"
+  let expectedSig = "document[paragraph[text(\"aaa\"),line_break(soft),text(\"bbb\"),line_break(soft),text(\"ccc\")]]"
     #expect(sig(result.root) == expectedSig)
   }
 }

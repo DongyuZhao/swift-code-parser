@@ -57,7 +57,7 @@ struct MarkdownSetextHeadingsTests {
     #expect(emphasisNodes.count == 1)
 
     // Verify AST structure using sig
-    let expectedSig = "document[heading(level:1)[text(\"Foo \"),emphasis[text(\"bar\nbaz\")]]]"
+  let expectedSig = "document[heading(level:1)[text(\"Foo \"),emphasis[text(\"bar\"),line_break(soft),text(\"baz\")]]]"
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -79,7 +79,7 @@ struct MarkdownSetextHeadingsTests {
     #expect(emphasisNodes.count == 1)
 
     // Verify AST structure using sig
-    let expectedSig = "document[heading(level:1)[text(\"Foo \"),emphasis[text(\"bar\nbaz\")]]]"
+  let expectedSig = "document[heading(level:1)[text(\"Foo \"),emphasis[text(\"bar\"),line_break(soft),text(\"baz\")]]]"
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -192,7 +192,7 @@ struct MarkdownSetextHeadingsTests {
     #expect(paragraphs.count == 1)
 
     // Verify AST structure using sig
-    let expectedSig = "document[paragraph[text(\"Foo\n---\")]]"
+  let expectedSig = "document[paragraph[text(\"Foo\"),line_break(soft),text(\"---\")]]"
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -218,7 +218,7 @@ struct MarkdownSetextHeadingsTests {
     #expect(thematicBreaks.count == 1)
 
     // Verify AST structure using sig
-    let expectedSig = "document[paragraph[text(\"Foo\n= =\")],paragraph[text(\"Foo\")],thematic_break]"
+  let expectedSig = "document[paragraph[text(\"Foo\"),line_break(soft),text(\"= =\")],paragraph[text(\"Foo\")],thematic_break]"
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -328,7 +328,7 @@ struct MarkdownSetextHeadingsTests {
     #expect(paragraphs.count == 1)
 
     // Verify AST structure using sig
-    let expectedSig = "document[blockquote[paragraph[text(\"foo\nbar\n===\")]]]"
+  let expectedSig = "document[blockquote[paragraph[text(\"foo\"),line_break(soft),text(\"bar\"),line_break(soft),text(\"===\")]]]"
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -373,7 +373,7 @@ struct MarkdownSetextHeadingsTests {
     #expect(paragraphs.count == 0)
 
     // Verify AST structure using sig
-    let expectedSig = "document[heading(level:2)[text(\"Foo\nBar\")]]"
+  let expectedSig = "document[heading(level:2)[text(\"Foo\"),line_break(soft),text(\"Bar\")]]"
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -584,7 +584,7 @@ struct MarkdownSetextHeadingsTests {
     #expect(thematicBreaks.count == 1)
 
     // Verify AST structure using sig
-    let expectedSig = "document[paragraph[text(\"Foo\nbar\")],thematic_break,paragraph[text(\"baz\")]]"
+  let expectedSig = "document[paragraph[text(\"Foo\"),line_break(soft),text(\"bar\")],thematic_break,paragraph[text(\"baz\")]]"
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -609,7 +609,7 @@ struct MarkdownSetextHeadingsTests {
     #expect(thematicBreaks.count == 1)
 
     // Verify AST structure using sig
-    let expectedSig = "document[paragraph[text(\"Foo\nbar\")],thematic_break,paragraph[text(\"baz\")]]"
+  let expectedSig = "document[paragraph[text(\"Foo\"),line_break(soft),text(\"bar\")],thematic_break,paragraph[text(\"baz\")]]"
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -634,7 +634,7 @@ struct MarkdownSetextHeadingsTests {
     #expect(thematicBreaks.count == 0)
 
     // Verify AST structure using sig
-    let expectedSig = "document[paragraph[text(\"Foo\nbar\n---\nbaz\")]]"
+  let expectedSig = "document[paragraph[text(\"Foo\"),line_break(soft),text(\"bar\"),line_break(soft),text(\"---\"),line_break(soft),text(\"baz\")]]"
     #expect(sig(result.root) == expectedSig)
   }
 }

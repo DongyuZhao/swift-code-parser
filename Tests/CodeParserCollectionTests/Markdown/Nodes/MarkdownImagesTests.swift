@@ -181,7 +181,7 @@ struct MarkdownImagesTests {
     """
     let result = parser.parse(input, language: language)
     #expect(result.errors.isEmpty)
-    #expect(sig(result.root) == "document[paragraph[image(url:\"/url\",alt:\"foo\",title:\"title\"),text(\"\\n[]\")],reference(id:\"foo\",url:\"/url\",title:\"title\")]")
+  #expect(sig(result.root) == "document[paragraph[image(url:\"/url\",alt:\"foo\",title:\"title\"),line_break(soft),text(\"[]\")],reference(id:\"foo\",url:\"/url\",title:\"title\")]")
   }
 
   // MARK: - Shortcut reference images
