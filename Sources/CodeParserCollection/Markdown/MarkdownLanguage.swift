@@ -25,7 +25,6 @@ public class MarkdownLanguage: CodeLanguage {
   public init() {
     self.nodes = [
       MarkdownBlockBuilder(),
-      MarkdownContentBuilder(),
     ]
     self.tokens = [
       MarkdownNewlineTokenBuilder(),
