@@ -63,7 +63,7 @@ struct MarkdownBlockQuotesTests {
 
     // Should create code block, not block quote
 
-    let expectedSig = "document[code_block(\"> # Foo\\n> bar\\n> baz\")]"
+    let expectedSig = "document[code_block(\"> # Foo\n> bar\n> baz\")]"
     #expect(sig(result.root) == expectedSig)
   }
 

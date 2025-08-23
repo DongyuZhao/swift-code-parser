@@ -12,16 +12,16 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
   public init() {
     self.builders = [
       // Order is important - more specific builders should come first
-      MarkdownEOFBuilder()  // EOF should be checked first
-      // MarkdownATXHeadingBuilder(),
-      // MarkdownSetextHeadingBuilder(), // Check before thematic break since - can be both
-      // MarkdownThematicBreakBuilder(),
-      // MarkdownBlockQuoteBuilder(),
-      // MarkdownListBuilder(), // Lists before indented code blocks
-      // MarkdownListItemBuilder(), // List item continuation
-      // MarkdownFencedCodeBlockBuilder(), // Fenced code blocks before indented
-      // MarkdownIndentedCodeBlockBuilder(),
-      // MarkdownParagraphBuilder(), // Paragraph should be last as it's the fallback
+      MarkdownEOFBuilder(),  // EOF should be checked first
+      MarkdownFencedCodeBlockBuilder(), // Fenced code blocks must be checked early
+      MarkdownATXHeadingBuilder(),
+      MarkdownSetextHeadingBuilder(), // Check before thematic break since - can be both
+      MarkdownThematicBreakBuilder(),
+      MarkdownBlockQuoteBuilder(),
+      MarkdownListBuilder(), // Lists before indented code blocks
+      MarkdownListItemBuilder(), // List item continuation
+      MarkdownIndentedCodeBlockBuilder(),
+      MarkdownParagraphBuilder(), // Paragraph should be last as it's the fallback
     ]
   }
 

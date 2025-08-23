@@ -19,7 +19,7 @@ struct MarkdownIndentedCodeBlocksTests {
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[code_block(\"a simple\\n  indented code block\")]"
+    let expectedSig = "document[code_block(\"a simple\n  indented code block\")]"
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -51,7 +51,7 @@ struct MarkdownIndentedCodeBlocksTests {
     // Verify no inline parsing occurred
 
     // Verify AST structure using sig
-    let expectedSig = "document[code_block(\"<a/>\\n*hi*\\n\\n- one\")]"
+    let expectedSig = "document[code_block(\"<a/>\n*hi*\n\n- one\")]"
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -61,7 +61,7 @@ struct MarkdownIndentedCodeBlocksTests {
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[code_block(\"chunk1\\n\\nchunk2\\n\\n\\n\\nchunk3\")]"
+    let expectedSig = "document[code_block(\"chunk1\n\nchunk2\n\n\n\nchunk3\")]"
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -71,7 +71,7 @@ struct MarkdownIndentedCodeBlocksTests {
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[code_block(\"chunk1\\n\\n  chunk2\")]"
+    let expectedSig = "document[code_block(\"chunk1\n\n  chunk2\")]"
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -111,7 +111,7 @@ struct MarkdownIndentedCodeBlocksTests {
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[code_block(\"    foo\\nbar\")]"
+    let expectedSig = "document[code_block(\"    foo\nbar\")]"
     #expect(sig(result.root) == expectedSig)
   }
 

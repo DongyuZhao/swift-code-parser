@@ -11,9 +11,9 @@ public class MarkdownContentBuilder: CodeNodeBuilder {
 
   public init() {
     self.processors = [
-      // MarkdownEmphasisProcessor(),
+      MarkdownEmphasisProcessor(),
       // MarkdownLinkProcessor(),
-      // MarkdownCodeSpanProcessor(),
+      MarkdownCodeSpanProcessor(),
       // Add more processors here as needed:
       // MarkdownAutoLinkProcessor(),
       // MarkdownHTMLProcessor(),

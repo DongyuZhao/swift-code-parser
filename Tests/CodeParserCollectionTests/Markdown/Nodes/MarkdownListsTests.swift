@@ -326,7 +326,7 @@ struct MarkdownListsTests {
 
     // Third item - just text (tight list)
 
-    let expectedSig = "document[unordered_list(level:1)[list_item[paragraph[text(\"a\")]],list_item[code_block(\"b\\n\\n\\n\")],list_item[paragraph[text(\"c\")]]]]"
+    let expectedSig = "document[unordered_list(level:1)[list_item[paragraph[text(\"a\")]],list_item[code_block(\"b\n\n\n\")],list_item[paragraph[text(\"c\")]]]]"
     #expect(sig(result.root) == expectedSig)
   }
 

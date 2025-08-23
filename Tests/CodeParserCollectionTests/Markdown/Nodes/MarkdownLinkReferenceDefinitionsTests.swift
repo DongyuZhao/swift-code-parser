@@ -82,7 +82,7 @@ struct MarkdownLinkReferenceDefinitionsTests {
     """
     let result = parser.parse(input, language: language)
 
-    let expectedSig = "document[reference(id:\"foo\",url:\"/url\",title:\"\\ntitle\\nline1\\nline2\\n\"),paragraph[link(url:\"/url\",title:\"\\ntitle\\nline1\\nline2\\n\")[text(\"foo\")]]]"
+    let expectedSig = "document[reference(id:\"foo\",url:\"/url\",title:\"\ntitle\nline1\nline2\n\"),paragraph[link(url:\"/url\",title:\"\ntitle\nline1\nline2\n\")[text(\"foo\")]]]"
     #expect(sig(result.root) == expectedSig)
   }
 

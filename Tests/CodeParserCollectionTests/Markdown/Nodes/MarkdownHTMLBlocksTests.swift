@@ -29,7 +29,7 @@ okay.
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[html_block(name:\"\",content:\"<table>\\n  <tr>\\n    <td>\\n           hi\\n    </td>\\n  </tr>\\n</table>\"),paragraph[text(\"okay.\")]]"
+    let expectedSig = "document[html_block(name:\"\",content:\"<table>\n  <tr>\n    <td>\n           hi\n    </td>\n  </tr>\n</table>\"),paragraph[text(\"okay.\")]]"
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -45,7 +45,7 @@ okay.
     // No emphasis should be parsed inside HTML block
 
     // Verify AST structure using sig
-    let expectedSig = "document[html_block(name:\"\",content:\" <div>\\n  *hello*\\n         <foo><a>\")]"
+    let expectedSig = "document[html_block(name:\"\",content:\" <div>\n  *hello*\n         <foo><a>\")]"
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -60,7 +60,7 @@ okay.
     // No emphasis should be parsed inside HTML block
 
     // Verify AST structure using sig
-    let expectedSig = "document[html_block(name:\"\",content:\"</div>\\n*foo*\")]"
+    let expectedSig = "document[html_block(name:\"\",content:\"</div>\n*foo*\")]"
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -90,7 +90,7 @@ okay.
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[html_block(name:\"\",content:\"<div id=\\\"foo\\\"\\n  class=\\\"bar\\\">\\n</div>\")]"
+    let expectedSig = "document[html_block(name:\"\",content:\"<div id=\\\"foo\\\"\n  class=\\\"bar\\\">\n</div>\")]"
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -104,7 +104,7 @@ okay.
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[html_block(name:\"\",content:\"<div id=\\\"foo\\\" class=\\\"bar\\n  baz\\\">\\n</div>\")]"
+    let expectedSig = "document[html_block(name:\"\",content:\"<div id=\\\"foo\\\" class=\\\"bar\n  baz\\\">\n</div>\")]"
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -119,7 +119,7 @@ okay.
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[html_block(name:\"\",content:\"<div>\\n*foo*\"),paragraph[emphasis[text(\"bar\")]]]"
+    let expectedSig = "document[html_block(name:\"\",content:\"<div>\n*foo*\"),paragraph[emphasis[text(\"bar\")]]]"
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -134,7 +134,7 @@ okay.
     // No emphasis should be parsed inside HTML block
 
     // Verify AST structure using sig
-    let expectedSig = "document[html_block(name:\"\",content:\"<div id=\\\"foo\\\"\\n*hi*\")]"
+    let expectedSig = "document[html_block(name:\"\",content:\"<div id=\\\"foo\\\"\n*hi*\")]"
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -149,7 +149,7 @@ okay.
     // No emphasis should be parsed inside HTML block
 
     // Verify AST structure using sig
-    let expectedSig = "document[html_block(name:\"\",content:\"<div *???-&&&-<---\\n*foo*\")]"
+    let expectedSig = "document[html_block(name:\"\",content:\"<div *???-&&&-<---\n*foo*\")]"
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -175,7 +175,7 @@ foo
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[html_block(name:\"\",content:\"<table><tr><td>\\nfoo\\n</td></tr></table>\")]"
+    let expectedSig = "document[html_block(name:\"\",content:\"<table><tr><td>\nfoo\n</td></tr></table>\")]"
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -192,7 +192,7 @@ int x = 33;
     // No separate code block should be created
 
     // Verify AST structure using sig
-    let expectedSig = "document[html_block(name:\"\",content:\"<div></div>\\n``` c\\nint x = 33;\\n```\")]"
+    let expectedSig = "document[html_block(name:\"\",content:\"<div></div>\n``` c\nint x = 33;\n```\")]"
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -208,7 +208,7 @@ int x = 33;
     // No emphasis should be parsed inside HTML block
 
     // Verify AST structure using sig
-    let expectedSig = "document[html_block(name:\"\",content:\"<a href=\\\"foo\\\">\\n*bar*\\n</a>\")]"
+    let expectedSig = "document[html_block(name:\"\",content:\"<a href=\\\"foo\\\">\n*bar*\n</a>\")]"
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -224,7 +224,7 @@ int x = 33;
     // No emphasis should be parsed inside HTML block
 
     // Verify AST structure using sig
-    let expectedSig = "document[html_block(name:\"\",content:\"<Warning>\\n*bar*\\n</Warning>\")]"
+    let expectedSig = "document[html_block(name:\"\",content:\"<Warning>\n*bar*\n</Warning>\")]"
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -240,7 +240,7 @@ int x = 33;
     // No emphasis should be parsed inside HTML block
 
     // Verify AST structure using sig
-    let expectedSig = "document[html_block(name:\"\",content:\"<del>\\n*foo*\\n</del>\")]"
+    let expectedSig = "document[html_block(name:\"\",content:\"<del>\n*foo*\n</del>\")]"
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -286,7 +286,7 @@ okay
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[html_block(name:\"\",content:\"<pre language=\\\"haskell\\\"><code>\\nimport Text.HTML.TagSoup\\n\\nmain :: IO ()\\nmain = print $ parseTags tags\\n</code></pre>\"),paragraph[text(\"okay\")]]"
+    let expectedSig = "document[html_block(name:\"\",content:\"<pre language=\\\"haskell\\\"><code>\nimport Text.HTML.TagSoup\n\nmain :: IO ()\nmain = print $ parseTags tags\n</code></pre>\"),paragraph[text(\"okay\")]]"
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -303,7 +303,7 @@ okay
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[html_block(name:\"\",content:\"<script type=\\\"text/javascript\\\">\\n// JavaScript example\\n\\ndocument.getElementById(\\\"demo\\\").innerHTML = \\\"Hello JavaScript!\\\";\\n</script>\"),paragraph[text(\"okay\")]]"
+    let expectedSig = "document[html_block(name:\"\",content:\"<script type=\\\"text/javascript\\\">\n// JavaScript example\n\ndocument.getElementById(\\\"demo\\\").innerHTML = \\\"Hello JavaScript!\\\";\n</script>\"),paragraph[text(\"okay\")]]"
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -321,7 +321,7 @@ okay
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[html_block(name:\"\",content:\"<style\\n  type=\\\"text/css\\\">\\nh1 {color:red;}\\n\\np {color:blue;}\\n</style>\"),paragraph[text(\"okay\")]]"
+    let expectedSig = "document[html_block(name:\"\",content:\"<style\n  type=\\\"text/css\\\">\nh1 {color:red;}\n\np {color:blue;}\n</style>\"),paragraph[text(\"okay\")]]"
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -337,7 +337,7 @@ okay
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[html_block(name:\"\",content:\"<!-- Foo\\n\\nbar\\n   baz -->\"),paragraph[text(\"okay\")]]"
+    let expectedSig = "document[html_block(name:\"\",content:\"<!-- Foo\n\nbar\n   baz -->\"),paragraph[text(\"okay\")]]"
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -354,7 +354,7 @@ okay
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[html_block(name:\"\",content:\"<?php\\n\\n  echo '>';\\n\\n?>\"),paragraph[text(\"okay\")]]"
+    let expectedSig = "document[html_block(name:\"\",content:\"<?php\n\n  echo '>';\n\n?>\"),paragraph[text(\"okay\")]]"
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -388,7 +388,7 @@ okay
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[html_block(name:\"\",content:\"<![CDATA[\\nfunction matchwo(a,b)\\n{\\n  if (a < b && a < 0) then {\\n    return 1;\\n\\n  } else {\\n\\n    return 0;\\n  }\\n}\\n]]>\"),paragraph[text(\"okay\")]]"
+    let expectedSig = "document[html_block(name:\"\",content:\"<![CDATA[\nfunction matchwo(a,b)\n{\n  if (a < b && a < 0) then {\n    return 1;\n\n  } else {\n\n    return 0;\n  }\n}\n]]>\"),paragraph[text(\"okay\")]]"
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -417,7 +417,7 @@ bar
     let result = parser.parse(input, language: language)
 
   // Verify AST structure using sig
-  let expectedSig = "document[paragraph[text(\"Foo\")],html_block(name:\"\",content:\"<div>\\nbar\\n</div>\")]"
+  let expectedSig = "document[paragraph[text(\"Foo\")],html_block(name:\"\",content:\"<div>\nbar\n</div>\")]"
     #expect(sig(result.root) == expectedSig)
   }
 
