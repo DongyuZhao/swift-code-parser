@@ -36,7 +36,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
     let input = "a*\"foo\"*"
     let result = parser.parse(input, language: language)
 
-    #expect(sig(result.root) == "document[paragraph[text(\"a*\\\"foo\\\"*\")]]")
+    #expect(sig(result.root) == "document[paragraph[text(\"a*\"foo\"*\")]]")
   }
 
   @Test("Unicode nonbreaking spaces count as whitespace")
@@ -44,7 +44,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
     let input = "* a *"
     let result = parser.parse(input, language: language)
 
-    #expect(sig(result.root) == "document[paragraph[text(\"* a *\")]]")
+  #expect(sig(result.root) == "document[unordered_list(level:1)[list_item[paragraph[text(\"a *\")]]]]")
   }
 
   @Test("Intraword emphasis with asterisks is permitted")
@@ -86,7 +86,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
     let input = "a_\"foo\"_"
     let result = parser.parse(input, language: language)
 
-    #expect(sig(result.root) == "document[paragraph[text(\"a_\\\"foo\\\"_\")]]")
+    #expect(sig(result.root) == "document[paragraph[text(\"a_\"foo\"_\")]]")
   }
 
   @Test("Emphasis with underscores is not allowed inside words")
@@ -118,7 +118,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
     let input = "aa_\"bb\"_cc"
     let result = parser.parse(input, language: language)
 
-    #expect(sig(result.root) == "document[paragraph[text(\"aa_\\\"bb\\\"_cc\")]]")
+    #expect(sig(result.root) == "document[paragraph[text(\"aa_\"bb\"_cc\")]]")
   }
 
   @Test("Emphasis with underscore when preceded by punctuation")

@@ -7,22 +7,49 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
   public typealias Node = MarkdownNodeElement
   public typealias Token = MarkdownTokenElement
 
-  private let builders: [any CodeNodeBuilder<MarkdownNodeElement, MarkdownTokenElement>]
+  // Phased block parsing
+  private enum BlockPhase: CaseIterable { case openContainer, leafOnLine, postParagraph }
+
+  private struct BlockRule {
+    let builder: any CodeNodeBuilder<MarkdownNodeElement, MarkdownTokenElement>
+    let phase: BlockPhase
+    let priority: Int
+  }
+
+  private let rulesByPhase: [BlockPhase: [BlockRule]]
 
   public init() {
-    self.builders = [
-      // Order is important - more specific builders should come first
-      MarkdownEOFBuilder()  // EOF should be checked first
-      // MarkdownATXHeadingBuilder(),
-      // MarkdownSetextHeadingBuilder(), // Check before thematic break since - can be both
-      // MarkdownThematicBreakBuilder(),
-      // MarkdownBlockQuoteBuilder(),
-      // MarkdownListBuilder(), // Lists before indented code blocks
-      // MarkdownListItemBuilder(), // List item continuation
-      // MarkdownFencedCodeBlockBuilder(), // Fenced code blocks before indented
-      // MarkdownIndentedCodeBlockBuilder(),
-      // MarkdownParagraphBuilder(), // Paragraph should be last as it's the fallback
+    // Declare rules with explicit phase and priority (lower number runs earlier within phase)
+    let rules: [BlockRule] = [
+      // Open containers first (strip markers, reprocess line)
+      .init(builder: MarkdownBlockQuoteBuilder(), phase: .openContainer, priority: 10),
+      .init(builder: MarkdownListBuilder(),       phase: .openContainer, priority: 20),
+      .init(builder: MarkdownListItemBuilder(),   phase: .openContainer, priority: 30),
+
+      // Leaf on line
+      .init(builder: MarkdownEOFBuilder(),            phase: .leafOnLine, priority: 0),
+      .init(builder: MarkdownFencedCodeBlockBuilder(),phase: .leafOnLine, priority: 10),
+      .init(builder: MarkdownATXHeadingBuilder(),     phase: .leafOnLine, priority: 20),
+      .init(builder: MarkdownThematicBreakBuilder(),  phase: .leafOnLine, priority: 30),
+  .init(builder: MarkdownHTMLBlockBuilder(),      phase: .leafOnLine, priority: 35),
+      .init(builder: MarkdownIndentedCodeBlockBuilder(), phase: .leafOnLine, priority: 40),
+      .init(builder: MarkdownParagraphBuilder(),      phase: .leafOnLine, priority: 1000), // fallback
+
+      // Post paragraph (needs previous paragraph context)
+      .init(builder: MarkdownSetextHeadingBuilder(),  phase: .postParagraph, priority: 10),
     ]
+
+    var grouped: [BlockPhase: [BlockRule]] = [:]
+    for r in rules {
+      grouped[r.phase, default: []].append(r)
+    }
+    // Sort each phase by priority while preserving declaration order as tie-breaker (stable sort)
+    self.rulesByPhase = Dictionary(uniqueKeysWithValues: grouped.map { phase, arr in
+      (phase, arr.sorted { (a, b) in
+        if a.priority == b.priority { return true } // keep stable
+        return a.priority < b.priority
+      })
+    })
   }
 
   public func build(from context: inout CodeConstructContext<Node, Token>) -> Bool {
@@ -53,34 +80,65 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
 
     // Ensure the state is initialized
     state.position = 0
+    state.isPartialLine = false
+
 
     repeat {
       state.refreshed = false
-      state.refreshed = false
 
-      let tokens = line.suffix(from: state.position)
+      // Ensure position doesn't exceed line bounds, but allow empty lines for EOF processing
+      guard state.position < line.count || (line.isEmpty && state.position == 0) else { break }
 
-      for builder in builders {
-        var ctx = CodeConstructContext<Node, Token>(
-          root: context.root,
-          current: context.current,
-          tokens: Array(tokens),
-          state: context.state
-        )
+      let tokens = state.position < line.count ? line.suffix(from: state.position) : ArraySlice<any CodeToken<MarkdownTokenElement>>()
 
-        if builder.build(from: &ctx) {
-          // Builder handled the tokens, update context
-          context.current = ctx.current
+      // Run phases in order
+      var handledInAnyPhase = false
+      for phase in [BlockPhase.openContainer, .leafOnLine, .postParagraph] {
+        guard let rules = rulesByPhase[phase] else { continue }
 
-          if state.refreshed {
-            // tokens refreshed, stop the builder loop to reprocess the line from new position
-            break
-          } else {
-            // tokens not refreshed, we're done with this line
-            return
+        var handledInPhase = false
+        for rule in rules {
+          var ctx = CodeConstructContext<Node, Token>(
+            root: context.root,
+            current: context.current,
+            tokens: Array(tokens),
+            state: context.state
+          )
+
+          if rule.builder.build(from: &ctx) {
+            handledInPhase = true
+            handledInAnyPhase = true
+            // Update context
+            context.current = ctx.current
+
+            if state.refreshed {
+              // The builder refreshed tokens (container stripped etc.), reprocess from start
+              state.isPartialLine = true
+              break
+            } else {
+              // If we're still in openContainer phase, allow proceeding to leafOnLine on same line
+              if phase == .openContainer {
+                // Continue to next phase without returning; break out of builder loop
+                break
+              } else {
+                // For leaf/post phases, we're done with this line
+                return
+              }
+            }
           }
         }
+
+        if state.refreshed { break } // restart outer repeat
+
+        // If openContainer phase consumed and didn't refresh, proceed to next phase naturally
+        if handledInPhase && phase == .openContainer {
+          // fallthrough to next phase
+          continue
+        }
       }
+
+      // If nothing handled in any phase, break to avoid infinite loop
+      if !handledInAnyPhase { break }
     } while state.refreshed
   }
 
@@ -116,4 +174,5 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
 
     return result
   }
+
 }

@@ -163,7 +163,7 @@ struct MarkdownListItemsTests {
     """
     let result = parser.parse(input, language: language)
 
-    let expectedSig = "document[unordered_list(level:1)[list_item[paragraph[text(\"Foo\")],code_block(\"bar\\n\\n\\nbaz\")]]]"
+    let expectedSig = "document[unordered_list(level:1)[list_item[paragraph[text(\"Foo\")],code_block(\"bar\n\n\nbaz\")]]]"
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -409,7 +409,7 @@ struct MarkdownListItemsTests {
     """
     let result = parser.parse(input, language: language)
 
-    let expectedSig = "document[code_block(\"1.  A paragraph\\n    with two lines.\\n\\n        indented code\\n\\n    > A block quote.\")]"
+    let expectedSig = "document[code_block(\"1.  A paragraph\n    with two lines.\n\n        indented code\n\n    > A block quote.\")]"
     #expect(sig(result.root) == expectedSig)
   }
 

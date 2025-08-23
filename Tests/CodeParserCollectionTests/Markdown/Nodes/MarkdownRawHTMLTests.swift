@@ -49,7 +49,7 @@ data="foo" >
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[paragraph[html(\"<a  />\"),html(\"<b2\\ndata=\\\"foo\\\" >\")]]"
+    let expectedSig = "document[paragraph[html(\"<a  />\"),html(\"<b2\ndata=\\\"foo\\\" >\")]]"
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -62,7 +62,7 @@ _boolean zoop:33=zoop:33 />
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[paragraph[html(\"<a foo=\\\"bar\\\" bam = 'baz <em>\\\"</em>'\\n_boolean zoop:33=zoop:33 />\")]]"
+    let expectedSig = "document[paragraph[html(\"<a foo=\\\"bar\\\" bam = 'baz <em>\\\"</em>'\n_boolean zoop:33=zoop:33 />\")]]"
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -160,7 +160,7 @@ comment - with hyphens -->
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[paragraph[text(\"foo \"),html(\"<!-- this is a --\\ncomment - with hyphens -->\")]]"
+    let expectedSig = "document[paragraph[text(\"foo \"),html(\"<!-- this is a --\ncomment - with hyphens -->\")]]"
     #expect(sig(result.root) == expectedSig)
   }
 

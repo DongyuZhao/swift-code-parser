@@ -5,7 +5,6 @@ import Foundation
 public enum MarkdownTokenElement: String, CaseIterable, CodeTokenElement {
   case characters = "characters" // A sequence of characters that are not whitespace, punctuation, or EOF. All the escaped punctuations should also be treated as characters.
   case newline = "newline" // A \n, \r, \r\n represent a soft new line.
-  case hardbreak = "hardbreak" // A hard break, which is a line ending that will start a new line.
   case whitespaces = "whitespaces" // A sequence of whitespace characters except for new lines.
   case punctuation = "punctuation" // A character that belongs to punctuations
   case charef = "charef" // A sequence of characters that represents an HTML entity reference
