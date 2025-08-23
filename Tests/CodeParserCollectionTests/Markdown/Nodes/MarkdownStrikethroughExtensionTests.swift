@@ -36,4 +36,30 @@ struct MarkdownStrikethroughExtensionTests {
 
     #expect(sig(result.root) == "document[paragraph[text(\"This ~~has a\")],paragraph[text(\"new paragraph~~.\")]]")
   }
+
+  @Test("Simple strikethrough content")  
+  func simpleStrikethroughContent() {
+    let input = "~~simple~~"
+    let result = parser.parse(input, language: language)
+
+    #expect(sig(result.root) == "document[paragraph[strike[text(\"simple\")]]]")
+  }
+
+  @Test("Strikethrough with emphasis inside")
+  func strikethroughWithEmphasisInside() {
+    let input = "~~**bold**~~"
+    let result = parser.parse(input, language: language)
+
+    #expect(sig(result.root) == "document[paragraph[strike[strong[text(\"bold\")]]]]")
+  }
+
+  // @Test("Triple tildes should not create strikethrough")
+  // func tripleTildesShouldNotCreateStrikethrough() {
+  //   let input = "~~~text~~~"
+  //   let result = parser.parse(input, language: language)
+
+  //   // Triple tildes are treated as fenced code blocks in GFM, but with no language specified
+  //   // If not at block level, they should be treated as text
+  //   #expect(sig(result.root) == "document[paragraph[text(\"~~~text~~~\")]]")
+  // }
 }

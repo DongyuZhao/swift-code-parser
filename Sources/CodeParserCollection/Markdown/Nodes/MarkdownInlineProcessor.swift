@@ -8,7 +8,7 @@ public protocol MarkdownContentProcessor {
   /// The delimiter characters this processor handles (e.g., "*", "_", "[", "`")
   var delimiters: Set<Character> { get }
 
-  /// Process a token and optionally create inline nodes or delimiter runs
+  /// Process a token and optionally create delimiter runs
   /// Returns true if the token was handled, false otherwise
   ///
   /// Notes:
@@ -16,10 +16,9 @@ public protocol MarkdownContentProcessor {
   ///   For delimiter runs like `***` or `___`, processors should aggregate consecutive
   ///   single-character punctuation tokens into a run, compute canOpen/canClose, and then
   ///   push a `DelimiterRun` with the combined length.
-  /// - When a processor consumes multiple consecutive tokens as one run, it SHOULD advance
-  ///   `context.currentTokenIndex` accordingly (e.g., by `runLength - 1`). The outer loop
-  ///   will still increment by 1 after `process` returns, resulting in a total advance of
-  ///   `runLength` and preventing double-processing.
+  /// - When a processor consumes multiple consecutive tokens as one run, it MUST advance
+  ///   `context.current` by the full `runLength` to skip all consumed tokens. The outer loop
+  ///   will not increment when a processor handles a token, preventing double-processing.
   func process(
     _ token: any CodeToken<MarkdownTokenElement>,
     at index: Int,
@@ -27,9 +26,46 @@ public protocol MarkdownContentProcessor {
     context: inout MarkdownContentContext
   ) -> Bool
 
-  /// Process delimiter runs when finalizing (called at end of processing)
-  /// This is where emphasis/strong processing would happen
-  func finalize(context: inout MarkdownContentContext)
+  /// Create an inline node for matched delimiter pairs
+  /// Called by MarkdownContentBuilder when a delimiter pair is matched
+  /// Should return the node that wraps the content between the delimiters
+  func createNode(
+    for delimiterType: MarkdownDelimiter,
+    openerRun: MarkdownDelimiterRun,
+    closerRun: MarkdownDelimiterRun,
+    contentTokens: ArraySlice<any CodeToken<MarkdownTokenElement>>
+  ) -> MarkdownNodeBase?
+}
+
+// Optional capabilities to improve pairing selection and ordering
+public extension MarkdownContentProcessor {
+  /// Processors can define a priority; higher priority processors are considered after
+  /// lower ones when multiple processors claim the same delimiter. Default 0.
+  var priority: Int { 0 }
+
+  /// Whether this processor supports a specific delimiter type. Default uses common
+  /// character mapping if possible, otherwise returns false for custom types.
+  func supports(delimiter: MarkdownDelimiter) -> Bool {
+    switch delimiter {
+    case .asterisk:
+      return delimiters.contains("*")
+    case .underscore:
+      return delimiters.contains("_")
+    case .backtick:
+      return delimiters.contains("`")
+    case .openBracket, .openImageBracket:
+      return delimiters.contains("[")
+    case .custom:
+      return false
+    }
+  }
+
+  /// Validate opener/closer before build. Default allows all.
+  func canPair(
+    opener: MarkdownDelimiterRun,
+    closer: MarkdownDelimiterRun,
+    tokens: [any CodeToken<MarkdownTokenElement>]
+  ) -> Bool { true }
 }
 
 /// Context passed to inline processors containing shared state
@@ -75,8 +111,8 @@ public struct MarkdownContentContext {
   }
 
   /// Advance the current token index by a delta (can be negative if needed, but use with care).
-  /// Typical usage: when a processor aggregates a delimiter run spanning N tokens, it may call
-  /// `advanceCurrentTokenIndex(by: N - 1)` so that the outer loop's `+1` results in skipping N.
+  /// Typical usage: when a processor aggregates a delimiter run spanning N tokens, it should call
+  /// `advance(by: N)` to skip all N tokens completely.
   public mutating func advance(by delta: Int) {
     current += delta
   }

@@ -136,7 +136,7 @@ struct MarkdownParagraphsTests {
     """
     let result = parser.parse(input, language: language)
 
-    let expectedSig = "document[paragraph[text(\"aaa\"),text(\"bbb\"),text(\"ccc\")]]"
+    let expectedSig = "document[paragraph[text(\"aaa\"),line_break(soft),text(\"bbb\"),line_break(soft),text(\"ccc\")]]"
     #expect(sig(result.root) == expectedSig)
   }
 

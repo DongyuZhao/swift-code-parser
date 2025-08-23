@@ -12,16 +12,16 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
   public init() {
     self.builders = [
       // Order is important - more specific builders should come first
-      MarkdownEOFBuilder()  // EOF should be checked first
-      // MarkdownATXHeadingBuilder(),
-      // MarkdownSetextHeadingBuilder(), // Check before thematic break since - can be both
-      // MarkdownThematicBreakBuilder(),
-      // MarkdownBlockQuoteBuilder(),
-      // MarkdownListBuilder(), // Lists before indented code blocks
-      // MarkdownListItemBuilder(), // List item continuation
-      // MarkdownFencedCodeBlockBuilder(), // Fenced code blocks before indented
-      // MarkdownIndentedCodeBlockBuilder(),
-      // MarkdownParagraphBuilder(), // Paragraph should be last as it's the fallback
+      MarkdownEOFBuilder(),  // EOF should be checked first
+      MarkdownFencedCodeBlockBuilder(), // Fenced code blocks must be checked early
+      MarkdownATXHeadingBuilder(),
+      MarkdownSetextHeadingBuilder(), // Check before thematic break since - can be both
+      MarkdownThematicBreakBuilder(),
+      MarkdownBlockQuoteBuilder(),
+      MarkdownListBuilder(), // Lists before indented code blocks
+      MarkdownListItemBuilder(), // List item continuation
+      MarkdownIndentedCodeBlockBuilder(),
+      MarkdownParagraphBuilder(), // Paragraph should be last as it's the fallback
     ]
   }
 
@@ -53,12 +53,16 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
 
     // Ensure the state is initialized
     state.position = 0
+    state.isPartialLine = false
+
 
     repeat {
       state.refreshed = false
-      state.refreshed = false
 
-      let tokens = line.suffix(from: state.position)
+      // Ensure position doesn't exceed line bounds, but allow empty lines for EOF processing
+      guard state.position < line.count || (line.isEmpty && state.position == 0) else { break }
+
+      let tokens = state.position < line.count ? line.suffix(from: state.position) : ArraySlice<any CodeToken<MarkdownTokenElement>>()
 
       for builder in builders {
         var ctx = CodeConstructContext<Node, Token>(
@@ -73,7 +77,8 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
           context.current = ctx.current
 
           if state.refreshed {
-            // tokens refreshed, stop the builder loop to reprocess the line from new position
+            // tokens refreshed, mark as partial line and stop the builder loop to reprocess
+            state.isPartialLine = true
             break
           } else {
             // tokens not refreshed, we're done with this line
@@ -116,4 +121,5 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
 
     return result
   }
+  
 }
