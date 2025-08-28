@@ -24,8 +24,12 @@ public class MarkdownListItemBuilder: CodeNodeBuilder {
   if let markerInfo = detectListMarker(tokens: context.tokens, startIndex: startIndex) {
       // Respect paragraph-interruption rules:
       // - Unordered bullets may interrupt a paragraph
-      // - Ordered lists may interrupt only when starting number is 1
+      // - Ordered lists may interrupt only when starting number is 1, BUT
+      //   this rule doesn't apply to paragraphs inside list items (they can continue with any number)
       if context.current.element == .paragraph {
+        // Check if this paragraph is inside a list item
+        let isInsideListItem = context.current.parent is ListItemNode
+        
         switch markerInfo.type {
         case .unordered:
           // Allowed: close the paragraph before starting the list
@@ -33,8 +37,10 @@ public class MarkdownListItemBuilder: CodeNodeBuilder {
             context.current = parent
           }
         case .ordered(let number, _):
-          // Only allow interruption when starting from 1
-          if number != 1 { return false }
+          // Only allow interruption when starting from 1, unless we're inside a list item
+          if !isInsideListItem && number != 1 { 
+            return false 
+          }
           if let parent = context.current.parent {
             context.current = parent
           }
@@ -157,7 +163,7 @@ public class MarkdownListItemBuilder: CodeNodeBuilder {
     state: MarkdownConstructState
   ) -> Bool {
     // Create appropriate list container if needed
-  let list = getOrCreateList(for: markerInfo.type, in: context)
+  let list = getOrCreateList(for: markerInfo.type, in: &context)
 
     // Create list item
     let markerText = markerInfo.type.markerText
@@ -187,33 +193,25 @@ public class MarkdownListItemBuilder: CodeNodeBuilder {
 
   private func getOrCreateList(
     for markerType: ListMarkerType,
-    in context: CodeConstructContext<Node, Token>
+    in context: inout CodeConstructContext<Node, Token>
   ) -> MarkdownNodeBase {
-    // Check if the current context is already a compatible list
-    if let currentList = context.current as? ListNode,
+    // First, find the appropriate container context (usually document or parent list)
+    var containerContext = findListContainer(from: context.current)
+    
+    // Check if the container context is already a compatible list
+    if let currentList = containerContext as? ListNode,
        currentList.isCompatible(with: markerType) {
       return currentList
     }
 
-    // Check if the last child is a compatible list
-    if let lastChild = context.current.children.last as? ListNode,
+    // Check if the last child of the container is a compatible list
+    if let lastChild = containerContext.children.last as? ListNode,
        lastChild.isCompatible(with: markerType) {
       return lastChild
     }
 
-    // Infer nesting level
-    let inferredLevel: Int = {
-      if let currentList = context.current as? ListNode {
-        return currentList.level
-      }
-      if let li = context.current as? ListItemNode, let parentList = li.parent as? ListNode {
-        return parentList.level + 1
-      }
-      if let lastChild = context.current.children.last as? ListNode {
-        return lastChild.level
-      }
-      return 1
-    }()
+    // Determine the appropriate level for a new list
+    let inferredLevel = inferListLevel(from: containerContext, for: markerType)
 
     // Create new list with inferred level
     let newList: ListNode
@@ -224,8 +222,54 @@ public class MarkdownListItemBuilder: CodeNodeBuilder {
       newList = OrderedListNode(start: number, level: inferredLevel, delimiter: delimiter)
     }
 
-    context.current.append(newList)
+    containerContext.append(newList)
+    
+    // Update context to point to the container where we added the list
+    context.current = containerContext
+    
     return newList
+  }
+  
+  private func findListContainer(from current: CodeNode<MarkdownNodeElement>) -> CodeNode<MarkdownNodeElement> {
+    // Walk up the tree to find an appropriate container for lists
+    var node = current
+    
+    // If we're in a list item, go to its parent list, then to that list's parent
+    if node.element == .listItem, let parent = node.parent {
+      node = parent // Now at the list level
+      if let grandParent = node.parent {
+        node = grandParent // Now at the list's container (usually document)
+      }
+    }
+    // If we're already at a list, go to its parent container
+    else if node.element == .orderedList || node.element == .unorderedList {
+      if let parent = node.parent {
+        node = parent
+      }
+    }
+    // For other contexts like paragraph, go to parent
+    else if node.element == .paragraph, let parent = node.parent {
+      node = parent
+    }
+    
+    return node
+  }
+  
+  private func inferListLevel(from container: CodeNode<MarkdownNodeElement>, for markerType: ListMarkerType) -> Int {
+    // Look at existing lists to determine appropriate level
+    if let lastList = container.children.last as? ListNode {
+      // Same level as the last list in this container
+      return lastList.level
+    }
+    
+    // Default level based on container
+    if container.element == .document {
+      return 1
+    } else if let parentList = container as? ListNode {
+      return parentList.level + 1
+    } else {
+      return 1
+    }
   }
 }
 
