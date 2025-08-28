@@ -20,11 +20,13 @@ public class MarkdownListBuilder: CodeNodeBuilder {
 
     // Check if we're currently in a list context and need to handle continuation
     if let currentList = context.current as? ListNode {
-      return handleListContinuation(inList: currentList, context: &context)
+      let handled = handleListContinuation(inList: currentList, context: &context)
+      return handled  // Return the actual result
     }
     // Also handle when current is inside a list item or paragraph under it
     if let li = nearestListItem(from: context.current) {
-      return handleListContinuation(inItem: li, context: &context)
+      let handled = handleListContinuation(inItem: li, context: &context)
+      return handled  // Return the actual result - if false, let other builders try
     }
 
     return false
