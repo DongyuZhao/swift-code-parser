@@ -9,11 +9,11 @@ struct MarkdownTokenEscapeTests {
   @Test("Spec 308 - All punctuation should be escaped after a backslash")
   func spec308() async throws {
     let input =
-      "\\!\\\"\\#\\$\\%\\&\\'\\(\\)\\*\\+\\,\\-\\.\\/\\:\\;\\<\\=\\>\\?\\@\\[\\\\\\]\\^\\_\\`\\{\\|\\}\\~\n"
+      ##"\!\"\#\$\%\&\'\(\)\*\+\,\-\.\/\:\;\<\=\>\?\@\[\\\]\^\_\`\{\|\}\~"## + "\n"
     let result = h.parser.parse(input, language: h.language)
     #expect(result.tokens.count == 3)
     #expect(result.tokens[0].element == .characters)
-    #expect(result.tokens[0].text == "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~")
+    #expect(result.tokens[0].text == ##"!"#$%&'()*+,-./:;<=>?@[\]^_`{|}~"##)
     #expect(result.tokens[1].element == .newline)
     #expect(result.tokens[1].text == "\n")
     #expect(result.tokens[2].element == .eof)
@@ -25,15 +25,15 @@ struct MarkdownTokenEscapeTests {
     "Spec 309 - Backslash escapes neutralize punctuations across lines (token-level)"
   )
   func spec309() async throws {
-    let input = "\\\t\\A\\a\\ \\3\\\u{03C6}\\\u{00AB}\n"
+    let input = ##"\"## + "\t" + ##"\A\a\ \3\φ\«"## + "\n"
     let result = h.parser.parse(input, language: h.language)
 
     let expected: [(MarkdownTokenElement, String)] = [
-      (.characters, "\\"),
+      (.characters, ##"\"##),
       (.whitespaces, "\t"),
-      (.characters, "\\A\\a\\"),
+      (.characters, ##"\A\a\"##),
       (.whitespaces, " "),
-      (.characters, "\\3\\\u{03C6}\\\u{00AB}"),
+      (.characters, ##"\3\φ\«"##),
       (.newline, "\n"),
       (.eof, ""),
     ]
@@ -47,27 +47,27 @@ struct MarkdownTokenEscapeTests {
   // Spec 310
   @Test("Spec 310 - Backslash escapes neutralize Markdown syntax across lines (token-level)")
   func spec310() async throws {
-    let input = "\\*not emphasized*\n\\<br/> not a tag\n\\[not a link](/foo)\n\\`not code`\n1\\. not a list\n\\* not a list\n\\# not a heading\n\\[foo]: /url \"not a reference\"\n\\&ouml; not a character entity\n"
+    let input = ##"\*not emphasized*\n\<br/> not a tag\n\[not a link](/foo)\n\`not code`\n1\. not a list\n\* not a list\n\# not a heading\n\[foo]: /url "not a reference"\n\&ouml; not a character entity\n"##
     let result = h.parser.parse(input, language: h.language)
 
     let expected: [(MarkdownTokenElement, String)] = [
       // \*not emphasized*
-      (.characters, "*not"), (.whitespaces, " "), (.characters, "emphasized"), (.punctuation, "*"),
+      (.characters, ##"*not"##), (.whitespaces, " "), (.characters, "emphasized"), (.punctuation, "*"),
       (.newline, "\n"),
       // \<br/> not a tag
-      (.characters, "<br"), (.punctuation, "/"), (.punctuation, ">"), (.whitespaces, " "),
+      (.characters, ##"<br"##), (.punctuation, "/"), (.punctuation, ">"), (.whitespaces, " "),
       (.characters, "not"), (.whitespaces, " "), (.characters, "a"), (.whitespaces, " "),
       (.characters, "tag"), (.newline, "\n"),
       // \[not a link](/foo)
-      (.characters, "[not"), (.whitespaces, " "), (.characters, "a"), (.whitespaces, " "),
+      (.characters, ##"[not"##), (.whitespaces, " "), (.characters, "a"), (.whitespaces, " "),
       (.characters, "link"),
       (.punctuation, "]"), (.punctuation, "("), (.punctuation, "/"), (.characters, "foo"),
       (.punctuation, ")"), (.newline, "\n"),
       // \`not code`
-      (.characters, "`not"), (.whitespaces, " "), (.characters, "code"), (.punctuation, "`"),
+      (.characters, ##"`not"##), (.whitespaces, " "), (.characters, "code"), (.punctuation, "`"),
       (.newline, "\n"),
       // 1\. not a list
-      (.characters, "1."), (.whitespaces, " "), (.characters, "not"), (.whitespaces, " "),
+      (.characters, ##"1."##), (.whitespaces, " "), (.characters, "not"), (.whitespaces, " "),
       (.characters, "a"),
       (.whitespaces, " "), (.characters, "list"), (.newline, "\n"),
       // \* not a list
@@ -75,18 +75,18 @@ struct MarkdownTokenEscapeTests {
       (.characters, "a"),
       (.whitespaces, " "), (.characters, "list"), (.newline, "\n"),
       // \# not a heading
-      (.characters, "#"), (.whitespaces, " "), (.characters, "not"), (.whitespaces, " "),
+      (.characters, ##"#"##), (.whitespaces, " "), (.characters, "not"), (.whitespaces, " "),
       (.characters, "a"),
       (.whitespaces, " "), (.characters, "heading"), (.newline, "\n"),
       // \[foo]: /url "not a reference"
-      (.characters, "[foo"), (.punctuation, "]"), (.punctuation, ":"), (.whitespaces, " "),
+      (.characters, ##"[foo"##), (.punctuation, "]"), (.punctuation, ":"), (.whitespaces, " "),
       (.punctuation, "/"), (.characters, "url"),
-      (.whitespaces, " "), (.punctuation, "\""),
+      (.whitespaces, " "), (.punctuation, ##"""##),
       (.characters, "not"), (.whitespaces, " "), (.characters, "a"), (.whitespaces, " "),
       (.characters, "reference"),
-      (.punctuation, "\""), (.newline, "\n"),
+      (.punctuation, ##"""##), (.newline, "\n"),
       // \&ouml; not a character entity
-      (.characters, "&ouml"), (.punctuation, ";"), (.whitespaces, " "), (.characters, "not"),
+      (.characters, ##"&ouml"##), (.punctuation, ";"), (.whitespaces, " "), (.characters, "not"),
       (.whitespaces, " "),
       (.characters, "a"), (.whitespaces, " "), (.characters, "character"), (.whitespaces, " "),
       (.characters, "entity"),
