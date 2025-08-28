@@ -1,33 +1,33 @@
 import CodeParserCore
 import Foundation
 
-/// ContentBuilder that processes inline markdown using extensible processor architecture
+/// ContentBuilder that dispatches inline markdown via a phase-based processor pipeline
 public class MarkdownContentBuilder: CodeNodeBuilder {
   public typealias Node = MarkdownNodeElement
   public typealias Token = MarkdownTokenElement
 
-  private let processors: [MarkdownContentProcessor]
-  private let relations: [Character: [MarkdownContentProcessor]]
+  private let scanPhaseProcessors: [MarkdownInlinePhaseProcessor]
+  private let rebuildPhaseProcessors: [MarkdownInlinePhaseProcessor]
 
   public init() {
-    self.processors = [
-      MarkdownStrikethroughProcessor(),
-      MarkdownEmphasisProcessor(),
-      // MarkdownLinkProcessor(),
-      MarkdownCodeSpanProcessor(),
-      // Add more processors here as needed:
-      // MarkdownAutoLinkProcessor(),
-      // MarkdownHTMLProcessor(),
+    // Assemble phase-based inline processors with priorities
+    let inlineProcessors: [MarkdownInlinePhaseProcessor] = [
+      // prefer native scan processors first
+      EmphasisDelimiterScanProcessor(priority: -300),
+      StrikethroughDelimiterScanProcessor(priority: -295),
+      CodeSpanDelimiterScanProcessor(priority: -290),
+  BracketDelimiterScanProcessor(priority: -285),
+      // rebuild-phase processors
+      HardLineBreakRebuildProcessor(priority: 0),
+      UnmatchedDelimiterInlineProcessor(priority: 0),
+      // pair processors
+  LinkImagePairProcessor(priority: 5),
+      EmphasisStrongPairProcessor(priority: 10),
+      StrikethroughPairProcessor(priority: 10),
+      CodeSpanPairProcessor(priority: 10),
     ]
-
-    // Build delimiter mapping for efficient lookup
-    var relations: [Character: [MarkdownContentProcessor]] = [:]
-    for processor in self.processors {
-      for delimiter in processor.delimiters {
-        relations[delimiter, default: []].append(processor)
-      }
-    }
-    self.relations = relations
+    self.scanPhaseProcessors = inlineProcessors.filter { $0.phase == .scan }.sorted { $0.priority < $1.priority }
+    self.rebuildPhaseProcessors = inlineProcessors.filter { $0.phase == .rebuild }.sorted { $0.priority < $1.priority }
   }
 
   public func build(from context: inout CodeConstructContext<Node, Token>) -> Bool {
@@ -46,36 +46,30 @@ public class MarkdownContentBuilder: CodeNodeBuilder {
   func process(_ tokens: [any CodeToken<MarkdownTokenElement>]) -> [MarkdownNodeBase] {
     var context = MarkdownContentContext(tokens: tokens)
 
-    // Process all tokens
+    // Process all tokens via scan-phase processors
     while context.current < tokens.count {
       let token = tokens[context.current]
       var handled = false
-
-      // Try processors that handle this delimiter
-      if token.element == .punctuation, let char = token.text.first {
-        if let relatives = relations[char] {
-          for processor in relatives {
-            if processor.process(token, at: context.current, in: tokens, context: &context) {
-              handled = true
-              break
-            }
+      for p in scanPhaseProcessors {
+        if p.canHandle(token: token, at: context.current, context: context) {
+          if p.handle(token: token, at: context.current, context: &context) {
+            handled = true
+            break
           }
         }
       }
-
-      // Default handling if no processor claimed the token
       if !handled {
+        // Fallback: plain text, whitespace, entities, soft line breaks
         switch token.element {
-        case .characters, .whitespaces, .punctuation:
+        case .characters, .punctuation, .whitespaces:
           context.add(token.text)
         case .newline:
           context.add(LineBreakNode(variant: .soft))
         case .charef:
-          context.add(token.text) // TODO: Decode entity
+          context.add(token.text)
         case .eof:
           break
         }
-        // Only advance by 1 if no processor handled the token
         context.current += 1
       }
     }
@@ -92,15 +86,13 @@ public class MarkdownContentBuilder: CodeNodeBuilder {
     var currentDelimiterNode = context.delimiters.forward(from: nil)
     var processedRanges: [ProcessedRange] = []
 
-    while let closerNode = currentDelimiterNode.next() {
+  while let closerNode = currentDelimiterNode.next() {
       guard closerNode.run.closable, closerNode.run.isActive else {
         continue
       }
 
-      // Find appropriate processor for this delimiter type
-      guard let processor = findProcessor(for: closerNode.run.delimiter) else {
-        continue
-      }
+  // Collect all pair processors that can handle this delimiter, in priority order
+  let pairHandlers = rebuildPhaseProcessors.filter { $0.canHandlePair(for: closerNode.run.delimiter) }
 
       // Look for matching opener
       if let openerNode = context.delimiters.opener(for: closerNode.run.delimiter, before: closerNode) {
@@ -114,24 +106,35 @@ public class MarkdownContentBuilder: CodeNodeBuilder {
 
         guard contentStart <= contentEnd else { continue }
 
-        // Get content tokens
-        let contentTokens = context.tokens[contentStart..<contentEnd]
+  // Get content tokens
+  let contentTokens = context.tokens[contentStart..<contentEnd]
 
   // Validate pair and ask processor to create the node
-  if processor.canPair(opener: openerNode.run, closer: closerNode.run, tokens: context.tokens),
-     let node = processor.createNode(
-          for: closerNode.run.delimiter,
-          openerRun: openerNode.run,
-          closerRun: closerNode.run,
-          contentTokens: contentTokens
-        ) {
+  var built: (node: MarkdownNodeBase, closerEndOverride: Int)? = nil
+  for handler in pairHandlers {
+    if let n = handler.createNodeForPair(
+      delimiter: closerNode.run.delimiter,
+      openerRun: openerNode.run,
+      closerRun: closerNode.run,
+      contentTokens: contentTokens,
+      allTokens: context.tokens
+    ) { built = n; break }
+  }
+  if let built = built {
+          // Compute a safe closerEnd (exclusive) within token bounds and not before the closer itself
+          let minCloserEnd = closerTokenIndex + closerNode.run.length
+          var safeCloserEnd = built.closerEndOverride
+          if safeCloserEnd < minCloserEnd { safeCloserEnd = minCloserEnd }
+          if safeCloserEnd < openerTokenIndex { safeCloserEnd = minCloserEnd }
+          if safeCloserEnd > context.tokens.count { safeCloserEnd = context.tokens.count }
+
           // Store the processed range
           processedRanges.append(ProcessedRange(
             openerStart: openerTokenIndex,
             openerEnd: openerTokenIndex + openerNode.run.length,
             closerStart: closerTokenIndex,
-            closerEnd: closerTokenIndex + closerNode.run.length,
-            node: node
+            closerEnd: safeCloserEnd,
+            node: built.node
           ))
 
           // Mark delimiters as processed and remove only the matched pair
@@ -148,8 +151,15 @@ public class MarkdownContentBuilder: CodeNodeBuilder {
       }
     }
 
+    // Sort processed ranges to ensure deterministic rebuild and avoid overlaps
+    let orderedRanges = processedRanges.sorted { lhs, rhs in
+      if lhs.openerStart != rhs.openerStart { return lhs.openerStart < rhs.openerStart }
+      // If same start, consume the longer range first
+      return (lhs.closerEnd - lhs.openerStart) > (rhs.closerEnd - rhs.openerStart)
+    }
+
     // Rebuild content with processed ranges
-    rebuildContentWithProcessedRanges(context: &context, processedRanges: processedRanges)
+    rebuildContentWithProcessedRanges(context: &context, processedRanges: orderedRanges)
   }
 
   /// Helper struct for tracking processed delimiter ranges
@@ -161,30 +171,15 @@ public class MarkdownContentBuilder: CodeNodeBuilder {
     let node: MarkdownNodeBase
   }
 
-  /// Find the processor that handles a specific delimiter type
-  private func findProcessor(for delimiter: MarkdownDelimiter) -> MarkdownContentProcessor? {
-    // Prefer processors that explicitly support the delimiter
-    if case .custom(let name) = delimiter {
-      // For custom delimiters, allow processors to opt-in by delimiter name convention
-      // Here we try a simple mapping for strikethrough: name == "strikethrough" -> "~"
-      if name == "strikethrough" {
-        return processors.first { $0.delimiters.contains("~") }
-      }
-    }
-
-    return processors
-      .filter { $0.supports(delimiter: delimiter) }
-      .sorted { $0.priority < $1.priority }
-      .first
-  }
+  // No legacy processor lookup; all inline semantics are handled by phase processors
 
   /// Rebuild content incorporating processed delimiter ranges
   private func rebuildContentWithProcessedRanges(
     context: inout MarkdownContentContext,
     processedRanges: [ProcessedRange]
   ) {
-    // Clear existing content
-    context.inlined.removeAll()
+  // Clear existing content
+  context.inlined.removeAll()
 
     var tokenIndex = 0
 
@@ -204,29 +199,54 @@ public class MarkdownContentBuilder: CodeNodeBuilder {
       }
 
       if !isPartOfProcessedRange {
-        // Check if this token is an unmatched delimiter
+    // Check if this token is an unmatched delimiter
         if let delimiterNode = findDelimiterAtTokenIndex(tokenIndex, in: context.delimiters) {
           if delimiterNode.run.isActive {
-            // Add unmatched delimiter as text
-            let delimiterText = reconstructDelimiterText(for: delimiterNode.run)
-            context.add(delimiterText)
-            // Skip the delimiter tokens
+            var handled = false
+            for p in rebuildPhaseProcessors {
+              if p.canHandleUnmatchedDelimiter(run: delimiterNode.run, at: tokenIndex, context: context) {
+                if p.handleUnmatchedDelimiter(run: delimiterNode.run, at: tokenIndex, context: &context) {
+                  handled = true
+                  break
+                }
+              }
+            }
+            if !handled {
+              // Fallback: reconstruct text from original tokens
+              let start = max(0, delimiterNode.run.index)
+              let end = min(context.tokens.count, delimiterNode.run.index + delimiterNode.run.length)
+              if start < end {
+                let text = context.tokens[start..<end].map { $0.text }.joined()
+                context.add(text)
+              }
+            }
             tokenIndex += delimiterNode.run.length
             continue
           }
         }
 
-        // Regular token - add as text or other node type
+        // Regular token - add as text or other node type (allow rebuild processors to handle)
         let token = context.tokens[tokenIndex]
-        switch token.element {
-        case .characters, .whitespaces, .punctuation:
-          context.add(token.text)
-        case .newline:
-          context.add(LineBreakNode(variant: .soft))
-        case .charef:
-          context.add(token.text) // TODO: Decode entity
-        case .eof:
-          break
+        var handled = false
+        for p in rebuildPhaseProcessors {
+          if p.canHandleRebuildToken(token: token, at: tokenIndex, context: context) {
+            if p.handleRebuildToken(token: token, at: tokenIndex, context: &context) {
+              handled = true
+              break
+            }
+          }
+        }
+        if !handled {
+          switch token.element {
+          case .characters, .whitespaces, .punctuation:
+            context.add(token.text)
+          case .newline:
+            context.add(LineBreakNode(variant: .soft))
+          case .charef:
+            context.add(token.text)
+          case .eof:
+            break
+          }
         }
       }
 
@@ -245,24 +265,6 @@ public class MarkdownContentBuilder: CodeNodeBuilder {
     return nil
   }
 
-  /// Reconstruct delimiter text for unmatched delimiters
-  private func reconstructDelimiterText(for delimiterRun: MarkdownDelimiterRun) -> String {
-    switch delimiterRun.delimiter {
-    case .asterisk:
-      return String(repeating: "*", count: delimiterRun.length)
-    case .underscore:
-      return String(repeating: "_", count: delimiterRun.length)
-    case .custom(let name):
-      if name == "strikethrough" {
-        return String(repeating: "~", count: delimiterRun.length)
-      }
-      return ""
-    case .backtick:
-      return String(repeating: "`", count: delimiterRun.length)
-    default:
-      return ""
-    }
-  }
 
   private func finalize(node: ContentNode, with inlined: [MarkdownNodeBase]) {
     guard let parent = node.parent as? MarkdownNodeBase else {
@@ -276,4 +278,5 @@ public class MarkdownContentBuilder: CodeNodeBuilder {
       parent.insert(inlineNode, at: index + i)
     }
   }
+
 }

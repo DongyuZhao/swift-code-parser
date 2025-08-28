@@ -15,123 +15,176 @@ struct MarkdownIndentedCodeBlocksTests {
 
   @Test("Simple indented code block with four spaces")
   func simpleIndentedCodeBlock() {
-    let input = "    a simple\n      indented code block"
+    let input = #"""
+          a simple
+            indented code block
+      """#
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[code_block(\"a simple\n  indented code block\")]"
+    let expectedSig = #"document[code_block("a simple\#n  indented code block")]"#
     #expect(sig(result.root) == expectedSig)
   }
 
   @Test("List item interpretation takes precedence over code block")
   func listItemPrecedenceOverCodeBlock() {
-    let input = "  - foo\n\n    bar"
+    let input = #"""
+        - foo
+
+          bar
+      """#
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[unordered_list(level:1)[list_item[paragraph[text(\"foo\")],paragraph[text(\"bar\")]]]]"
+    let expectedSig =
+      #"document[unordered_list(level:1)[list_item[paragraph[text("foo")],paragraph[text("bar")]]]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
   @Test("Nested list with indented code in ordered list")
   func nestedListWithIndentedCode() {
-    let input = "1.  foo\n\n    - bar"
+    let input = #"""
+      1.  foo
+
+          - bar
+      """#
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[ordered_list(level:1)[list_item[paragraph[text(\"foo\")],unordered_list(level:2)[list_item[paragraph[text(\"bar\")]]]]]]"
+    let expectedSig =
+      #"document[ordered_list(level:1)[list_item[paragraph[text("foo")],unordered_list(level:2)[list_item[paragraph[text("bar")]]]]]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
   @Test("Code block contains literal text without markdown parsing")
   func literalTextInCodeBlock() {
-    let input = "    <a/>\n    *hi*\n\n    - one"
+    let input = #"""
+          <a/>
+          *hi*
+
+          - one
+      """#
     let result = parser.parse(input, language: language)
 
     // Verify no inline parsing occurred
 
     // Verify AST structure using sig
-    let expectedSig = "document[code_block(\"<a/>\n*hi*\n\n- one\")]"
+    let expectedSig = #"document[code_block("<a/>\#n*hi*\#n\#n- one")]"#
     #expect(sig(result.root) == expectedSig)
   }
 
   @Test("Three chunks separated by blank lines")
   func threeChunksSeparatedByBlankLines() {
-    let input = "    chunk1\n\n    chunk2\n\n\n\n    chunk3"
+    let input = #"""
+          chunk1
+
+          chunk2
+
+
+
+          chunk3
+      """#
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[code_block(\"chunk1\n\nchunk2\n\n\n\nchunk3\")]"
+    let expectedSig = #"document[code_block("chunk1\#n\#nchunk2\#n\#n\#n\#nchunk3")]"#
     #expect(sig(result.root) == expectedSig)
   }
 
   @Test("Extra spaces beyond four are preserved")
   func extraSpacesPreserved() {
-    let input = "    chunk1\n\n      chunk2"
+    let input = #"""
+          chunk1
+
+            chunk2
+      """#
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[code_block(\"chunk1\n\n  chunk2\")]"
+    let expectedSig = #"document[code_block("chunk1\#n\#n  chunk2")]"#
     #expect(sig(result.root) == expectedSig)
   }
 
   @Test("Indented code block cannot interrupt paragraph")
   func cannotInterruptParagraph() {
-    let input = "Foo\n    bar"
+    let input = #"""
+      Foo
+          bar
+      """#
     let result = parser.parse(input, language: language)
 
-  // Verify AST structure using sig
-  let expectedSig = "document[paragraph[text(\"Foo\"),line_break(soft),text(\"bar\")]]"
+    // Verify AST structure using sig
+    let expectedSig = #"document[paragraph[text("Foo"),line_break(soft),text("bar")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
   @Test("Non-blank line with fewer than four spaces ends code block")
   func fewerSpacesEndsCodeBlock() {
-    let input = "    foo\nbar"
+    let input = #"""
+          foo
+      bar
+      """#
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[code_block(\"foo\"),paragraph[text(\"bar\")]]"
+    let expectedSig = #"document[code_block("foo"),paragraph[text("bar")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
   @Test("Indented code can occur before and after other blocks")
   func codeBlocksBetweenOtherBlocks() {
-    let input = "# Heading\n    foo\nHeading\n------\n    foo\n----"
+    let input = #"""
+      # Heading
+          foo
+      Heading
+      ------
+          foo
+      ----
+      """#
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[heading(level:1)[text(\"Heading\")],code_block(\"foo\"),heading(level:2)[text(\"Heading\")],code_block(\"foo\"),thematic_break]"
+    let expectedSig =
+      #"document[heading(level:1)[text("Heading")],code_block("foo"),heading(level:2)[text("Heading")],code_block("foo"),thematic_break]"#
     #expect(sig(result.root) == expectedSig)
   }
 
   @Test("First line can be indented more than four spaces")
   func firstLineMoreThanFourSpaces() {
-    let input = "        foo\n    bar"
+    let input = #"""
+              foo
+          bar
+      """#
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[code_block(\"    foo\nbar\")]"
+    let expectedSig = #"document[code_block("    foo\#nbar")]"#
     #expect(sig(result.root) == expectedSig)
   }
 
   @Test("Blank lines before and after code block are not included")
   func blankLinesNotIncluded() {
-    let input = "\n\n    foo\n\n"
+    let input = #"""
+
+
+          foo
+
+
+      """#
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[code_block(\"foo\")]"
+    let expectedSig = #"document[code_block("foo")]"#
     #expect(sig(result.root) == expectedSig)
   }
 
   @Test("Trailing spaces are included in code block content")
   func trailingSpacesIncluded() {
-    let input = "    foo  "
+    let input = #"    foo  "#
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[code_block(\"foo  \")]"
+    let expectedSig = #"document[code_block("foo  ")]"#
     #expect(sig(result.root) == expectedSig)
   }
 }

@@ -22,7 +22,7 @@ struct MarkdownParagraphsTests {
     """
     let result = parser.parse(input, language: language)
 
-    let expectedSig = "document[paragraph[text(\"aaa\")],paragraph[text(\"bbb\")]]"
+  let expectedSig = #"document[paragraph[text("aaa")],paragraph[text("bbb")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -37,7 +37,7 @@ struct MarkdownParagraphsTests {
     """
     let result = parser.parse(input, language: language)
 
-  let expectedSig = "document[paragraph[text(\"aaa\"),line_break(soft),text(\"bbb\")],paragraph[text(\"ccc\"),line_break(soft),text(\"ddd\")]]"
+  let expectedSig = #"document[paragraph[text("aaa"),line_break(soft),text("bbb")],paragraph[text("ccc"),line_break(soft),text("ddd")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -50,7 +50,7 @@ struct MarkdownParagraphsTests {
     """
     let result = parser.parse(input, language: language)
 
-    let expectedSig = "document[paragraph[text(\"aaa\")],paragraph[text(\"bbb\")]]"
+  let expectedSig = #"document[paragraph[text("aaa")],paragraph[text("bbb")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -62,7 +62,7 @@ struct MarkdownParagraphsTests {
     """
     let result = parser.parse(input, language: language)
 
-  let expectedSig = "document[paragraph[text(\"aaa\"),line_break(soft),text(\"bbb\")]]"
+  let expectedSig = #"document[paragraph[text("aaa"),line_break(soft),text("bbb")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -75,7 +75,7 @@ struct MarkdownParagraphsTests {
     """
     let result = parser.parse(input, language: language)
 
-  let expectedSig = "document[paragraph[text(\"aaa\"),line_break(soft),text(\"bbb\"),line_break(soft),text(\"ccc\")]]"
+  let expectedSig = #"document[paragraph[text("aaa"),line_break(soft),text("bbb"),line_break(soft),text("ccc")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -89,7 +89,7 @@ struct MarkdownParagraphsTests {
 
     // Should not create a code block
 
-  let expectedSig = "document[paragraph[text(\"aaa\"),line_break(soft),text(\"bbb\")]]"
+  let expectedSig = #"document[paragraph[text("aaa"),line_break(soft),text("bbb")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -103,7 +103,7 @@ struct MarkdownParagraphsTests {
 
     // Should create a code block and a paragraph
 
-    let expectedSig = "document[code_block(\"aaa\"),paragraph[text(\"bbb\")]]"
+  let expectedSig = #"document[code_block("aaa"),paragraph[text("bbb")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -112,7 +112,7 @@ struct MarkdownParagraphsTests {
     let input = "aaa  \nbbb"
     let result = parser.parse(input, language: language)
 
-    let expectedSig = "document[paragraph[text(\"aaa\"),line_break(hard),text(\"bbb\")]]"
+  let expectedSig = #"document[paragraph[text("aaa"),line_break(hard),text("bbb")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -123,7 +123,7 @@ struct MarkdownParagraphsTests {
 
     // Leading and trailing whitespace should be removed, creating no content
 
-    let expectedSig = "document"
+  let expectedSig = #"document"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -136,7 +136,7 @@ struct MarkdownParagraphsTests {
     """
     let result = parser.parse(input, language: language)
 
-    let expectedSig = "document[paragraph[text(\"aaa\"),line_break(soft),text(\"bbb\"),line_break(soft),text(\"ccc\")]]"
+  let expectedSig = #"document[paragraph[text("aaa"),line_break(soft),text("bbb"),line_break(soft),text("ccc")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -151,7 +151,7 @@ struct MarkdownParagraphsTests {
     """
     let result = parser.parse(input, language: language)
 
-    let expectedSig = "document[paragraph[text(\"first paragraph\")],paragraph[text(\"second paragraph\")],paragraph[text(\"third paragraph\")]]"
+    let expectedSig = #"document[paragraph[text("first paragraph")],paragraph[text("second paragraph")],paragraph[text("third paragraph")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -162,7 +162,7 @@ struct MarkdownParagraphsTests {
 
   // Single trailing space should not create hard line break, but newline is a soft break
 
-  let expectedSig = "document[paragraph[text(\"aaa\"),line_break(soft),text(\"bbb\")]]"
+  let expectedSig = #"document[paragraph[text("aaa"),line_break(soft),text("bbb")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -175,7 +175,7 @@ struct MarkdownParagraphsTests {
     """
     let result = parser.parse(input, language: language)
 
-  let expectedSig = "document[paragraph[text(\"This is a paragraph\"),line_break(soft),text(\"with multiple lines\"),line_break(soft),text(\"and some content.\")]]"
+  let expectedSig = #"document[paragraph[text("This is a paragraph"),line_break(soft),text("with multiple lines"),line_break(soft),text("and some content.")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -184,7 +184,7 @@ struct MarkdownParagraphsTests {
     let input = "single line"
     let result = parser.parse(input, language: language)
 
-    let expectedSig = "document[paragraph[text(\"single line\")]]"
+  let expectedSig = #"document[paragraph[text("single line")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -197,7 +197,7 @@ struct MarkdownParagraphsTests {
     """
     let result = parser.parse(input, language: language)
 
-  let expectedSig = "document[paragraph[text(\"aaa\"),line_break(soft),text(\"bbb\"),line_break(soft),text(\"ccc\")]]"
+  let expectedSig = #"document[paragraph[text("aaa"),line_break(soft),text("bbb"),line_break(soft),text("ccc")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 }

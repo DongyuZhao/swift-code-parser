@@ -44,12 +44,10 @@ public class MarkdownParagraphBuilder: CodeNodeBuilder {
     }
     var contentTokens = Array(context.tokens[startIndex..<contentEnd])
 
-    // Strip leading and trailing whitespace from paragraph content
+    // Strip leading whitespace from paragraph content
+    // NOTE: Do NOT strip trailing whitespace as it's significant for hard line breaks per CommonMark spec
     while !contentTokens.isEmpty && contentTokens[0].element == .whitespaces {
       contentTokens.removeFirst()
-    }
-    while !contentTokens.isEmpty && contentTokens.last!.element == .whitespaces {
-      contentTokens.removeLast()
     }
 
     // Check if we're currently in a paragraph context

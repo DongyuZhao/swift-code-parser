@@ -8,12 +8,14 @@ struct MarkdownTokenEscapeTests {
   private let h = MarkdownTestHarness()
   @Test("Spec 308 - All punctuation should be escaped after a backslash")
   func spec308() async throws {
-    let input =
-      "\\!\\\"\\#\\$\\%\\&\\'\\(\\)\\*\\+\\,\\-\\.\\/\\:\\;\\<\\=\\>\\?\\@\\[\\\\\\]\\^\\_\\`\\{\\|\\}\\~\n"
+    let input = ##"""
+      \!\"\#\$\%\<\&\'\(\)\*\+\,\-\.\:\/\;\<\=\>\?\@\[\\\]\^\_\`\{\|\}\~
+
+      """##
     let result = h.parser.parse(input, language: h.language)
     #expect(result.tokens.count == 3)
     #expect(result.tokens[0].element == .characters)
-    #expect(result.tokens[0].text == "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~")
+    #expect(result.tokens[0].text == "!\"#$%<&\'()*+,-.:/;<=>?@[\\]^_`{|}~")
     #expect(result.tokens[1].element == .newline)
     #expect(result.tokens[1].text == "\n")
     #expect(result.tokens[2].element == .eof)
@@ -25,15 +27,18 @@ struct MarkdownTokenEscapeTests {
     "Spec 309 - Backslash escapes neutralize punctuations across lines (token-level)"
   )
   func spec309() async throws {
-    let input = "\\\t\\A\\a\\ \\3\\\u{03C6}\\\u{00AB}\n"
+    let input = #"""
+      \	\A\a\ \3\φ\«
+
+      """#
     let result = h.parser.parse(input, language: h.language)
 
     let expected: [(MarkdownTokenElement, String)] = [
-      (.characters, "\\"),
+      (.characters, #"\"#),
       (.whitespaces, "\t"),
-      (.characters, "\\A\\a\\"),
+      (.characters, #"\A\a\"#),
       (.whitespaces, " "),
-      (.characters, "\\3\\\u{03C6}\\\u{00AB}"),
+      (.characters, #"\3\φ\«"#),
       (.newline, "\n"),
       (.eof, ""),
     ]
@@ -47,7 +52,18 @@ struct MarkdownTokenEscapeTests {
   // Spec 310
   @Test("Spec 310 - Backslash escapes neutralize Markdown syntax across lines (token-level)")
   func spec310() async throws {
-    let input = "\\*not emphasized*\n\\<br/> not a tag\n\\[not a link](/foo)\n\\`not code`\n1\\. not a list\n\\* not a list\n\\# not a heading\n\\[foo]: /url \"not a reference\"\n\\&ouml; not a character entity\n"
+    let input = ##"""
+      \*not emphasized*
+      \<br/> not a tag
+      \[not a link](/foo)
+      \`not code`
+      1\. not a list
+      \* not a list
+      \# not a heading
+      \[foo]: /url "not a reference"
+      \&ouml; not a character entity
+
+      """##
     let result = h.parser.parse(input, language: h.language)
 
     let expected: [(MarkdownTokenElement, String)] = [
@@ -104,7 +120,10 @@ struct MarkdownTokenEscapeTests {
   // Spec 311
   @Test("Spec 311 - Escaped backslash will not neutralize next punctuation (token-level)")
   func spec311() async throws {
-    let input = "\\\\*emphasis*\n"
+    let input = #"""
+      \\*emphasis*
+
+      """#
     let result = h.parser.parse(input, language: h.language)
 
     let expected: [(MarkdownTokenElement, String)] = [
@@ -127,7 +146,11 @@ struct MarkdownTokenEscapeTests {
     "Spec 312 - A backslash at the end of a line is treated as a line break (token-level)"
   )
   func spec312() async throws {
-    let input = "foo\\\nbar\n"
+    let input = #"""
+      foo\
+      bar
+
+      """#
     let result = h.parser.parse(input, language: h.language)
 
     let expected: [(MarkdownTokenElement, String)] = [
@@ -147,7 +170,10 @@ struct MarkdownTokenEscapeTests {
   // Spec 313
   @Test("Spec 313 - Backslash escape will not work inside code spans")
   func spec313() async throws {
-    let input = "`` \\[\\` ``\n"
+    let input = #"""
+      `` \[\` ``
+
+      """#
     let result = h.parser.parse(input, language: h.language)
 
     let expected: [(MarkdownTokenElement, String)] = [
@@ -171,7 +197,10 @@ struct MarkdownTokenEscapeTests {
   // Spec 314
   @Test("Spec 314 - Backslash escape will not work inside code blocks")
   func spec314() async throws {
-    let input = "    \\[\\]\n"
+    let input = #"""
+          \[\]
+
+      """#
     let result = h.parser.parse(input, language: h.language)
 
     let expected: [(MarkdownTokenElement, String)] = [
@@ -190,7 +219,12 @@ struct MarkdownTokenEscapeTests {
   // Spec 315
   @Test("Spec 315 - Backslash escape will not work inside code blocks")
   func spec315() async throws {
-    let input = "~~~\n\\[\\]\n~~~\n"
+    let input = #"""
+      ~~~
+      \[\]
+      ~~~
+
+      """#
     let result = h.parser.parse(input, language: h.language)
 
     let expected: [(MarkdownTokenElement, String)] = [
@@ -216,7 +250,10 @@ struct MarkdownTokenEscapeTests {
   // Spec 316
   @Test("Spec 316 - Backslash escape will not work inside autolinks")
   func spec316() async throws {
-    let input = "<http://example.com?find=\\*>\n"
+    let input = #"""
+      <http://example.com?find=\*>
+
+      """#
     let result = h.parser.parse(input, language: h.language)
 
     let expected: [(MarkdownTokenElement, String)] = [
@@ -246,7 +283,10 @@ struct MarkdownTokenEscapeTests {
   // Spec 317
   @Test("Spec 317 - Backslash escape will not work inside HTML")
   func spec317() async throws {
-    let input = "<a href=\"/bar\\/)\">\n"
+    let input = #"""
+      <a href="/bar\/)">
+
+      """#
     let result = h.parser.parse(input, language: h.language)
 
     let expected: [(MarkdownTokenElement, String)] = [
@@ -274,7 +314,10 @@ struct MarkdownTokenEscapeTests {
   // Spec 318
   @Test("Spec 318 - Backslash escape works inside url and link titles")
   func spec318() async throws {
-    let input = "[foo](/bar\\* \"ti\\*tle\")\n"
+    let input = #"""
+      [foo](/bar\* "ti\*tle")
+
+      """#
     let result = h.parser.parse(input, language: h.language)
 
     let expected: [(MarkdownTokenElement, String)] = [
@@ -302,7 +345,12 @@ struct MarkdownTokenEscapeTests {
   // Spec 319
   @Test("Spec 319 - Backslash escape works inside url and link titles")
   func spec319() async throws {
-    let input = "[foo]\n\n[foo]: /bar\\* \"ti\\*tle\"\n"
+    let input = #"""
+      [foo]
+
+      [foo]: /bar\* "ti\*tle"
+
+      """#
     let result = h.parser.parse(input, language: h.language)
 
     let expected: [(MarkdownTokenElement, String)] = [
@@ -335,7 +383,12 @@ struct MarkdownTokenEscapeTests {
   // Spec 320
   @Test("Spec 320 - Backslash escape works inside code block info string")
   func spec320() async throws {
-    let input = "``` foo\\+bar\nfoo\n```\n"
+    let input = #"""
+      ``` foo\+bar
+      foo
+      ```
+
+      """#
     let result = h.parser.parse(input, language: h.language)
 
     let expected: [(MarkdownTokenElement, String)] = [
@@ -363,7 +416,10 @@ struct MarkdownTokenEscapeTests {
   // Additional test for autolink mode backslash behavior
   @Test("Autolink mode - Backslash before > should not escape the > but preserve the backslash")
   func autolinkBackslashBehavior() async throws {
-    let input = "<http://example.com/path\\>\n"
+    let input = #"""
+      <http://example.com/path\>
+
+      """#
     let result = h.parser.parse(input, language: h.language)
 
     let expected: [(MarkdownTokenElement, String)] = [
@@ -391,7 +447,10 @@ struct MarkdownTokenEscapeTests {
   // Additional test for autolink mode - other escaped characters behavior
   @Test("Autolink mode - Other backslash escapes should be preserved literally")
   func autolinkOtherEscapesBehavior() async throws {
-    let input = "<http://example.com?q=\\*test\\&value>\n"
+    let input = #"""
+      <http://example.com?q=\*test\&value>
+
+      """#
     let result = h.parser.parse(input, language: h.language)
 
     let expected: [(MarkdownTokenElement, String)] = [

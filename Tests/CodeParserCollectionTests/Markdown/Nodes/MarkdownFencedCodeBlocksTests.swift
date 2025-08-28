@@ -19,7 +19,7 @@ struct MarkdownFencedCodeBlocksTests {
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[code_block(\"<\n >\")]"
+  let expectedSig = #"document[code_block("<\#n >")]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -29,7 +29,7 @@ struct MarkdownFencedCodeBlocksTests {
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[code_block(\"<\n >\")]"
+  let expectedSig = #"document[code_block("<\#n >")]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -39,7 +39,7 @@ struct MarkdownFencedCodeBlocksTests {
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[paragraph[code(\"foo\")]]"
+    let expectedSig = #"document[paragraph[code("foo")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -49,7 +49,7 @@ struct MarkdownFencedCodeBlocksTests {
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[code_block(\"aaa\n~~~\")]"
+  let expectedSig = #"document[code_block("aaa\#n~~~")]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -59,7 +59,7 @@ struct MarkdownFencedCodeBlocksTests {
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[code_block(\"aaa\n```\")]"
+  let expectedSig = #"document[code_block("aaa\#n```")]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -69,7 +69,7 @@ struct MarkdownFencedCodeBlocksTests {
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[code_block(\"aaa\n```\")]"
+  let expectedSig = #"document[code_block("aaa\#n```")]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -79,7 +79,7 @@ struct MarkdownFencedCodeBlocksTests {
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[code_block(\"aaa\n~~~\")]"
+  let expectedSig = #"document[code_block("aaa\#n~~~")]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -89,7 +89,7 @@ struct MarkdownFencedCodeBlocksTests {
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[code_block(\"\")]"
+    let expectedSig = #"document[code_block("")]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -99,7 +99,11 @@ struct MarkdownFencedCodeBlocksTests {
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[code_block(\"\n```\naaa\")]"
+    let expectedSig = #"""
+      document[code_block("
+      ```
+      aaa")]
+      """#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -109,7 +113,7 @@ struct MarkdownFencedCodeBlocksTests {
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[blockquote[code_block(\"aaa\")],paragraph[text(\"bbb\")]]"
+    let expectedSig = #"document[blockquote[code_block("aaa")],paragraph[text("bbb")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -119,7 +123,7 @@ struct MarkdownFencedCodeBlocksTests {
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-  let expectedSig = "document[code_block(\"\n\n\")]"
+  let expectedSig = #"document[code_block("\#n\#n")]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -129,7 +133,7 @@ struct MarkdownFencedCodeBlocksTests {
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[code_block(\"\")]"
+    let expectedSig = #"document[code_block("")]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -139,7 +143,7 @@ struct MarkdownFencedCodeBlocksTests {
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[code_block(\"aaa\naaa\")]"
+  let expectedSig = #"document[code_block("aaa\#naaa")]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -149,7 +153,7 @@ struct MarkdownFencedCodeBlocksTests {
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[code_block(\"aaa\naaa\naaa\")]"
+  let expectedSig = #"document[code_block("aaa\#naaa\#naaa")]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -159,7 +163,7 @@ struct MarkdownFencedCodeBlocksTests {
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[code_block(\"aaa\n aaa\naaa\")]"
+  let expectedSig = #"document[code_block("aaa\#n aaa\#naaa")]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -169,7 +173,7 @@ struct MarkdownFencedCodeBlocksTests {
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig (this should be an indented code block)
-    let expectedSig = "document[code_block(\"```\naaa\n```\")]"
+  let expectedSig = #"document[code_block("```\#naaa\#n```")]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -179,7 +183,7 @@ struct MarkdownFencedCodeBlocksTests {
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[code_block(\"aaa\")]"
+    let expectedSig = #"document[code_block("aaa")]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -189,7 +193,7 @@ struct MarkdownFencedCodeBlocksTests {
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[code_block(\"aaa\")]"
+    let expectedSig = #"document[code_block("aaa")]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -199,7 +203,7 @@ struct MarkdownFencedCodeBlocksTests {
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[code_block(\"aaa\n    ```\")]"
+  let expectedSig = #"document[code_block("aaa\#n    ```")]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -208,8 +212,8 @@ struct MarkdownFencedCodeBlocksTests {
     let input = "``` ```\naaa"
     let result = parser.parse(input, language: language)
 
-  // Verify AST structure using sig
-  let expectedSig = "document[paragraph[code(\" \"),line_break(soft),text(\"aaa\")]]"
+    // Verify AST structure using sig
+    let expectedSig = #"document[paragraph[code(" "),line_break(soft),text("aaa")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -219,7 +223,7 @@ struct MarkdownFencedCodeBlocksTests {
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[code_block(\"aaa\n~~~ ~~\")]"
+  let expectedSig = #"document[code_block("aaa\#n~~~ ~~")]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -229,7 +233,7 @@ struct MarkdownFencedCodeBlocksTests {
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[paragraph[text(\"foo\")],code_block(\"bar\"),paragraph[text(\"baz\")]]"
+    let expectedSig = #"document[paragraph[text("foo")],code_block("bar"),paragraph[text("baz")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -239,7 +243,8 @@ struct MarkdownFencedCodeBlocksTests {
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[heading(level:2)[text(\"foo\")],code_block(\"bar\"),heading(level:1)[text(\"baz\")]]"
+    let expectedSig =
+      #"document[heading(level:2)[text("foo")],code_block("bar"),heading(level:1)[text("baz")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -249,7 +254,7 @@ struct MarkdownFencedCodeBlocksTests {
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[code_block(lang:\"ruby\",\"def foo(x)\n  return 3\nend\")]"
+  let expectedSig = #"document[code_block(lang:"ruby","def foo(x)\#n  return 3\#nend")]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -259,7 +264,7 @@ struct MarkdownFencedCodeBlocksTests {
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[code_block(lang:\"ruby\",\"def foo(x)\n  return 3\nend\")]"
+  let expectedSig = #"document[code_block(lang:"ruby","def foo(x)\#n  return 3\#nend")]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -269,7 +274,7 @@ struct MarkdownFencedCodeBlocksTests {
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[code_block(lang:\";\",\"\")]"
+    let expectedSig = #"document[code_block(lang:";","")]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -278,8 +283,8 @@ struct MarkdownFencedCodeBlocksTests {
     let input = "``` aa ```\nfoo"
     let result = parser.parse(input, language: language)
 
-  // Verify AST structure using sig
-  let expectedSig = "document[paragraph[code(\"aa\"),line_break(soft),text(\"foo\")]]"
+    // Verify AST structure using sig
+    let expectedSig = #"document[paragraph[code("aa"),line_break(soft),text("foo")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -299,7 +304,7 @@ struct MarkdownFencedCodeBlocksTests {
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[code_block(\"``` aaa\")]"
+    let expectedSig = #"document[code_block("``` aaa")]"#
     #expect(sig(result.root) == expectedSig)
   }
 }

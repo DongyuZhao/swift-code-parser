@@ -15,21 +15,27 @@ struct MarkdownThematicBreaksTests {
 
   @Test("Valid thematic breaks with three matching characters")
   func basicThematicBreaks() {
-    let input = "***\n---\n___"
+    let input = #"""
+    ***
+    ---
+    ___
+    """#
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[thematic_break,thematic_break,thematic_break]"
+    let expectedSig = #"document[thematic_break,thematic_break,thematic_break]"#
     #expect(sig(result.root) == expectedSig)
   }
 
   @Test("Invalid characters for thematic breaks")
   func wrongCharacters() {
-    let input = "+++"
+    let input = #"""
+    +++
+    """#
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[paragraph[text(\"+++\")]]"
+    let expectedSig = #"document[paragraph[text("+++")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 

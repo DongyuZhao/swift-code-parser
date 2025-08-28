@@ -21,14 +21,6 @@ public class MarkdownFencedCodeBlockBuilder: CodeNodeBuilder {
 
     // Check if we're currently inside a fenced code block
     if let currentFence = state.openFence {
-      // If we're at position 0 and the line starts with block-level markers,
-      // let other builders process first
-      if state.position == 0 && startIndex < context.tokens.count {
-        let token = context.tokens[startIndex]
-        if token.element == .punctuation && (token.text == ">" || token.text == "#" || token.text == "*" || token.text == "-" || token.text == "+") {
-          return false
-        }
-      }
       return handleFencedContent(currentFence: currentFence, context: &context, state: state)
     } else {
       return handleFenceOpening(context: &context, state: state, startIndex: startIndex)
@@ -215,26 +207,8 @@ public class MarkdownFencedCodeBlockBuilder: CodeNodeBuilder {
       return true
     }
 
-    // If we're at position 0, check if this line belongs to the same container context
-    // If not, close the fenced code block and let other builders handle the line
-    if state.position == 0 && startIndex < context.tokens.count {
-      let token = context.tokens[startIndex]
-      if token.element == .punctuation && (token.text == ">" || token.text == "#" || token.text == "*" || token.text == "-" || token.text == "+") {
-        // This line has block-level markers, let other builders process first
-        return false
-      }
-      // For empty lines at position 0, check if we're in a container context that should be closed
-      if token.element == .newline {
-        // Only close fenced code block if we're in a container context (like blockquote)
-        // and this empty line should close that container
-        if context.current.element == .blockquote {
-          // Empty line in blockquote context - this should close the blockquote
-          state.openFence = nil
-          return false
-        }
-        // For other contexts (like document level), empty lines are content
-      }
-    }
+    // In 3-phase architecture, container handling is done by container builders
+    // Fenced code blocks just handle content and closing
 
     // This is content - add it to the code block
     var lineContent = ""

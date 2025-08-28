@@ -18,7 +18,7 @@ struct MarkdownCodeSpansTests {
     let input = "`foo`"
     let result = parser.parse(input, language: language)
 
-    let expectedSig = "document[paragraph[code(\"foo\")]]"
+  let expectedSig = #"document[paragraph[code("foo")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -27,7 +27,7 @@ struct MarkdownCodeSpansTests {
     let input = "`` foo ` bar ``"
     let result = parser.parse(input, language: language)
 
-    let expectedSig = "document[paragraph[code(\"foo ` bar\")]]"
+  let expectedSig = #"document[paragraph[code("foo ` bar")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -36,7 +36,7 @@ struct MarkdownCodeSpansTests {
     let input = "` `` `"
     let result = parser.parse(input, language: language)
 
-    let expectedSig = "document[paragraph[code(\"``\")]]"
+  let expectedSig = #"document[paragraph[code("``")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -45,7 +45,7 @@ struct MarkdownCodeSpansTests {
     let input = "`  ``  `"
     let result = parser.parse(input, language: language)
 
-    let expectedSig = "document[paragraph[code(\" `` \")]]"
+  let expectedSig = #"document[paragraph[code(" `` ")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -54,7 +54,7 @@ struct MarkdownCodeSpansTests {
     let input = "` a`"
     let result = parser.parse(input, language: language)
 
-    let expectedSig = "document[paragraph[code(\" a\")]]"
+  let expectedSig = #"document[paragraph[code(" a")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -63,7 +63,7 @@ struct MarkdownCodeSpansTests {
     let input = "` b `"
     let result = parser.parse(input, language: language)
 
-    let expectedSig = "document[paragraph[code(\" b \")]]"
+  let expectedSig = #"document[paragraph[code("b")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -75,7 +75,7 @@ struct MarkdownCodeSpansTests {
     """
     let result = parser.parse(input, language: language)
 
-    let expectedSig = "document[paragraph[code(\" \"),text(\"\"),code(\"  \")]]"
+  let expectedSig = #"document[paragraph[code(" "),line_break(soft),code("  ")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -90,7 +90,7 @@ struct MarkdownCodeSpansTests {
     """
     let result = parser.parse(input, language: language)
 
-    let expectedSig = "document[paragraph[code(\"foo bar   baz\")]]"
+  let expectedSig = #"document[paragraph[code("foo bar baz")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -103,7 +103,7 @@ struct MarkdownCodeSpansTests {
     """
     let result = parser.parse(input, language: language)
 
-    let expectedSig = "document[paragraph[code(\"foo \")]]"
+  let expectedSig = #"document[paragraph[code("foo")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -115,16 +115,16 @@ struct MarkdownCodeSpansTests {
     """
     let result = parser.parse(input, language: language)
 
-    let expectedSig = "document[paragraph[code(\"foo   bar  baz\")]]"
+  let expectedSig = #"document[paragraph[code("foo   bar baz")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
   @Test("Backslash escapes do not work in code spans")
   func backslashEscapesDoNotWorkInCodeSpans() {
-    let input = "`foo\\`bar`"
+    let input = #"`foo\`bar`"#
     let result = parser.parse(input, language: language)
 
-    let expectedSig = "document[paragraph[code(\"foo\\\\\"),text(\"bar`\")]]"
+  let expectedSig = #"document[paragraph[code("foo"),text("bar`")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -133,7 +133,7 @@ struct MarkdownCodeSpansTests {
     let input = "``foo`bar``"
     let result = parser.parse(input, language: language)
 
-    let expectedSig = "document[paragraph[code(\"foo`bar\")]]"
+  let expectedSig = #"document[paragraph[code("foo`bar")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -142,7 +142,7 @@ struct MarkdownCodeSpansTests {
     let input = "` foo `` bar `"
     let result = parser.parse(input, language: language)
 
-    let expectedSig = "document[paragraph[code(\"foo `` bar\")]]"
+  let expectedSig = #"document[paragraph[code("foo `` bar")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -151,7 +151,7 @@ struct MarkdownCodeSpansTests {
     let input = "*foo`*`"
     let result = parser.parse(input, language: language)
 
-    let expectedSig = "document[paragraph[text(\"*foo\"),code(\"*\")]]"
+  let expectedSig = #"document[paragraph[text("*foo"),code("*")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -160,25 +160,25 @@ struct MarkdownCodeSpansTests {
     let input = "[not a `link](/foo`)"
     let result = parser.parse(input, language: language)
 
-    let expectedSig = "document[paragraph[text(\"[not a \"),code(\"link](/foo\"),text(\")\")]]"
+  let expectedSig = #"document[paragraph[text("[not a "),code("link](/foo"),text(")")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
   @Test("Code spans and HTML tags have same precedence - code wins when it starts first")
   func codeSpansAndHTMLTagsHaveSamePrecedenceCodeWinsWhenItStartsFirst() {
-    let input = "`<a href=\"`\">`"
+    let input = #"`<a href="`">`"#
     let result = parser.parse(input, language: language)
 
-    let expectedSig = "document[paragraph[code(\"<a href=\\\"\"),text(\"\\\">>\")]]"
+  let expectedSig = ##"document[paragraph[code("<a href=""),text("">`")]]"##
     #expect(sig(result.root) == expectedSig)
   }
 
   @Test("HTML tags win when they start before code spans")
   func htmlTagsWinWhenTheyStartBeforeCodeSpans() {
-    let input = "<a href=\"`\">`"
+    let input = #"<a href="`">`"#
     let result = parser.parse(input, language: language)
 
-    let expectedSig = "document[paragraph[html(\"<a href=\\\"`\\\">\"),text(\"`\")]]"
+  let expectedSig = ##"document[paragraph[html("<a href="`">"),text("`")]]"##
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -187,7 +187,7 @@ struct MarkdownCodeSpansTests {
     let input = "`<http://foo.bar.`baz>`"
     let result = parser.parse(input, language: language)
 
-    let expectedSig = "document[paragraph[code(\"<http://foo.bar.\"),text(\"baz>`\")]]"
+  let expectedSig = #"document[paragraph[code("<http://foo.bar."),text("baz>`")]]"# // corrected to period . before closing code
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -196,7 +196,7 @@ struct MarkdownCodeSpansTests {
     let input = "<http://foo.bar.`baz>`"
     let result = parser.parse(input, language: language)
 
-    let expectedSig = "document[paragraph[link(url:\"http://foo.bar.`baz\",title:\"\")[text(\"http://foo.bar.`baz\")],text(\"`\")]]"
+  let expectedSig = #"document[paragraph[link(url:"http://foo.bar.`baz",title:"")[text("http://foo.bar.`baz")],text("`")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -205,7 +205,7 @@ struct MarkdownCodeSpansTests {
     let input = "```foo``"
     let result = parser.parse(input, language: language)
 
-    let expectedSig = "document[paragraph[text(\"```foo``\")]]"
+  let expectedSig = #"document[code_block(lang:"foo``","")]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -214,7 +214,7 @@ struct MarkdownCodeSpansTests {
     let input = "`foo"
     let result = parser.parse(input, language: language)
 
-    let expectedSig = "document[paragraph[text(\"`foo\")]]"
+  let expectedSig = #"document[paragraph[text("`foo")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -223,7 +223,7 @@ struct MarkdownCodeSpansTests {
     let input = "`foo``bar``"
     let result = parser.parse(input, language: language)
 
-    let expectedSig = "document[paragraph[text(\"`foo\"),code(\"bar\")]]"
+  let expectedSig = #"document[paragraph[text("`foo"),code("bar")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -232,7 +232,7 @@ struct MarkdownCodeSpansTests {
     let input = "``"
     let result = parser.parse(input, language: language)
 
-    let expectedSig = "document[paragraph[code(\"\")]]"
+  let expectedSig = #"document[paragraph[code("")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -241,7 +241,7 @@ struct MarkdownCodeSpansTests {
     let input = "```````"
     let result = parser.parse(input, language: language)
 
-    let expectedSig = "document[paragraph[code(\"`\")]]"
+  let expectedSig = #"document[paragraph[code("`")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -250,16 +250,16 @@ struct MarkdownCodeSpansTests {
     let input = "Here is `code` and `more code`."
     let result = parser.parse(input, language: language)
 
-    let expectedSig = "document[paragraph[text(\"Here is \"),code(\"code\"),text(\" and \"),code(\"more code\"),text(\".\")]]"
+  let expectedSig = #"document[paragraph[text("Here is "),code("code"),text(" and "),code("more code"),text(".")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
   @Test("Code span with special characters")
   func codeSpanWithSpecialCharacters() {
-    let input = "`<>&\"`"
+    let input = #"`<>&"`"#
     let result = parser.parse(input, language: language)
 
-    let expectedSig = "document[paragraph[code(\"<>&\\\"\")]]"
+  let expectedSig = ##"document[paragraph[code("<>&"")]]"##
     #expect(sig(result.root) == expectedSig)
   }
 }

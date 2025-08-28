@@ -1,73 +1,6 @@
 import CodeParserCore
 import Foundation
 
-// MARK: - Inline Processing Protocols
-
-/// Protocol for inline syntax processors that handle specific markdown constructs
-public protocol MarkdownContentProcessor {
-  /// The delimiter characters this processor handles (e.g., "*", "_", "[", "`")
-  var delimiters: Set<Character> { get }
-
-  /// Process a token and optionally create delimiter runs
-  /// Returns true if the token was handled, false otherwise
-  ///
-  /// Notes:
-  /// - Tokens with element `.punctuation` are guaranteed to carry exactly ONE character.
-  ///   For delimiter runs like `***` or `___`, processors should aggregate consecutive
-  ///   single-character punctuation tokens into a run, compute canOpen/canClose, and then
-  ///   push a `DelimiterRun` with the combined length.
-  /// - When a processor consumes multiple consecutive tokens as one run, it MUST advance
-  ///   `context.current` by the full `runLength` to skip all consumed tokens. The outer loop
-  ///   will not increment when a processor handles a token, preventing double-processing.
-  func process(
-    _ token: any CodeToken<MarkdownTokenElement>,
-    at index: Int,
-    in tokens: [any CodeToken<MarkdownTokenElement>],
-    context: inout MarkdownContentContext
-  ) -> Bool
-
-  /// Create an inline node for matched delimiter pairs
-  /// Called by MarkdownContentBuilder when a delimiter pair is matched
-  /// Should return the node that wraps the content between the delimiters
-  func createNode(
-    for delimiterType: MarkdownDelimiter,
-    openerRun: MarkdownDelimiterRun,
-    closerRun: MarkdownDelimiterRun,
-    contentTokens: ArraySlice<any CodeToken<MarkdownTokenElement>>
-  ) -> MarkdownNodeBase?
-}
-
-// Optional capabilities to improve pairing selection and ordering
-public extension MarkdownContentProcessor {
-  /// Processors can define a priority; higher priority processors are considered after
-  /// lower ones when multiple processors claim the same delimiter. Default 0.
-  var priority: Int { 0 }
-
-  /// Whether this processor supports a specific delimiter type. Default uses common
-  /// character mapping if possible, otherwise returns false for custom types.
-  func supports(delimiter: MarkdownDelimiter) -> Bool {
-    switch delimiter {
-    case .asterisk:
-      return delimiters.contains("*")
-    case .underscore:
-      return delimiters.contains("_")
-    case .backtick:
-      return delimiters.contains("`")
-    case .openBracket, .openImageBracket:
-      return delimiters.contains("[")
-    case .custom:
-      return false
-    }
-  }
-
-  /// Validate opener/closer before build. Default allows all.
-  func canPair(
-    opener: MarkdownDelimiterRun,
-    closer: MarkdownDelimiterRun,
-    tokens: [any CodeToken<MarkdownTokenElement>]
-  ) -> Bool { true }
-}
-
 /// Context passed to inline processors containing shared state
 public struct MarkdownContentContext {
   /// The delimiter stack for managing nested constructs
@@ -244,5 +177,452 @@ public struct MarkdownDelimiterStackIterator: IteratorProtocol {
     let result = current
     current = current?.next
     return result
+  }
+}
+
+// MARK: - Phase-based Inline Pipeline
+
+public enum MarkdownInlinePhase {
+  case scan    // streaming token scan
+  case rebuild // token-to-node rebuild after delimiter pairing
+}
+
+public protocol MarkdownInlinePhaseProcessor {
+  var phase: MarkdownInlinePhase { get }
+  var priority: Int { get }
+
+  // Scan phase hooks
+  func canHandle(token: any CodeToken<MarkdownTokenElement>, at index: Int, context: MarkdownContentContext) -> Bool
+  func handle(token: any CodeToken<MarkdownTokenElement>, at index: Int, context: inout MarkdownContentContext) -> Bool
+
+  // Rebuild phase hooks (for unmatched delimiters, etc)
+  func canHandleUnmatchedDelimiter(run: MarkdownDelimiterRun, at tokenIndex: Int, context: MarkdownContentContext) -> Bool
+  func handleUnmatchedDelimiter(run: MarkdownDelimiterRun, at tokenIndex: Int, context: inout MarkdownContentContext) -> Bool
+
+  // Rebuild-time token handling (e.g., newline hard/soft decision)
+  func canHandleRebuildToken(token: any CodeToken<MarkdownTokenElement>, at index: Int, context: MarkdownContentContext) -> Bool
+  func handleRebuildToken(token: any CodeToken<MarkdownTokenElement>, at index: Int, context: inout MarkdownContentContext) -> Bool
+
+  // Pair handling for matched delimiters
+  func canHandlePair(for delimiter: MarkdownDelimiter) -> Bool
+  // Return value allows processor to extend the consumed range beyond closer (e.g., parse (dest "title")).
+  // closerEndOverride: if provided, it's the exclusive end index to consume (>= closerRun.index + closerRun.length).
+  func createNodeForPair(
+    delimiter: MarkdownDelimiter,
+    openerRun: MarkdownDelimiterRun,
+    closerRun: MarkdownDelimiterRun,
+    contentTokens: ArraySlice<any CodeToken<MarkdownTokenElement>>,
+    allTokens: [any CodeToken<MarkdownTokenElement>]
+  ) -> (node: MarkdownNodeBase, closerEndOverride: Int)?
+}
+
+public extension MarkdownInlinePhaseProcessor {
+  func canHandle(token: any CodeToken<MarkdownTokenElement>, at index: Int, context: MarkdownContentContext) -> Bool { false }
+  func handle(token: any CodeToken<MarkdownTokenElement>, at index: Int, context: inout MarkdownContentContext) -> Bool { false }
+  func canHandleUnmatchedDelimiter(run: MarkdownDelimiterRun, at tokenIndex: Int, context: MarkdownContentContext) -> Bool { false }
+  func handleUnmatchedDelimiter(run: MarkdownDelimiterRun, at tokenIndex: Int, context: inout MarkdownContentContext) -> Bool { false }
+  func canHandleRebuildToken(token: any CodeToken<MarkdownTokenElement>, at index: Int, context: MarkdownContentContext) -> Bool { false }
+  func handleRebuildToken(token: any CodeToken<MarkdownTokenElement>, at index: Int, context: inout MarkdownContentContext) -> Bool { false }
+  func canHandlePair(for delimiter: MarkdownDelimiter) -> Bool { false }
+  func createNodeForPair(
+    delimiter: MarkdownDelimiter,
+    openerRun: MarkdownDelimiterRun,
+    closerRun: MarkdownDelimiterRun,
+    contentTokens: ArraySlice<any CodeToken<MarkdownTokenElement>>,
+    allTokens: [any CodeToken<MarkdownTokenElement>]
+  ) -> (node: MarkdownNodeBase, closerEndOverride: Int)? { nil }
+}
+
+// MARK: Default inline phase processors
+
+/// Detect hard/soft line breaks per CommonMark; trims trailing spaces for hard breaks
+public struct HardLineBreakRebuildProcessor: MarkdownInlinePhaseProcessor {
+  public let phase: MarkdownInlinePhase = .rebuild
+  public let priority: Int
+
+  public init(priority: Int = 0) { self.priority = priority }
+
+  public func canHandleRebuildToken(token: any CodeToken<MarkdownTokenElement>, at index: Int, context: MarkdownContentContext) -> Bool {
+    token.element == .newline
+  }
+
+  public func handleRebuildToken(token: any CodeToken<MarkdownTokenElement>, at index: Int, context: inout MarkdownContentContext) -> Bool {
+    // Determine if hard break by scanning backwards
+    var i = index - 1
+    var trailingSpaces = 0
+    while i >= 0 {
+      let tok = context.tokens[i]
+      switch tok.element {
+      case .whitespaces:
+        trailingSpaces += tok.text.reduce(0) { $0 + ($1 == " " ? 1 : 0) }
+        i -= 1
+        continue
+      case .punctuation:
+        // Backslash must be immediately before newline (no trailing spaces)
+        if tok.text == "\\" {
+          context.add(LineBreakNode(variant: .hard))
+          return true
+        }
+        let isHard = trailingSpaces >= 2
+        if isHard { cleanupTrailingSpaces(in: &context, count: 2) }
+        context.add(LineBreakNode(variant: isHard ? .hard : .soft))
+        return true
+      case .characters, .charef:
+        let isHard = trailingSpaces >= 2
+        if isHard { cleanupTrailingSpaces(in: &context, count: 2) }
+        context.add(LineBreakNode(variant: isHard ? .hard : .soft))
+        return true
+      case .newline, .eof:
+        context.add(LineBreakNode(variant: .soft))
+        return true
+      }
+    }
+    let isHard = trailingSpaces >= 2
+    if isHard { cleanupTrailingSpaces(in: &context, count: 2) }
+    context.add(LineBreakNode(variant: isHard ? .hard : .soft))
+    return true
+  }
+
+  private func cleanupTrailingSpaces(in context: inout MarkdownContentContext, count maxToRemove: Int) {
+    guard !context.inlined.isEmpty else { return }
+    var idx = context.inlined.count - 1
+    var removed = 0
+    while idx >= 0 && removed < maxToRemove {
+      if let textNode = context.inlined[idx] as? TextNode {
+        let text = textNode.content
+        if text.allSatisfy({ $0 == " " }) {
+          let spaceCount = text.count
+          if removed + spaceCount >= maxToRemove {
+            let keep = max(0, removed + spaceCount - maxToRemove)
+            if keep > 0 { textNode.content = String(repeating: " ", count: keep) } else { context.inlined.remove(at: idx) }
+            removed = maxToRemove
+            break
+          } else {
+            removed += spaceCount
+            context.inlined.remove(at: idx)
+          }
+        } else if text.hasSuffix(" ") {
+          var endSpaces = 0
+          for ch in text.reversed() {
+            if ch == " " && removed + endSpaces < maxToRemove { endSpaces += 1 } else { break }
+          }
+          if endSpaces > 0 {
+            textNode.content = String(text.dropLast(endSpaces))
+            removed += endSpaces
+          }
+          break
+        } else {
+          break
+        }
+      }
+      idx -= 1
+    }
+  }
+}
+
+/// Render unmatched delimiters back to text using the original token slice
+public struct UnmatchedDelimiterInlineProcessor: MarkdownInlinePhaseProcessor {
+  public let phase: MarkdownInlinePhase = .rebuild
+  public let priority: Int
+  public init(priority: Int = 0) { self.priority = priority }
+
+  public func canHandleUnmatchedDelimiter(run: MarkdownDelimiterRun, at tokenIndex: Int, context: MarkdownContentContext) -> Bool { true }
+
+  public func handleUnmatchedDelimiter(run: MarkdownDelimiterRun, at tokenIndex: Int, context: inout MarkdownContentContext) -> Bool {
+    let start = max(0, run.index)
+    let end = min(context.tokens.count, run.index + run.length)
+    guard start < end else { return false }
+    let text = context.tokens[start..<end].map { $0.text }.joined()
+    context.add(text)
+    return true
+  }
+}
+
+// MARK: - Scan processors for delimiter runs
+
+/// Scan asterisk/underscore sequences and push delimiter runs into the stack
+public struct EmphasisDelimiterScanProcessor: MarkdownInlinePhaseProcessor {
+  public let phase: MarkdownInlinePhase = .scan
+  public let priority: Int
+  public init(priority: Int = -200) { self.priority = priority }
+
+  public func canHandle(token: any CodeToken<MarkdownTokenElement>, at index: Int, context: MarkdownContentContext) -> Bool {
+    token.element == .punctuation && (token.text == "*" || token.text == "_")
+  }
+
+  public func handle(token: any CodeToken<MarkdownTokenElement>, at index: Int, context: inout MarkdownContentContext) -> Bool {
+    guard let ch = token.text.first else { return false }
+    let start = index
+    var i = index
+    var len = 0
+    while i < context.tokens.count, context.tokens[i].element == .punctuation, context.tokens[i].text.first == ch {
+      len += 1
+      i += 1
+    }
+    let type: MarkdownDelimiter = (ch == "*") ? .asterisk : .underscore
+    let run = MarkdownDelimiterRun(type: type, length: len, openable: true, closable: true, index: start)
+    context.delimiters.push(run, textNode: nil)
+    context.advance(by: len)
+    return true
+  }
+}
+
+/// Scan tilde sequences for GFM strikethrough
+public struct StrikethroughDelimiterScanProcessor: MarkdownInlinePhaseProcessor {
+  public let phase: MarkdownInlinePhase = .scan
+  public let priority: Int
+  public init(priority: Int = -195) { self.priority = priority }
+
+  public func canHandle(token: any CodeToken<MarkdownTokenElement>, at index: Int, context: MarkdownContentContext) -> Bool {
+    token.element == .punctuation && token.text == "~"
+  }
+
+  public func handle(token: any CodeToken<MarkdownTokenElement>, at index: Int, context: inout MarkdownContentContext) -> Bool {
+    let start = index
+    var i = index
+    var len = 0
+    while i < context.tokens.count, context.tokens[i].element == .punctuation, context.tokens[i].text == "~" {
+      len += 1
+      i += 1
+    }
+    let run = MarkdownDelimiterRun(type: .custom("strikethrough"), length: len, openable: true, closable: true, index: start)
+    context.delimiters.push(run, textNode: nil)
+    context.advance(by: len)
+    return true
+  }
+}
+
+/// Scan backtick sequences for code spans
+public struct CodeSpanDelimiterScanProcessor: MarkdownInlinePhaseProcessor {
+  public let phase: MarkdownInlinePhase = .scan
+  public let priority: Int
+  public init(priority: Int = -190) { self.priority = priority }
+
+  public func canHandle(token: any CodeToken<MarkdownTokenElement>, at index: Int, context: MarkdownContentContext) -> Bool {
+    token.element == .punctuation && token.text == "`"
+  }
+
+  public func handle(token: any CodeToken<MarkdownTokenElement>, at index: Int, context: inout MarkdownContentContext) -> Bool {
+    let start = index
+    var i = index
+    var len = 0
+    while i < context.tokens.count, context.tokens[i].element == .punctuation, context.tokens[i].text == "`" {
+      len += 1
+      i += 1
+    }
+    let run = MarkdownDelimiterRun(type: .backtick(count: len), length: len, openable: true, closable: true, index: start)
+    context.delimiters.push(run, textNode: nil)
+    context.advance(by: len)
+    return true
+  }
+}
+
+// MARK: - Pair processors (create nodes for matched runs)
+
+public struct EmphasisStrongPairProcessor: MarkdownInlinePhaseProcessor {
+  public let phase: MarkdownInlinePhase = .rebuild
+  public let priority: Int
+  public init(priority: Int = 0) { self.priority = priority }
+
+  public func canHandlePair(for delimiter: MarkdownDelimiter) -> Bool {
+    switch delimiter { case .asterisk, .underscore: return true; default: return false }
+  }
+
+  public func createNodeForPair(
+    delimiter: MarkdownDelimiter,
+    openerRun: MarkdownDelimiterRun,
+    closerRun: MarkdownDelimiterRun,
+    contentTokens: ArraySlice<any CodeToken<MarkdownTokenElement>>
+  ) -> MarkdownNodeBase? {
+    let inner = MarkdownContentBuilder().process(Array(contentTokens))
+    let minLen = min(openerRun.length, closerRun.length)
+    if minLen >= 2 {
+      let strong = StrongNode(content: "")
+      inner.forEach { strong.append($0) }
+      return strong
+    } else {
+      let em = EmphasisNode(content: "")
+      inner.forEach { em.append($0) }
+      return em
+    }
+  }
+}
+
+public struct StrikethroughPairProcessor: MarkdownInlinePhaseProcessor {
+  public let phase: MarkdownInlinePhase = .rebuild
+  public let priority: Int
+  public init(priority: Int = 0) { self.priority = priority }
+
+  public func canHandlePair(for delimiter: MarkdownDelimiter) -> Bool {
+    if case .custom(let name) = delimiter { return name == "strikethrough" }
+    return false
+  }
+
+  public func createNodeForPair(
+    delimiter: MarkdownDelimiter,
+    openerRun: MarkdownDelimiterRun,
+    closerRun: MarkdownDelimiterRun,
+    contentTokens: ArraySlice<any CodeToken<MarkdownTokenElement>>
+  ) -> MarkdownNodeBase? {
+    let inner = MarkdownContentBuilder().process(Array(contentTokens))
+    let strike = StrikeNode(content: "")
+    inner.forEach { strike.append($0) }
+    return strike
+  }
+}
+
+public struct CodeSpanPairProcessor: MarkdownInlinePhaseProcessor {
+  public let phase: MarkdownInlinePhase = .rebuild
+  public let priority: Int
+  public init(priority: Int = 0) { self.priority = priority }
+
+  public func canHandlePair(for delimiter: MarkdownDelimiter) -> Bool {
+    if case .backtick = delimiter { return true }
+    return false
+  }
+
+  public func createNodeForPair(
+    delimiter: MarkdownDelimiter,
+    openerRun: MarkdownDelimiterRun,
+    closerRun: MarkdownDelimiterRun,
+    contentTokens: ArraySlice<any CodeToken<MarkdownTokenElement>>,
+    allTokens: [any CodeToken<MarkdownTokenElement>]
+  ) -> (node: MarkdownNodeBase, closerEndOverride: Int)? {
+    // Code span content is literal; join token text
+    let raw = contentTokens.map { $0.text }.joined()
+    let code = raw.trimmingCharacters(in: .whitespaces)
+    return (CodeSpanNode(code: code), closerRun.index + closerRun.length)
+  }
+}
+
+// MARK: - Bracket scan and link/image pair processors
+
+/// Scan for [ and ] (and detect image opener ![) and push delimiter runs into the stack.
+public struct BracketDelimiterScanProcessor: MarkdownInlinePhaseProcessor {
+  public let phase: MarkdownInlinePhase = .scan
+  public let priority: Int
+  public init(priority: Int = -285) { self.priority = priority }
+
+  public func canHandle(token: any CodeToken<MarkdownTokenElement>, at index: Int, context: MarkdownContentContext) -> Bool {
+    token.element == .punctuation && (token.text == "[" || token.text == "]")
+  }
+
+  public func handle(token: any CodeToken<MarkdownTokenElement>, at index: Int, context: inout MarkdownContentContext) -> Bool {
+    if token.text == "[" {
+      // Detect image opener if immediately preceded by '!'
+      var openerIndex = index
+      var length = 1
+      if index > 0 {
+        let prev = context.tokens[index - 1]
+        if prev.element == .punctuation && prev.text == "!" {
+          openerIndex = index - 1
+          length = 2
+        }
+      }
+      let run = MarkdownDelimiterRun(type: .openBracket, length: length, openable: true, closable: false, index: openerIndex)
+      context.delimiters.push(run, textNode: nil)
+      // Advance only by 1 because the scan loop index is at '['; the preceding '!' (if any) will be skipped during rebuild via range consumption
+      context.advance(by: 1)
+      return true
+    } else {
+      // ']' as closer
+      let run = MarkdownDelimiterRun(type: .openBracket, length: 1, openable: false, closable: true, index: index)
+      context.delimiters.push(run, textNode: nil)
+      context.advance(by: 1)
+      return true
+    }
+  }
+}
+
+/// Pair processor for links and images using bracket delimiters; supports inline form: [text](dest "title") and ![alt](dest "title")
+public struct LinkImagePairProcessor: MarkdownInlinePhaseProcessor {
+  public let phase: MarkdownInlinePhase = .rebuild
+  public let priority: Int
+  public init(priority: Int = 5) { self.priority = priority }
+
+  public func canHandlePair(for delimiter: MarkdownDelimiter) -> Bool { delimiter == .openBracket }
+
+  public func createNodeForPair(
+    delimiter: MarkdownDelimiter,
+    openerRun: MarkdownDelimiterRun,
+    closerRun: MarkdownDelimiterRun,
+    contentTokens: ArraySlice<any CodeToken<MarkdownTokenElement>>,
+    allTokens: [any CodeToken<MarkdownTokenElement>]
+  ) -> (node: MarkdownNodeBase, closerEndOverride: Int)? {
+    // Determine if this is image: opener length 2 means '!['
+    let isImage = openerRun.length >= 2
+
+    // Build inner inline nodes for link text / alt text
+    let inner = MarkdownContentBuilder().process(Array(contentTokens))
+
+    // After closer ']' parse optional inline destination in parentheses
+    var idx = closerRun.index + closerRun.length
+    // skip spaces
+    while idx < allTokens.count, allTokens[idx].element == .whitespaces { idx += 1 }
+    guard idx < allTokens.count, allTokens[idx].element == .punctuation, allTokens[idx].text == "(" else {
+      // No inline destination -> not handled; let unmatched processor render literally
+      return nil
+    }
+
+    // Consume '('
+    idx += 1
+    // Parse destination until matching ')', simple balance of parentheses for non-escaped text
+  let destStart = idx
+    var depth = 1
+    while idx < allTokens.count {
+      let t = allTokens[idx]
+      if t.element == .punctuation {
+        if t.text == "(" { depth += 1 }
+        else if t.text == ")" { depth -= 1; if depth == 0 { break } }
+      }
+      idx += 1
+    }
+    guard idx < allTokens.count else { return nil }
+    let destEnd = idx // position of ')' to close
+    // Extract raw inside (could include title; we'll do a best-effort split)
+    let inside = allTokens[destStart..<destEnd].map { $0.text }.joined()
+    // Naive parse: destination [space+ title]? where title in quotes
+    let (dest, title) = Self.splitDestAndTitle(inside: inside)
+
+    // Build node
+    if isImage {
+      let alt = Self.flattenText(from: inner)
+      let image = ImageNode(url: dest, alt: alt, title: title)
+      return (image, idx + 1)
+    } else {
+      let link = LinkNode(url: dest, title: title)
+      inner.forEach { link.append($0) }
+      return (link, idx + 1)
+    }
+  }
+
+  private static func flattenText(from nodes: [MarkdownNodeBase]) -> String {
+    var out = ""
+    func dfs(_ n: MarkdownNodeBase) {
+      if let t = n as? TextNode { out += t.content; return }
+      for c in n.children { if let m = c as? MarkdownNodeBase { dfs(m) } }
+    }
+    for n in nodes { dfs(n) }
+    return out
+  }
+
+  private static func splitDestAndTitle(inside: String) -> (dest: String, title: String) {
+    // Trim outer spaces
+    let s = inside.trimmingCharacters(in: .whitespacesAndNewlines)
+    if s.isEmpty { return ("", "") }
+    // If contains a quoted title at the end
+    if let quoteStart = s.lastIndex(where: { $0 == "\"" || $0 == "'" }) {
+      let quote = s[quoteStart]
+      if quoteStart > s.startIndex, s[quoteStart...] .first == quote, s.last == quote {
+        // Title in quotes; split at the preceding space
+        let before = s[..<quoteStart]
+        if let sp = before.lastIndex(where: { $0.isWhitespace }) {
+          let dest = String(before[..<sp]).trimmingCharacters(in: .whitespaces)
+          let title = String(s[s.index(after: quoteStart)..<s.index(before: s.endIndex)])
+          return (dest, title)
+        }
+      }
+    }
+    return (s, "")
   }
 }

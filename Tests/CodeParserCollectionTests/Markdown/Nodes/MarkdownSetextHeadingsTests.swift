@@ -15,67 +15,67 @@ struct MarkdownSetextHeadingsTests {
 
   @Test("Simple setext headings with equals and dashes")
   func simpleSetextHeadings() {
-    let input = """
+    let input = #"""
     Foo *bar*
     =========
 
     Foo *bar*
     ---------
-    """
+    """#
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[heading(level:1)[text(\"Foo \"),emphasis[text(\"bar\")]],heading(level:2)[text(\"Foo \"),emphasis[text(\"bar\")]]]"
+    let expectedSig = #"document[heading(level:1)[text("Foo "),emphasis[text("bar")]],heading(level:2)[text("Foo "),emphasis[text("bar")]]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
   @Test("Heading content can span multiple lines")
   func multilineHeadingContent() {
-    let input = """
+    let input = #"""
     Foo *bar
     baz*
     ====
-    """
+    """#
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-  let expectedSig = "document[heading(level:1)[text(\"Foo \"),emphasis[text(\"bar\"),line_break(soft),text(\"baz\")]]]"
+  let expectedSig = #"document[heading(level:1)[text("Foo "),emphasis[text("bar"),line_break(soft),text("baz")]]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
   @Test("Leading and trailing whitespace is stripped from heading content")
   func whitespaceStrippedFromContent() {
-    let input = """
+    let input = #"""
       Foo *bar
-    baz*\t
+    baz*
     ====
-    """
+    """#
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-  let expectedSig = "document[heading(level:1)[text(\"Foo \"),emphasis[text(\"bar\"),line_break(soft),text(\"baz\")]]]"
+  let expectedSig = #"document[heading(level:1)[text("Foo "),emphasis[text("bar"),line_break(soft),text("baz")]]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
   @Test("Underline can be any length")
   func underlineAnyLength() {
-    let input = """
+    let input = #"""
     Foo
     -------------------------
 
     Foo
     =
-    """
+    """#
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[heading(level:2)[text(\"Foo\")],heading(level:1)[text(\"Foo\")]]"
+    let expectedSig = #"document[heading(level:2)[text("Foo")],heading(level:1)[text("Foo")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
   @Test("Heading content can be indented up to three spaces")
   func contentIndentedUpToThreeSpaces() {
-    let input = """
+    let input = #"""
        Foo
     ---
 
@@ -84,101 +84,101 @@ struct MarkdownSetextHeadingsTests {
 
       Foo
       ===
-    """
+    """#
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[heading(level:2)[text(\"Foo\")],heading(level:2)[text(\"Foo\")],heading(level:1)[text(\"Foo\")]]"
+    let expectedSig = #"document[heading(level:2)[text("Foo")],heading(level:2)[text("Foo")],heading(level:1)[text("Foo")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
   @Test("Four spaces indent is too much - creates code block instead")
   func fourSpacesIndentTooMuch() {
-    let input = """
+    let input = #"""
         Foo
         ---
 
         Foo
     ---
-    """
+    """#
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[code_block(\"Foo\n---\n\nFoo\"),thematic_break]"
+    let expectedSig = #"document[code_block("Foo\#n---\#n\#nFoo"),thematic_break]"#
     #expect(sig(result.root) == expectedSig)
   }
 
   @Test("Underline can be indented up to three spaces")
   func underlineIndentedUpToThreeSpaces() {
-    let input = """
+    let input = #"""
     Foo
        ----
-    """
+    """#
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[heading(level:2)[text(\"Foo\")]]"
+    let expectedSig = #"document[heading(level:2)[text("Foo")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
   @Test("Four spaces indent for underline is too much")
   func underlineFourSpacesIndentTooMuch() {
-    let input = """
+    let input = #"""
     Foo
         ---
-    """
+    """#
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-  let expectedSig = "document[paragraph[text(\"Foo\"),line_break(soft),text(\"---\")]]"
+    let expectedSig = #"document[paragraph[text("Foo"),line_break(soft),text("---")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
   @Test("Underline cannot contain internal spaces")
   func underlineCannotContainInternalSpaces() {
-    let input = """
+    let input = #"""
     Foo
     = =
 
     Foo
     --- -
-    """
+    """#
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-  let expectedSig = "document[paragraph[text(\"Foo\"),line_break(soft),text(\"= =\")],paragraph[text(\"Foo\")],thematic_break]"
+    let expectedSig = #"document[paragraph[text("Foo"),line_break(soft),text("= =")],paragraph[text("Foo")],thematic_break]"#
     #expect(sig(result.root) == expectedSig)
   }
 
   @Test("Trailing spaces in content line do not cause line break")
   func trailingSpacesInContentLine() {
-    let input = """
+    let input = #"""
     Foo
     -----
-    """
+    """#
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[heading(level:2)[text(\"Foo\")]]"
+    let expectedSig = #"document[heading(level:2)[text("Foo")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
   @Test("Backslash at end of content line does not cause line break")
   func backslashAtEndOfContentLine() {
-    let input = """
-    Foo\\
+    let input = #"""
+    Foo\
     ----
-    """
+    """#
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[heading(level:2)[text(\"Foo\")]]"
+    let expectedSig = #"document[heading(level:2)[text("Foo")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
   @Test("Block structure indicators take precedence over inline structure")
   func blockStructureTakesPrecedence() {
-    let input = """
+    let input = #"""
     `Foo
     ----
     `
@@ -186,224 +186,224 @@ struct MarkdownSetextHeadingsTests {
     <a title="a lot
     ---
     of dashes"/>
-    """
+    """#
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[heading(level:2)[text(\"`Foo\")],paragraph[text(\"`\")],heading(level:2)[text(\"<a title=\"a lot\")],paragraph[text(\"of dashes\"/>\")]]"
+    let expectedSig = #"document[heading(level:2)[text("`Foo")],paragraph[text("`")],heading(level:2)[text("<a title="a lot")],paragraph[text("of dashes"/>")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
   @Test("Underline cannot be lazy continuation line in blockquote")
   func underlineNotLazyContinuationInBlockquote() {
-    let input = """
+    let input = #"""
     > foo
     bar
     ---
-    """
+    """#
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[blockquote[paragraph[text(\"foo\"),line_break(soft),text(\"bar\")]],thematic_break]"
+    let expectedSig = #"document[blockquote[paragraph[text("foo"),line_break(soft),text("bar")]],thematic_break]"#
     #expect(sig(result.root) == expectedSig)
   }
 
   @Test("Multi-line content in blockquote remains paragraph")
   func multilineContentInBlockquoteRemainsParagraph() {
-    let input = """
+    let input = #"""
     > foo
     bar
     ===
-    """
+    """#
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-  let expectedSig = "document[blockquote[paragraph[text(\"foo\"),line_break(soft),text(\"bar\"),line_break(soft),text(\"===\")]]]"
+    let expectedSig = #"document[blockquote[paragraph[text("foo"),line_break(soft),text("bar"),line_break(soft),text("===")]]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
   @Test("Underline cannot be lazy continuation line in list item")
   func underlineNotLazyContinuationInListItem() {
-    let input = """
+    let input = #"""
     - Foo
     ---
-    """
+    """#
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[unordered_list(level:1)[list_item[paragraph[text(\"Foo\")]]],thematic_break]"
+    let expectedSig = #"document[unordered_list(level:1)[list_item[paragraph[text("Foo")]]],thematic_break]"#
     #expect(sig(result.root) == expectedSig)
   }
 
   @Test("Paragraph content becomes part of heading without blank line")
   func paragraphContentBecomesPartOfHeading() {
-    let input = """
+    let input = #"""
     Foo
     Bar
     ---
-    """
+    """#
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-  let expectedSig = "document[heading(level:2)[text(\"Foo\"),line_break(soft),text(\"Bar\")]]"
+    let expectedSig = #"document[heading(level:2)[text("Foo"),line_break(soft),text("Bar")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
   @Test("Setext headings can be mixed with thematic breaks without blank lines")
   func setextHeadingsMixedWithThematicBreaks() {
-    let input = """
+    let input = #"""
     ---
     Foo
     ---
     Bar
     ---
     Baz
-    """
+    """#
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[thematic_break,heading(level:2)[text(\"Foo\")],heading(level:2)[text(\"Bar\")],paragraph[text(\"Baz\")]]"
+    let expectedSig = #"document[thematic_break,heading(level:2)[text("Foo")],heading(level:2)[text("Bar")],paragraph[text("Baz")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
   @Test("Empty setext headings are not allowed")
   func emptySetextHeadingsNotAllowed() {
-    let input = """
+    let input = #"""
 
     ====
-    """
+    """#
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[paragraph[text(\"====\")]]"
+    let expectedSig = #"document[paragraph[text("====")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
   @Test("Dashes are interpreted as thematic break when they cannot form setext heading")
   func dashesAsThematicBreakWhenCannotFormHeading() {
-    let input = """
+    let input = #"""
     ---
     ---
-    """
+    """#
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[thematic_break,thematic_break]"
+    let expectedSig = #"document[thematic_break,thematic_break]"#
     #expect(sig(result.root) == expectedSig)
   }
 
   @Test("List item followed by dashes creates thematic break")
   func listItemFollowedByDashesCreatesThematicBreak() {
-    let input = """
+    let input = #"""
     - foo
     -----
-    """
+    """#
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[unordered_list(level:1)[list_item[paragraph[text(\"foo\")]]],thematic_break]"
+    let expectedSig = #"document[unordered_list(level:1)[list_item[paragraph[text("foo")]]],thematic_break]"#
     #expect(sig(result.root) == expectedSig)
   }
 
   @Test("Code block followed by dashes creates thematic break")
   func codeBlockFollowedByDashesCreatesThematicBreak() {
-    let input = """
+    let input = #"""
         foo
     ---
-    """
+    """#
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[code_block(\"foo\"),thematic_break]"
+    let expectedSig = #"document[code_block("foo"),thematic_break]"#
     #expect(sig(result.root) == expectedSig)
   }
 
   @Test("Blockquote followed by dashes creates thematic break")
   func blockquoteFollowedByDashesCreatesThematicBreak() {
-    let input = """
+    let input = #"""
     > foo
     -----
-    """
+    """#
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[blockquote[paragraph[text(\"foo\")]],thematic_break]"
+    let expectedSig = #"document[blockquote[paragraph[text("foo")]],thematic_break]"#
     #expect(sig(result.root) == expectedSig)
   }
 
   @Test("Escaped blockquote marker can form setext heading")
   func escapedBlockquoteMarkerCanFormSetextHeading() {
-    let input = """
-    \\> foo
+    let input = #"""
+    \> foo
     ------
-    """
+    """#
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[heading(level:2)[text(\"> foo\")]]"
+    let expectedSig = #"document[heading(level:2)[text("> foo")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
   @Test("Interpretation 1: Blank line separates paragraph from heading")
   func interpretation1BlankLineSeparatesParagraphFromHeading() {
-    let input = """
+    let input = #"""
     Foo
 
     bar
     ---
     baz
-    """
+    """#
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[paragraph[text(\"Foo\")],heading(level:2)[text(\"bar\")],paragraph[text(\"baz\")]]"
+    let expectedSig = #"document[paragraph[text("Foo")],heading(level:2)[text("bar")],paragraph[text("baz")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
   @Test("Interpretation 2: Blank lines around thematic break")
   func interpretation2BlankLinesAroundThematicBreak() {
-    let input = """
+    let input = #"""
     Foo
     bar
 
     ---
 
     baz
-    """
+    """#
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-  let expectedSig = "document[paragraph[text(\"Foo\"),line_break(soft),text(\"bar\")],thematic_break,paragraph[text(\"baz\")]]"
+    let expectedSig = #"document[paragraph[text("Foo"),line_break(soft),text("bar")],thematic_break,paragraph[text("baz")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
   @Test("Alternative thematic break that cannot be setext underline")
   func alternativeThematicBreakNotSetextUnderline() {
-    let input = """
+    let input = #"""
     Foo
     bar
     * * *
     baz
-    """
+    """#
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-  let expectedSig = "document[paragraph[text(\"Foo\"),line_break(soft),text(\"bar\")],thematic_break,paragraph[text(\"baz\")]]"
+    let expectedSig = #"document[paragraph[text("Foo"),line_break(soft),text("bar")],thematic_break,paragraph[text("baz")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
   @Test("Interpretation 3: Escaped dashes prevent setext heading")
   func interpretation3EscapedDashesPreventSetextHeading() {
-    let input = """
+    let input = #"""
     Foo
     bar
-    \\---
+    \---
     baz
-    """
+    """#
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-  let expectedSig = "document[paragraph[text(\"Foo\"),line_break(soft),text(\"bar\"),line_break(soft),text(\"---\"),line_break(soft),text(\"baz\")]]"
+    let expectedSig = #"document[paragraph[text("Foo"),line_break(soft),text("bar"),line_break(soft),text("---"),line_break(soft),text("baz")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 }

@@ -16,6 +16,9 @@ public class MarkdownConstructState: CodeConstructState {
   // Fenced code block state
   public var openFence: OpenFenceInfo?
   
+  // HTML block state
+  public var openHTMLBlock: OpenHTMLBlockInfo?
+  
   /// Stack for nested list processing
   public var listStack: [ListNode] = []
   public var currentDefinitionList: DefinitionListNode?
@@ -49,5 +52,33 @@ public struct OpenFenceInfo {
     self.length = length
     self.indentation = indentation
     self.codeBlock = codeBlock
+  }
+}
+
+/// Information about an open HTML block
+public struct OpenHTMLBlockInfo {
+  public let type: Int // HTML block type (1-7)
+  public let endCondition: String? // What string ends this block
+  public let htmlBlock: HTMLBlockNode
+  
+  public init(type: Int, endCondition: String?, htmlBlock: HTMLBlockNode) {
+    self.type = type
+    self.endCondition = endCondition
+    self.htmlBlock = htmlBlock
+  }
+}
+
+/// Information about detected HTML block type
+public struct HTMLBlockTypeInfo {
+  public let type: Int
+  public let name: String
+  public let closedOnSameLine: Bool
+  public let endCondition: String?
+  
+  public init(type: Int, name: String, closedOnSameLine: Bool, endCondition: String? = nil) {
+    self.type = type
+    self.name = name
+    self.closedOnSameLine = closedOnSameLine
+    self.endCondition = endCondition
   }
 }

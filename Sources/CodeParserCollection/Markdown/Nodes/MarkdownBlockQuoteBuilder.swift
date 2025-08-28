@@ -15,7 +15,8 @@ public class MarkdownBlockQuoteBuilder: CodeNodeBuilder {
       return false
     }
 
-    let startIndex = state.position
+    // In phased pipeline, builders receive the suffix tokens; always start at local 0
+    let startIndex = 0
     guard startIndex < context.tokens.count else {
       return false
     }
@@ -72,8 +73,8 @@ public class MarkdownBlockQuoteBuilder: CodeNodeBuilder {
     // Set current context to the blockquote for nested content
     context.current = blockquote
     
-    // Update state to process remaining tokens as nested content
-    state.position = index
+    // Update state to process remaining tokens as nested content in 3-phase approach
+    state.position += index
     state.refreshed = true
     
     return true

@@ -20,7 +20,10 @@ struct MarkdownAutolinksExtensionTests {
     let input = "www.commonmark.org"
     let result = parser.parse(input, language: language)
 
-    #expect(sig(result.root) == "document[paragraph[link(url:\"http://www.commonmark.org\",title:\"\")[text(\"www.commonmark.org\")]]]")
+    #expect(
+      sig(result.root)
+        == "document[paragraph[link(url:\"http://www.commonmark.org\",title:\"\")[text(\"www.commonmark.org\")]]]"
+    )
   }
 
   @Test("WWW autolink includes non-space non-< characters after valid domain")
@@ -28,23 +31,44 @@ struct MarkdownAutolinksExtensionTests {
     let input = "Visit www.commonmark.org/help for more information."
     let result = parser.parse(input, language: language)
 
-    #expect(sig(result.root) == "document[paragraph[text(\"Visit \"),link(url:\"http://www.commonmark.org/help\",title:\"\")[text(\"www.commonmark.org/help\")],text(\" for more information.\")]]")
+    #expect(
+      sig(result.root)
+        == "document[paragraph[text(\"Visit \"),link(url:\"http://www.commonmark.org/help\",title:\"\")[text(\"www.commonmark.org/help\")],text(\" for more information.\")]]"
+    )
   }
 
   @Test("WWW autolink path validation excludes trailing punctuation")
   func wwwAutolinkTrailingPunctuation() {
-    let input = "Visit www.commonmark.org.\n\nVisit www.commonmark.org/a.b."
+    let input = #"""
+      Visit www.commonmark.org.
+
+      Visit www.commonmark.org/a.b.
+      """#
     let result = parser.parse(input, language: language)
 
-    #expect(sig(result.root) == "document[paragraph[text(\"Visit \"),link(url:\"http://www.commonmark.org\",title:\"\")[text(\"www.commonmark.org\")],text(\".\")]],paragraph[text(\"Visit \"),link(url:\"http://www.commonmark.org/a.b\",title:\"\")[text(\"www.commonmark.org/a.b\")],text(\".\")]]")
+    #expect(
+      sig(result.root)
+        == "document[paragraph[text(\"Visit \"),link(url:\"http://www.commonmark.org\",title:\"\")[text(\"www.commonmark.org\")],text(\".\")]],paragraph[text(\"Visit \"),link(url:\"http://www.commonmark.org/a.b\",title:\"\")[text(\"www.commonmark.org/a.b\")],text(\".\")]]"
+    )
   }
 
   @Test("WWW autolink excludes unmatched trailing parentheses based on balance count")
   func wwwAutolinkParenthesesBalancing() {
-    let input = "www.google.com/search?q=Markup+(business)\n\nwww.google.com/search?q=Markup+(business)))\n\n(www.google.com/search?q=Markup+(business))\n\n(www.google.com/search?q=Markup+(business)"
+    let input = #"""
+      www.google.com/search?q=Markup+(business)
+
+      www.google.com/search?q=Markup+(business)))
+
+      (www.google.com/search?q=Markup+(business))
+
+      (www.google.com/search?q=Markup+(business)
+      """#
     let result = parser.parse(input, language: language)
 
-    #expect(sig(result.root) == "document[paragraph[link(url:\"http://www.google.com/search?q=Markup+(business)\",title:\"\")[text(\"www.google.com/search?q=Markup+(business)\")]],paragraph[link(url:\"http://www.google.com/search?q=Markup+(business)\",title:\"\")[text(\"www.google.com/search?q=Markup+(business)\")],text(\"))\")],paragraph[text(\"(\"),link(url:\"http://www.google.com/search?q=Markup+(business)\",title:\"\")[text(\"www.google.com/search?q=Markup+(business)\")],text(\")\")],paragraph[text(\"(\"),link(url:\"http://www.google.com/search?q=Markup+(business)\",title:\"\")[text(\"www.google.com/search?q=Markup+(business)\")]]")
+    #expect(
+      sig(result.root)
+        == "document[paragraph[link(url:\"http://www.google.com/search?q=Markup+(business)\",title:\"\")[text(\"www.google.com/search?q=Markup+(business)\")]],paragraph[link(url:\"http://www.google.com/search?q=Markup+(business)\",title:\"\")[text(\"www.google.com/search?q=Markup+(business)\")],text(\"))\")],paragraph[text(\"(\"),link(url:\"http://www.google.com/search?q=Markup+(business)\",title:\"\")[text(\"www.google.com/search?q=Markup+(business)\")],text(\")\")],paragraph[text(\"(\"),link(url:\"http://www.google.com/search?q=Markup+(business)\",title:\"\")[text(\"www.google.com/search?q=Markup+(business)\")]]"
+    )
   }
 
   @Test("WWW autolink with interior parentheses only applies no special rules")
@@ -52,15 +76,25 @@ struct MarkdownAutolinksExtensionTests {
     let input = "www.google.com/search?q=(business))+ok"
     let result = parser.parse(input, language: language)
 
-    #expect(sig(result.root) == "document[paragraph[link(url:\"http://www.google.com/search?q=(business))+ok\",title:\"\")[text(\"www.google.com/search?q=(business))+ok\")]]]")
+    #expect(
+      sig(result.root)
+        == "document[paragraph[link(url:\"http://www.google.com/search?q=(business))+ok\",title:\"\")[text(\"www.google.com/search?q=(business))+ok\")]]"
+    )
   }
 
   @Test("WWW autolink excludes semicolon if it resembles entity reference")
   func wwwAutolinkSemicolonHandling() {
-    let input = "www.google.com/search?q=commonmark&hl=en\n\nwww.google.com/search?q=commonmark&hl;"
+    let input = #"""
+      www.google.com/search?q=commonmark&hl=en
+
+      www.google.com/search?q=commonmark&hl;
+      """#
     let result = parser.parse(input, language: language)
 
-    #expect(sig(result.root) == "document[paragraph[link(url:\"http://www.google.com/search?q=commonmark&hl=en\",title:\"\")[text(\"www.google.com/search?q=commonmark&hl=en\")]],paragraph[link(url:\"http://www.google.com/search?q=commonmark\",title:\"\")[text(\"www.google.com/search?q=commonmark\")],text(\"&hl;\")]]")
+    #expect(
+      sig(result.root)
+        == "document[paragraph[link(url:\"http://www.google.com/search?q=commonmark&hl=en\",title:\"\")[text(\"www.google.com/search?q=commonmark&hl=en\")]],paragraph[link(url:\"http://www.google.com/search?q=commonmark\",title:\"\")[text(\"www.google.com/search?q=commonmark\")],text(\"&hl;\")]]"
+    )
   }
 
   @Test("WWW autolink terminates immediately when encountering less-than symbol")
@@ -68,17 +102,29 @@ struct MarkdownAutolinksExtensionTests {
     let input = "www.commonmark.org/he<lp"
     let result = parser.parse(input, language: language)
 
-    #expect(sig(result.root) == "document[paragraph[link(url:\"http://www.commonmark.org/he\",title:\"\")[text(\"www.commonmark.org/he\")],text(\"<lp\")]]")
+    #expect(
+      sig(result.root)
+        == "document[paragraph[link(url:\"http://www.commonmark.org/he\",title:\"\")[text(\"www.commonmark.org/he\")],text(\"<lp\")]]"
+    )
   }
 
   // MARK: - Extended URL autolinks
 
   @Test("URL autolink recognizes http, https, ftp schemes with valid domain")
   func extendedURLAutolinks() {
-    let input = "http://commonmark.org\n\n(Visit https://encrypted.google.com/search?q=Markup+(business))\n\nAnonymous FTP is available at ftp://foo.bar.baz."
+    let input = #"""
+      http://commonmark.org
+
+      (Visit https://encrypted.google.com/search?q=Markup+(business))
+
+      Anonymous FTP is available at ftp://foo.bar.baz.
+      """#
     let result = parser.parse(input, language: language)
 
-    #expect(sig(result.root) == "document[paragraph[link(url:\"http://commonmark.org\",title:\"\")[text(\"http://commonmark.org\")]],paragraph[text(\"(Visit \"),link(url:\"https://encrypted.google.com/search?q=Markup+(business)\",title:\"\")[text(\"https://encrypted.google.com/search?q=Markup+(business)\")],text(\")\")],paragraph[text(\"Anonymous FTP is available at \"),link(url:\"ftp://foo.bar.baz\",title:\"\")[text(\"ftp://foo.bar.baz\")],text(\".\")]]")
+    #expect(
+      sig(result.root)
+        == "document[paragraph[link(url:\"http://commonmark.org\",title:\"\")[text(\"http://commonmark.org\")]],paragraph[text(\"(Visit \"),link(url:\"https://encrypted.google.com/search?q=Markup+(business)\",title:\"\")[text(\"https://encrypted.google.com/search?q=Markup+(business)\")],text(\")\")],paragraph[text(\"Anonymous FTP is available at \"),link(url:\"ftp://foo.bar.baz\",title:\"\")[text(\"ftp://foo.bar.baz\")],text(\".\")]]"
+    )
   }
 
   // MARK: - Extended email autolinks
@@ -88,7 +134,10 @@ struct MarkdownAutolinksExtensionTests {
     let input = "foo@bar.baz"
     let result = parser.parse(input, language: language)
 
-    #expect(sig(result.root) == "document[paragraph[link(url:\"mailto:foo@bar.baz\",title:\"\")[text(\"foo@bar.baz\")]]]")
+    #expect(
+      sig(result.root)
+        == "document[paragraph[link(url:\"mailto:foo@bar.baz\",title:\"\")[text(\"foo@bar.baz\")]]]"
+    )
   }
 
   @Test("Email autolink allows plus before @ but not after")
@@ -96,14 +145,25 @@ struct MarkdownAutolinksExtensionTests {
     let input = "hello@mail+xyz.example isn't valid, but hello+xyz@mail.example is."
     let result = parser.parse(input, language: language)
 
-    #expect(sig(result.root) == "document[paragraph[text(\"hello@mail+xyz.example isn't valid, but \"),link(url:\"mailto:hello+xyz@mail.example\",title:\"\")[text(\"hello+xyz@mail.example\")],text(\" is.\")]]")
+    #expect(
+      sig(result.root)
+        == "document[paragraph[text(\"hello@mail+xyz.example isn't valid, but \"),link(url:\"mailto:hello+xyz@mail.example\",title:\"\")[text(\"hello+xyz@mail.example\")],text(\" is.\")]]"
+    )
   }
 
   @Test("Email autolink allows dot/dash/underscore on both sides of @ but only dot at end")
   func emailAutolinkSpecialCharacters() {
-    let input = "a.b-c_d@a.b\n\na.b-c_d@a.b.\n\na.b-c_d@a.b-\n\na.b-c_d@a.b_"
+    let input = #"""
+      a.b-c_d@a.b
+      a.b-c_d@a.b.
+      a.b-c_d@a.b-
+      a.b-c_d@a.b_
+      """#
     let result = parser.parse(input, language: language)
 
-    #expect(sig(result.root) == "document[paragraph[link(url:\"mailto:a.b-c_d@a.b\",title:\"\")[text(\"a.b-c_d@a.b\")]],paragraph[link(url:\"mailto:a.b-c_d@a.b\",title:\"\")[text(\"a.b-c_d@a.b\")],text(\".\")],paragraph[text(\"a.b-c_d@a.b-\")],paragraph[text(\"a.b-c_d@a.b_\")]]")
+    #expect(
+      sig(result.root)
+        == "document[paragraph[link(url:\"mailto:a.b-c_d@a.b\",title:\"\")[text(\"a.b-c_d@a.b\")]],paragraph[link(url:\"mailto:a.b-c_d@a.b\",title:\"\")[text(\"a.b-c_d@a.b\")],text(\".\")],paragraph[text(\"a.b-c_d@a.b-\")],paragraph[text(\"a.b-c_d@a.b_\")]]"
+    )
   }
 }

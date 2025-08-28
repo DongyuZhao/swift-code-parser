@@ -17,7 +17,7 @@ struct MarkdownFormulaTests {
   func inlineFormula() {
     let input = "Euler: $e^{i\\pi}+1=0$"
     let result = parser.parse(input, language: language)
-  let expectedSig = "document[paragraph[text(\"Euler: \"),formula]]"
+      let expectedSig = #"document[paragraph[text("Euler: "),formula]]"#
   #expect(sig(result.root) == expectedSig)
   }
 
@@ -25,7 +25,7 @@ struct MarkdownFormulaTests {
   func blockFormula() {
     let input = "$$x=1$$"
     let result = parser.parse(input, language: language)
-  let expectedSig = "document[formula_block]"
+      let expectedSig = #"document[formula_block]"#
   #expect(sig(result.root) == expectedSig)
   }
 
@@ -35,7 +35,7 @@ struct MarkdownFormulaTests {
   func backslashFormulas() {
     let input = #"Before \(a+b\) end"#
     let result = parser.parse(input, language: language)
-  let expectedSig = "document[paragraph[text(\"Before \"),formula,text(\" end\")]]"
+      let expectedSig = #"document[paragraph[text("Before "),formula,text(" end")]]"#
   #expect(sig(result.root) == expectedSig)
   }
 
@@ -43,7 +43,7 @@ struct MarkdownFormulaTests {
   func backslashBlock() {
     let input = #"\[ x^2 + y^2 \]"#
     let result = parser.parse(input, language: language)
-  let expectedSig = "document[formula_block]"
+      let expectedSig = #"document[formula_block]"#
   #expect(sig(result.root) == expectedSig)
   }
 
@@ -52,7 +52,7 @@ struct MarkdownFormulaTests {
     let input = "$$x + 1\nNext line\n\\[ y+2"
     let result = parser.parse(input, language: language)
   // For unclosed display formula, we expect a single formula_block consuming until EOF.
-  let expectedSig = "document[formula_block]"
+      let expectedSig = #"document[formula_block]"#
   #expect(sig(result.root) == expectedSig)
   }
 
@@ -60,7 +60,7 @@ struct MarkdownFormulaTests {
   func unclosedInline() {
     let input = "Text $x+1 and more"
     let result = parser.parse(input, language: language)
-  let expectedSig = "document[paragraph[text(\"Text $x+1 and more\")]]"
+      let expectedSig = #"document[paragraph[text("Text $x+1 and more")]]"#
   #expect(sig(result.root) == expectedSig)
   }
 
@@ -69,7 +69,7 @@ struct MarkdownFormulaTests {
     let samples = ["$ x$", "$x $"]
     for s in samples {
       let result = parser.parse(s, language: language)
-  let expectedSig = "document[paragraph[text(\"\(s)\")]]"
+        let expectedSig = #"document[paragraph[text("\#(s)")]]"#
   #expect(sig(result.root) == expectedSig)
     }
   }
@@ -78,7 +78,7 @@ struct MarkdownFormulaTests {
   func escapedDollar() {
     let input = #"$a\$b$"#
     let result = parser.parse(input, language: language)
-  let expectedSig = "document[paragraph[formula]]"
+      let expectedSig = #"document[paragraph[formula]]"#
   #expect(sig(result.root) == expectedSig)
   }
 
@@ -86,7 +86,7 @@ struct MarkdownFormulaTests {
   func multipleInline() {
     let input = "A $x$ B $y^2$ C"
     let result = parser.parse(input, language: language)
-  let expectedSig = "document[paragraph[text(\"A \"),formula,text(\" B \"),formula,text(\" C\")]]"
+      let expectedSig = #"document[paragraph[text("A "),formula,text(" B "),formula,text(" C")]]"#
   #expect(sig(result.root) == expectedSig)
   }
 
@@ -94,7 +94,7 @@ struct MarkdownFormulaTests {
   func displayWithNewline() {
     let input = "$$x^2 +\n y^2$$"
     let result = parser.parse(input, language: language)
-  let expectedSig = "document[formula_block]"
+      let expectedSig = #"document[formula_block]"#
   #expect(sig(result.root) == expectedSig)
   }
 
@@ -102,7 +102,7 @@ struct MarkdownFormulaTests {
   func adjacentInline() {
     let input = "Text$A$B$C$Text"
     let result = parser.parse(input, language: language)
-  let expectedSig = "document[paragraph[text(\"Text\"),formula,text(\"B\"),formula,text(\"Text\")]]"
+      let expectedSig = #"document[paragraph[text("Text"),formula,text("B"),formula,text("Text")]]"#
   #expect(sig(result.root) == expectedSig)
   }
 
@@ -110,7 +110,7 @@ struct MarkdownFormulaTests {
   func inlineCodeWithDollar() {
     let input = "`$a$` and $b$"
     let result = parser.parse(input, language: language)
-  let expectedSig = "document[paragraph[code(\"$a$\"),text(\" and \"),formula]]"
+      let expectedSig = #"document[paragraph[code("$a$"),text(" and "),formula]]"#
   #expect(sig(result.root) == expectedSig)
   }
 }

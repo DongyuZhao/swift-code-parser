@@ -257,10 +257,10 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
 
   @Test("Opening double asterisk preceded by alphanumeric and followed by punctuation does not create strong emphasis")
   func doubleAsteriskPrecededByAlphanumericFollowedByPunctuation() {
-    let input = "a**\"foo\"**"
+    let input = #"a**"foo"**"#
     let result = parser.parse(input, language: language)
 
-    #expect(sig(result.root) == "document[paragraph[text(\"a**\\\"foo\\\"**\")]]")
+    #expect(sig(result.root) == "document[paragraph[text(\"a**\"foo\"**\")]]")
   }
 
   @Test("Intraword strong emphasis with double asterisks is permitted")
@@ -302,7 +302,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
     let input = "a__\"foo\"__"
     let result = parser.parse(input, language: language)
 
-    #expect(sig(result.root) == "document[paragraph[text(\"a__\\\"foo\\\"__\")]]")
+    #expect(sig(result.root) == "document[paragraph[text(\"a__\"foo\"__\")]]")
   }
 
   @Test("Intraword strong emphasis with double underscores is forbidden")
@@ -384,7 +384,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
     let input = "**foo \"*bar*\" foo**"
     let result = parser.parse(input, language: language)
 
-    #expect(sig(result.root) == "document[paragraph[strong[text(\"foo \\\"\"),emphasis[text(\"bar\")],text(\"\\\" foo\")]]]")
+    #expect(sig(result.root) == "document[paragraph[strong[text(\"foo \"\"),emphasis[text(\"bar\")],text(\"\" foo\")]]]")
   }
 
   @Test("Intraword strong emphasis ending with double asterisk")
@@ -1041,26 +1041,26 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
 
   @Test("HTML tags group more tightly than emphasis with asterisks")
   func htmlTagsGroupMoreTightlyThanEmphasisWithAsterisks() {
-    let input = "*<img src=\"foo\" title=\"*\"/>"
+    let input = #"*<img src="foo" title="*"/>"#
     let result = parser.parse(input, language: language)
 
-    #expect(sig(result.root) == "document[paragraph[text(\"*\"),html(\"<img src=\\\"foo\\\" title=\\\"*\\\"/>\")\n]]")
+  #expect(sig(result.root) == "document[paragraph[text(\"*\"),html(\"<img src=\"foo\" title=\"*\"/>\")]]")
   }
 
   @Test("HTML tags group more tightly than strong emphasis with asterisks")
   func htmlTagsGroupMoreTightlyThanStrongEmphasisWithAsterisks() {
-    let input = "**<a href=\"**\">"
+    let input = #"**<a href="**">"#
     let result = parser.parse(input, language: language)
 
-    #expect(sig(result.root) == "document[paragraph[text(\"**\"),html(\"<a href=\\\"**\\\">\")\n]]")
+  #expect(sig(result.root) == "document[paragraph[text(\"**\"),html(\"<a href=\"**\">\")]]")
   }
 
   @Test("HTML tags group more tightly than strong emphasis with underscores")
   func htmlTagsGroupMoreTightlyThanStrongEmphasisWithUnderscores() {
-    let input = "__<a href=\"__\">"
+    let input = #"__<a href="__">"#
     let result = parser.parse(input, language: language)
 
-    #expect(sig(result.root) == "document[paragraph[text(\"__\"),html(\"<a href=\\\"__\\\">\")\n]]")
+  #expect(sig(result.root) == "document[paragraph[text(\"__\"),html(\"<a href=\"__\">\")]]")
   }
 
   @Test("Code spans group more tightly than emphasis with asterisks")

@@ -27,7 +27,7 @@ struct MarkdownATXHeadingsTests {
 
     // Verify AST structure using sig
     let expectedSig =
-      "document[heading(level:1)[text(\"foo\")],heading(level:2)[text(\"foo\")],heading(level:3)[text(\"foo\")],heading(level:4)[text(\"foo\")],heading(level:5)[text(\"foo\")],heading(level:6)[text(\"foo\")]]"
+      #"document[heading(level:1)[text("foo")],heading(level:2)[text("foo")],heading(level:3)[text("foo")],heading(level:4)[text("foo")],heading(level:5)[text("foo")],heading(level:6)[text("foo")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -37,7 +37,7 @@ struct MarkdownATXHeadingsTests {
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[paragraph[text(\"####### foo\")]]"
+    let expectedSig = ##########"document[paragraph[text("####### foo")]]"##########
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -51,17 +51,18 @@ struct MarkdownATXHeadingsTests {
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[paragraph[text(\"#5 bolt\")],paragraph[text(\"#hashtag\")]]"
+    let expectedSig =
+      ##########"document[paragraph[text("#5 bolt")],paragraph[text("#hashtag")]]"##########
     #expect(sig(result.root) == expectedSig)
   }
 
   @Test("Escaped hash character does not create heading")
   func escapedHashNotHeading() {
-    let input = "\\## foo"
+    let input = ###"\## foo"###
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[paragraph[text(\"## foo\")]]"
+    let expectedSig = ##########"document[paragraph[text("## foo")]]"##########
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -72,7 +73,7 @@ struct MarkdownATXHeadingsTests {
 
     // Verify AST structure using sig
     let expectedSig =
-      "document[heading(level:1)[text(\"foo \"),emphasis[text(\"bar\")],text(\" *baz*\")]]"
+      #"document[heading(level:1)[text("foo "),emphasis[text("bar")],text(" *baz*")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -82,7 +83,7 @@ struct MarkdownATXHeadingsTests {
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[heading(level:1)[text(\"foo\")]]"
+    let expectedSig = #"document[heading(level:1)[text("foo")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -97,7 +98,7 @@ struct MarkdownATXHeadingsTests {
 
     // Verify AST structure using sig
     let expectedSig =
-      "document[heading(level:3)[text(\"foo\")],heading(level:2)[text(\"foo\")],heading(level:1)[text(\"foo\")]]"
+      #"document[heading(level:3)[text("foo")],heading(level:2)[text("foo")],heading(level:1)[text("foo")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -107,7 +108,7 @@ struct MarkdownATXHeadingsTests {
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[code_block(\"# foo\")]"
+    let expectedSig = ##########"document[code_block("# foo")]"##########
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -120,7 +121,8 @@ struct MarkdownATXHeadingsTests {
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig: newline inside paragraph is a soft break
-    let expectedSig = "document[paragraph[text(\"foo\"),line_break(soft),text(\"# bar\")]]"
+    let expectedSig =
+      ##########"document[paragraph[text("foo"),line_break(soft),text("# bar")]]"##########
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -133,7 +135,7 @@ struct MarkdownATXHeadingsTests {
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[heading(level:2)[text(\"foo\")],heading(level:3)[text(\"bar\")]]"
+    let expectedSig = #"document[heading(level:2)[text("foo")],heading(level:3)[text("bar")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -146,7 +148,7 @@ struct MarkdownATXHeadingsTests {
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[heading(level:1)[text(\"foo\")],heading(level:5)[text(\"foo\")]]"
+    let expectedSig = #"document[heading(level:1)[text("foo")],heading(level:5)[text("foo")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -156,7 +158,7 @@ struct MarkdownATXHeadingsTests {
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[heading(level:3)[text(\"foo\")]]"
+    let expectedSig = #"document[heading(level:3)[text("foo")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -166,7 +168,7 @@ struct MarkdownATXHeadingsTests {
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[heading(level:3)[text(\"foo ### b\")]]"
+    let expectedSig = #"document[heading(level:3)[text("foo ### b")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -176,7 +178,7 @@ struct MarkdownATXHeadingsTests {
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[heading(level:1)[text(\"foo#\")]]"
+    let expectedSig = #"document[heading(level:1)[text("foo#")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -191,7 +193,7 @@ struct MarkdownATXHeadingsTests {
 
     // Verify AST structure using sig
     let expectedSig =
-      "document[heading(level:3)[text(\"foo ###\")],heading(level:2)[text(\"foo ###\")],heading(level:1)[text(\"foo #\")]]"
+      #"document[heading(level:3)[text("foo ###")],heading(level:2)[text("foo ###")],heading(level:1)[text("foo #")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -205,7 +207,7 @@ struct MarkdownATXHeadingsTests {
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[thematic_break,heading(level:2)[text(\"foo\")],thematic_break]"
+    let expectedSig = #"document[thematic_break,heading(level:2)[text("foo")],thematic_break]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -219,7 +221,7 @@ struct MarkdownATXHeadingsTests {
     let result = parser.parse(input, language: language)
     // Verify AST structure using sig
     let expectedSig =
-      "document[paragraph[text(\"Foo bar\")],heading(level:1)[text(\"baz\")],paragraph[text(\"Bar foo\")]]"
+      #"document[paragraph[text("Foo bar")],heading(level:1)[text("baz")],paragraph[text("Bar foo")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -233,7 +235,7 @@ struct MarkdownATXHeadingsTests {
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[heading(level:2),heading(level:1),heading(level:3)]"
+    let expectedSig = #"document[heading(level:2),heading(level:1),heading(level:3)]"#
     #expect(sig(result.root) == expectedSig)
   }
 }
