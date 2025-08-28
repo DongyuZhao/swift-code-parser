@@ -1044,7 +1044,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
     let input = "*<img src=\"foo\" title=\"*\"/>"
     let result = parser.parse(input, language: language)
 
-    #expect(sig(result.root) == "document[paragraph[text(\"*\"),html(\"<img src=\\\"foo\\\" title=\\\"*\\\"/>\")\n]]")
+  #expect(sig(result.root) == "document[paragraph[text(\"*\"),html(\"<img src=\\\"foo\\\" title=\\\"*\\\"/>\")]]")
   }
 
   @Test("HTML tags group more tightly than strong emphasis with asterisks")
@@ -1052,7 +1052,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
     let input = "**<a href=\"**\">"
     let result = parser.parse(input, language: language)
 
-    #expect(sig(result.root) == "document[paragraph[text(\"**\"),html(\"<a href=\\\"**\\\">\")\n]]")
+  #expect(sig(result.root) == "document[paragraph[text(\"**\"),html(\"<a href=\\\"**\\\">\")]]")
   }
 
   @Test("HTML tags group more tightly than strong emphasis with underscores")
@@ -1060,7 +1060,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
     let input = "__<a href=\"__\">"
     let result = parser.parse(input, language: language)
 
-    #expect(sig(result.root) == "document[paragraph[text(\"__\"),html(\"<a href=\\\"__\\\">\")\n]]")
+  #expect(sig(result.root) == "document[paragraph[text(\"__\"),html(\"<a href=\\\"__\\\">\")]]")
   }
 
   @Test("Code spans group more tightly than emphasis with asterisks")

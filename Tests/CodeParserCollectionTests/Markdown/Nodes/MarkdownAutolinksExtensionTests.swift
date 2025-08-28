@@ -52,7 +52,7 @@ struct MarkdownAutolinksExtensionTests {
     let input = "www.google.com/search?q=(business))+ok"
     let result = parser.parse(input, language: language)
 
-    #expect(sig(result.root) == "document[paragraph[link(url:\"http://www.google.com/search?q=(business))+ok\",title:\"\")[text(\"www.google.com/search?q=(business))+ok\")]]]")
+  #expect(sig(result.root) == "document[paragraph[link(url:\"http://www.google.com/search?q=(business))+ok\",title:\"\")[text(\"www.google.com/search?q=(business))+ok\")]]")
   }
 
   @Test("WWW autolink excludes semicolon if it resembles entity reference")

@@ -102,7 +102,7 @@ _boolean zoop:33=zoop:33 />
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig - malformed quotes make tags become text
-    let expectedSig = "document[paragraph[text(\"<a href=\\\"hi'> <a href=hi'>\"  )]]"
+  let expectedSig = #"document[paragraph[text("<a href="hi'> <a href=hi'>")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -147,7 +147,7 @@ bim!bop />
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig - closing tags cannot have attributes
-    let expectedSig = "document[paragraph[text(\"</a href=\\\"foo\\\">\"  )]]"
+  let expectedSig = #"document[paragraph[text("</a href="foo">")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -213,8 +213,8 @@ foo <!---> foo -->
     let input = "foo <a href=\"&ouml;\">"
     let result = parser.parse(input, language: language)
 
-    // Verify AST structure using sig
-    let expectedSig = "document[paragraph[text(\"foo \"),html(\"<a href=\\\"&ouml;\\\">\"  )]]"
+  // Verify AST structure using sig (inline HTML inside paragraph)
+  let expectedSig = #"document[paragraph[text("foo "),html("<a href="&ouml;">")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -224,7 +224,7 @@ foo <!---> foo -->
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig - backslashes are preserved literally
-    let expectedSig = "document[paragraph[text(\"foo \"),html(\"<a href=\\\"\\\\*\\\">\"  )]]"
+  let expectedSig = #"document[paragraph[text("foo "),html("<a href="\*">")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -234,7 +234,7 @@ foo <!---> foo -->
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig - malformed quotes make tag become text
-    let expectedSig = "document[paragraph[text(\"<a href=\\\"\\\\\\\"\\\">\")]]"
+  let expectedSig = #"document[paragraph[text("<a href="\"">")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 }

@@ -24,7 +24,7 @@ struct MarkdownTabsTests {
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[code_block(\"\(tabString("foo→baz→→bim"))\")]"
+  let expectedSig = "document[code_block(\"foo\tbaz\t\tbim\")]"
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -34,7 +34,7 @@ struct MarkdownTabsTests {
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[code_block(\"\(tabString("foo→baz→→bim"))\")]"
+  let expectedSig = "document[code_block(\"foo\tbaz\t\tbim\")]"
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -44,7 +44,7 @@ struct MarkdownTabsTests {
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[code_block(\"\(tabString("a→a\nὐ→a"))\")]"
+  let expectedSig = "document[code_block(\"a\ta\n\u{1F50}\ta\")]"
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -140,7 +140,7 @@ struct MarkdownTabsTests {
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[paragraph[text(\"\(tabString("This→has→tabs"))\")]]"
+  let expectedSig = "document[paragraph[text(\"This\thas\ttabs\")]]"
     #expect(sig(result.root) == expectedSig)
   }
 }

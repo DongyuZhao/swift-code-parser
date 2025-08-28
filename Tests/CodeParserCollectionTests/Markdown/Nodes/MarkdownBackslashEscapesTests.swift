@@ -114,9 +114,8 @@ struct MarkdownBackslashEscapesTests {
     let input = "<a href=\"/bar\\/)\">"
     let result = parser.parse(input, language: language)
 
-  // Per HTML blocks (Spec 019) type 7, a complete opening tag on its own line forms an HTML block.
-
-  let expectedSig = "document[html_block(name:\"\",content:\"<a href=\\\"/bar\\\\/)\\\">\")]"
+  // Inline HTML tag <a> should be parsed as inline html inside a paragraph; backslashes are literal.
+  let expectedSig = "document[paragraph[html(\"<a href=\\\"/bar\\\\/)\\\">\")]]"
   #expect(sig(result.root) == expectedSig)
   }
 

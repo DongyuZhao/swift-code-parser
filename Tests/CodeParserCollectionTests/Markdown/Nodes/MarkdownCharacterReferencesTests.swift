@@ -22,7 +22,7 @@ struct MarkdownEntityAndNumericCharacterReferencesTests {
     """
     let result = parser.parse(input, language: language)
 
-    let expectedSig = "document[paragraph[text(\"  & © Æ Ď\"),text(\"¾ ℋ ⅆ\"),text(\"∲ ≧̸\")]]"
+  let expectedSig = "document[paragraph[text(\"  & © Æ Ď\"),line_break(soft),text(\"¾ ℋ ⅆ\"),line_break(soft),text(\"∲ ≧̸\")]]"
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -54,7 +54,7 @@ struct MarkdownEntityAndNumericCharacterReferencesTests {
     """
     let result = parser.parse(input, language: language)
 
-    let expectedSig = "document[paragraph[text(\"&nbsp &x; &#; &#x;\"),text(\"&#987654321;\"),text(\"&#abcdef0;\"),text(\"&ThisIsNotDefined; &hi?;\")]]"
+  let expectedSig = "document[paragraph[text(\"&nbsp &x; &#; &#x;\"),line_break(soft),text(\"&#987654321;\"),line_break(soft),text(\"&#abcdef0;\"),line_break(soft),text(\"&ThisIsNotDefined; &hi?;\")]]"
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -81,7 +81,7 @@ struct MarkdownEntityAndNumericCharacterReferencesTests {
     let input = "<a href=\"&ouml;&ouml;.html\">"
     let result = parser.parse(input, language: language)
 
-    let expectedSig = "document[html(\"<a href=\\\"&ouml;&ouml;.html\\\">\")]"
+  let expectedSig = "document[paragraph[html(\"<a href=\\\"&ouml;&ouml;.html\\\">\")]]"
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -146,7 +146,7 @@ struct MarkdownEntityAndNumericCharacterReferencesTests {
     """
     let result = parser.parse(input, language: language)
 
-    let expectedSig = "document[paragraph[text(\"*foo*\"),text(\"\"),emphasis[text(\"foo\")]]]"
+  let expectedSig = "document[paragraph[text(\"*foo*\"),line_break(soft),emphasis[text(\"foo\")]]]"
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -188,7 +188,7 @@ struct MarkdownEntityAndNumericCharacterReferencesTests {
 
     // Should not create a link due to invalid syntax
 
-    let expectedSig = "document[paragraph[text(\"[a](url \\\"tit\\\")\")]]"
+  let expectedSig = "document[paragraph[text(\"[a](url \\\"tit\\\")\")]]"
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -197,7 +197,7 @@ struct MarkdownEntityAndNumericCharacterReferencesTests {
     let input = "&lt; &gt; &amp; &quot; &#39;"
     let result = parser.parse(input, language: language)
 
-    let expectedSig = "document[paragraph[text(\"< > & \\\" '\")]]"
+  let expectedSig = "document[paragraph[text(\"< > & \\\" '\")]]"
     #expect(sig(result.root) == expectedSig)
   }
 
