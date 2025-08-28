@@ -24,8 +24,12 @@ public class MarkdownListItemBuilder: CodeNodeBuilder {
   if let markerInfo = detectListMarker(tokens: context.tokens, startIndex: startIndex) {
       // Respect paragraph-interruption rules:
       // - Unordered bullets may interrupt a paragraph
-      // - Ordered lists may interrupt only when starting number is 1
+      // - Ordered lists may interrupt only when starting number is 1, BUT
+      //   this rule doesn't apply to paragraphs inside list items (they can continue with any number)
       if context.current.element == .paragraph {
+        // Check if this paragraph is inside a list item
+        let isInsideListItem = context.current.parent is ListItemNode
+        
         switch markerInfo.type {
         case .unordered:
           // Allowed: close the paragraph before starting the list
@@ -33,8 +37,10 @@ public class MarkdownListItemBuilder: CodeNodeBuilder {
             context.current = parent
           }
         case .ordered(let number, _):
-          // Only allow interruption when starting from 1
-          if number != 1 { return false }
+          // Only allow interruption when starting from 1, unless we're inside a list item
+          if !isInsideListItem && number != 1 { 
+            return false 
+          }
           if let parent = context.current.parent {
             context.current = parent
           }
