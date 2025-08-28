@@ -15,31 +15,31 @@ struct MarkdownTextualContentTests {
 
   @Test("Basic textual content with special characters parsed as plain text")
   func basicTextualContent() {
-    let input = "hello $.;'there"
+    let input = #"hello $.;'there"#
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[paragraph[text(\"hello $.;'there\")]]"
+    let expectedSig = #"document[paragraph[text("hello $.;'there")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
   @Test("Unicode characters preserved in textual content")
   func unicodeCharacters() {
-    let input = "Foo χρῆν"
+    let input = #"Foo χρῆν"#
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[paragraph[text(\"Foo χρῆν\")]]"
+    let expectedSig = #"document[paragraph[text("Foo χρῆν")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
   @Test("Internal spaces preserved verbatim in textual content")
   func internalSpacesPreserved() {
-    let input = "Multiple     spaces"
+    let input = #"Multiple     spaces"#
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[paragraph[text(\"Multiple     spaces\")]]"
+    let expectedSig = #"document[paragraph[text("Multiple     spaces")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 }
