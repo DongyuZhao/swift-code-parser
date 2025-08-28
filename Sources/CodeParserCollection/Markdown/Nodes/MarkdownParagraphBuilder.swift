@@ -10,12 +10,11 @@ public class MarkdownParagraphBuilder: CodeNodeBuilder {
   public init() {}
 
   public func build(from context: inout CodeConstructContext<Node, Token>) -> Bool {
-    guard let state = context.state as? MarkdownConstructState else {
+  guard context.state is MarkdownConstructState else {
       return false
     }
-
-    let startIndex = state.position
-    
+    // Builders in phased pipeline receive the suffix tokens; always start at local 0
+    let startIndex = 0
     // If this is a blank line (empty tokens array), don't handle it
     guard startIndex < context.tokens.count else {
       return false
@@ -35,7 +34,7 @@ public class MarkdownParagraphBuilder: CodeNodeBuilder {
       return true
     }
 
-    // Find end of content (before newline)
+    // Collect tokens for this line excluding trailing newline
     var contentEnd = context.tokens.count
     for i in startIndex..<context.tokens.count {
       if context.tokens[i].element == .newline {
@@ -43,8 +42,6 @@ public class MarkdownParagraphBuilder: CodeNodeBuilder {
         break
       }
     }
-    
-    // Collect tokens for this line (excluding newline)
     var contentTokens = Array(context.tokens[startIndex..<contentEnd])
     
     // Strip leading and trailing whitespace from paragraph content
@@ -56,34 +53,24 @@ public class MarkdownParagraphBuilder: CodeNodeBuilder {
     }
 
     // Check if we're currently in a paragraph context
-    if context.current.element == .paragraph {
+  if context.current.element == .paragraph {
       // We're in an existing paragraph, find the last ContentNode and append tokens to it
       if let lastChild = context.current.children.last as? ContentNode {
-        // Add newline token to represent the line break, then append new content tokens
-        let newlineToken = MarkdownToken(element: .newline, text: "\n", range: "".startIndex..<"".endIndex)
-        lastChild.tokens.append(newlineToken)
-        lastChild.tokens.append(contentsOf: contentTokens)
+    // Add newline token to represent the line break, then append new content tokens
+    let newlineToken = MarkdownToken(element: .newline, text: "\n", range: "".startIndex..<"".endIndex)
+    lastChild.tokens.append(newlineToken)
+    lastChild.tokens.append(contentsOf: contentTokens)
       } else {
         // Fallback: create new content node if no existing ContentNode found
         let contentNode = ContentNode(tokens: contentTokens)
         context.current.append(contentNode)
       }
     } else {
-      // Check if we're in a container context (like blockquote) but this line doesn't belong to it
-      if context.current.element == .blockquote {
-        // Check if this line starts with blockquote marker
-        let hasBlockquoteMarker = startIndex < context.tokens.count && 
-                                 context.tokens[startIndex].element == .punctuation &&
-                                 context.tokens[startIndex].text == ">"
-        
-        if !hasBlockquoteMarker {
-          // This line doesn't belong to the blockquote, exit to parent
-          if let parent = context.current.parent {
-            context.current = parent
-          }
-        }
+      // Interrupt containers like blockquote when current line has no markers
+      if context.current.element == .blockquote, let parent = context.current.parent {
+        context.current = parent
       }
-      
+
       // Create new paragraph (context should be at document level if blank line closed previous paragraph)
       let paragraph = ParagraphNode(range: "".startIndex..<"".endIndex) // TODO: proper range
       let contentNode = ContentNode(tokens: contentTokens)
@@ -94,8 +81,7 @@ public class MarkdownParagraphBuilder: CodeNodeBuilder {
       context.current = paragraph
     }
 
-    // After processing a line, ensure we're not leaving current on a content node
-    // Move current back to paragraph level if we're deeper
+  // Ensure current is the paragraph, not the inner content node
     while context.current.element == .content {
       if let parent = context.current.parent {
         context.current = parent

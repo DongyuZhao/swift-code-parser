@@ -10,11 +10,12 @@ public class MarkdownIndentedCodeBlockBuilder: CodeNodeBuilder {
   public init() {}
 
   public func build(from context: inout CodeConstructContext<Node, Token>) -> Bool {
-    guard let state = context.state as? MarkdownConstructState else {
+  guard context.state is MarkdownConstructState else {
       return false
     }
 
-    let startIndex = state.position
+  // In phased pipeline, builders receive the suffix tokens; always start at local 0
+  let startIndex = 0
     guard startIndex < context.tokens.count else {
       return false
     }

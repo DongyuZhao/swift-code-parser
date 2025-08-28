@@ -118,7 +118,7 @@ struct MarkdownEmphasisAndStrongEmphasisTests {
     let input = "aa_\"bb\"_cc"
     let result = parser.parse(input, language: language)
 
-    #expect(sig(result.root) == "document[paragraph[text(\"aa_\"bb\"_cc\")]]")
+    #expect(sig(result.root) == "document[paragraph[text(\"aa_\\\"bb\\\"_cc\")]]")
   }
 
   @Test("Emphasis with underscore when preceded by punctuation")

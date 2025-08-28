@@ -10,7 +10,7 @@ public class MarkdownSetextHeadingBuilder: CodeNodeBuilder {
   public init() {}
 
   public func build(from context: inout CodeConstructContext<Node, Token>) -> Bool {
-    guard let state = context.state as? MarkdownConstructState else {
+    guard context.state is MarkdownConstructState else {
       return false
     }
 
@@ -18,7 +18,8 @@ public class MarkdownSetextHeadingBuilder: CodeNodeBuilder {
     // and if there's a previous paragraph to convert
 
     // Check if this line is a setext underline
-    guard let underlineInfo = checkSetextUnderline(tokens: context.tokens, startIndex: state.position) else {
+  // Builders in phased pipeline receive the suffix tokens; always start at local 0
+  guard let underlineInfo = checkSetextUnderline(tokens: context.tokens, startIndex: 0) else {
       return false
     }
 

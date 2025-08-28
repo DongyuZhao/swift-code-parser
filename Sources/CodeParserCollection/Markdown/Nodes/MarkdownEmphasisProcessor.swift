@@ -44,7 +44,6 @@ public class MarkdownEmphasisProcessor: MarkdownContentProcessor {
     context.delimiters.push(delimiterRun, textNode: nil)
 
     // Advance past all processed tokens
-    print("DEBUG: MarkdownEmphasisProcessor advancing by \(runInfo.length) (runInfo.length = \(runInfo.length))")
     context.advance(by: runInfo.length)
 
     return true

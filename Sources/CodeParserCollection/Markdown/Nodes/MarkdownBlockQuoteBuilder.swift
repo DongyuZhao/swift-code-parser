@@ -14,45 +14,38 @@ public class MarkdownBlockQuoteBuilder: CodeNodeBuilder {
     guard let state = context.state as? MarkdownConstructState else {
       return false
     }
+  // Builders in phased pipeline receive the suffix tokens; always start at local 0
+  guard !context.tokens.isEmpty else { return false }
+  var index = 0
 
-    let startIndex = state.position
-    guard startIndex < context.tokens.count else {
-      return false
-    }
-
-    var index = startIndex
-    
     // Skip leading whitespace (up to 3 spaces allowed before >)
     var leadingSpaces = 0
-    while index < context.tokens.count,
-          let token = context.tokens[index] as? any CodeToken<MarkdownTokenElement>,
-          token.element == .whitespaces {
-      let spaceCount = token.text.count
+  while index < context.tokens.count,
+      context.tokens[index].element == .whitespaces {
+    let spaceCount = context.tokens[index].text.count
       if leadingSpaces + spaceCount > 3 {
         return false
       }
       leadingSpaces += spaceCount
       index += 1
     }
-    
+
     // Must have > character
-    guard index < context.tokens.count,
-          let token = context.tokens[index] as? any CodeToken<MarkdownTokenElement>,
-          token.element == .punctuation,
-          token.text == ">" else {
+  guard index < context.tokens.count,
+      context.tokens[index].element == .punctuation,
+      context.tokens[index].text == ">" else {
       return false
     }
-    
+
     index += 1 // consume the >
-    
+
     // Optionally consume one space after >
-    if index < context.tokens.count,
-       let nextToken = context.tokens[index] as? any CodeToken<MarkdownTokenElement>,
-       nextToken.element == .whitespaces,
-       nextToken.text == " " {
+  if index < context.tokens.count,
+     context.tokens[index].element == .whitespaces,
+     context.tokens[index].text == " " {
       index += 1
     }
-    
+
     // Create or reuse blockquote
     let blockquote: BlockquoteNode
     if let currentBlockquote = context.current as? BlockquoteNode {
@@ -68,14 +61,14 @@ public class MarkdownBlockQuoteBuilder: CodeNodeBuilder {
         context.current.append(blockquote)
       }
     }
-    
+
     // Set current context to the blockquote for nested content
     context.current = blockquote
-    
-    // Update state to process remaining tokens as nested content
-    state.position = index
+
+  // Update state to process remaining tokens as nested content (relative advance)
+  state.position += index
     state.refreshed = true
-    
+
     return true
   }
 }

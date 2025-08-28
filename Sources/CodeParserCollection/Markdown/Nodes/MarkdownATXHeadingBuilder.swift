@@ -10,12 +10,12 @@ public class MarkdownATXHeadingBuilder: CodeNodeBuilder {
   public init() {}
 
   public func build(from context: inout CodeConstructContext<Node, Token>) -> Bool {
-    guard let state = context.state as? MarkdownConstructState else {
+  guard context.state is MarkdownConstructState else {
       return false
     }
 
-    // Skip if we're not at the beginning of a line or after processed tokens
-    let startIndex = state.position
+  // In phased pipeline, builders receive the suffix tokens; always start at local 0
+  let startIndex = 0
     guard startIndex < context.tokens.count else {
       return false
     }
@@ -24,8 +24,8 @@ public class MarkdownATXHeadingBuilder: CodeNodeBuilder {
     var currentIndex = startIndex
     var indentationSpaces = 0
     
-    if currentIndex < context.tokens.count,
-       context.tokens[currentIndex].element == .whitespaces {
+  if currentIndex < context.tokens.count,
+     context.tokens[currentIndex].element == .whitespaces {
       // Count spaces in the whitespace token
       for char in context.tokens[currentIndex].text {
         if char == " " {
@@ -50,9 +50,9 @@ public class MarkdownATXHeadingBuilder: CodeNodeBuilder {
     var hashCount = 0
 
     // Count consecutive # characters
-    while currentIndex < context.tokens.count,
-          context.tokens[currentIndex].element == .punctuation,
-          context.tokens[currentIndex].text == "#" {
+  while currentIndex < context.tokens.count,
+      context.tokens[currentIndex].element == .punctuation,
+      context.tokens[currentIndex].text == "#" {
       hashCount += 1
       currentIndex += 1
 

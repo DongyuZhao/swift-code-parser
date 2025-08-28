@@ -10,11 +10,12 @@ public class MarkdownThematicBreakBuilder: CodeNodeBuilder {
   public init() {}
 
   public func build(from context: inout CodeConstructContext<Node, Token>) -> Bool {
-    guard let state = context.state as? MarkdownConstructState else {
+  guard context.state is MarkdownConstructState else {
       return false
     }
 
-    let startIndex = state.position
+  // In phased pipeline, builders receive the suffix tokens; always start at local 0
+  let startIndex = 0
     guard startIndex < context.tokens.count else {
       return false
     }
@@ -23,10 +24,9 @@ public class MarkdownThematicBreakBuilder: CodeNodeBuilder {
     
     // Skip leading whitespace (up to 3 spaces allowed)
     var leadingSpaces = 0
-    while index < context.tokens.count,
-          let token = context.tokens[index] as? any CodeToken<MarkdownTokenElement>,
-          token.element == .whitespaces {
-      let spaceCount = token.text.count
+  while index < context.tokens.count,
+      context.tokens[index].element == .whitespaces {
+    let spaceCount = context.tokens[index].text.count
       if leadingSpaces + spaceCount > 3 {
         return false
       }
@@ -38,11 +38,10 @@ public class MarkdownThematicBreakBuilder: CodeNodeBuilder {
     guard index < context.tokens.count else { return false }
     
     let thematicChar: String
-    if let firstToken = context.tokens[index] as? any CodeToken<MarkdownTokenElement>,
-       firstToken.element == .punctuation {
-      switch firstToken.text {
+    if context.tokens[index].element == .punctuation {
+      switch context.tokens[index].text {
       case "*", "-", "_":
-        thematicChar = firstToken.text
+        thematicChar = context.tokens[index].text
       default:
         return false
       }
@@ -55,9 +54,8 @@ public class MarkdownThematicBreakBuilder: CodeNodeBuilder {
     var hasNonWhitespaceNonThematic = false
     
     while index < context.tokens.count {
-      let token = context.tokens[index]
-      
-      if token.element == .punctuation && token.text == thematicChar {
+  let token = context.tokens[index]
+  if token.element == .punctuation && token.text == thematicChar {
         charCount += 1
         index += 1
       } else if token.element == .whitespaces {

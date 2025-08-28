@@ -174,26 +174,35 @@ public class ListNode: MarkdownNodeBase {
 
 public class OrderedListNode: ListNode {
   public var start: Int
+  public var delimiter: String
 
-  public init(start: Int = 1, level: Int = 1) {
+  public init(start: Int = 1, level: Int = 1, delimiter: String = ".") {
     self.start = start
+    self.delimiter = delimiter
     super.init(element: .orderedList, level: level)
   }
 
   public override func hash(into hasher: inout Hasher) {
     super.hash(into: &hasher)
     hasher.combine(start)
+    hasher.combine(delimiter)
   }
 }
 
 public class UnorderedListNode: ListNode {
-  public init(level: Int = 1) {
+  public var marker: String
+
+  public init(level: Int = 1, marker: String = "-") {
+    self.marker = marker
     super.init(element: .unorderedList, level: level)
   }
 }
 
 public class ListItemNode: MarkdownNodeBase {
   public var marker: String
+  // indentation before marker and content indent column for continuation
+  public var markerIndent: Int = 0
+  public var contentIndent: Int = 0
 
   public init(marker: String) {
     self.marker = marker
