@@ -23,20 +23,20 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
     let rules: [BlockRule] = [
       // Open containers first (strip markers, reprocess line)
       .init(builder: MarkdownBlockQuoteBuilder(), phase: .openContainer, priority: 10),
-      .init(builder: MarkdownListBuilder(),       phase: .openContainer, priority: 20),
-      .init(builder: MarkdownListItemBuilder(),   phase: .openContainer, priority: 30),
+      .init(builder: MarkdownListBuilder(), phase: .openContainer, priority: 20),
+      .init(builder: MarkdownListItemBuilder(), phase: .openContainer, priority: 30),
 
       // Leaf on line
-      .init(builder: MarkdownEOFBuilder(),            phase: .leafOnLine, priority: 0),
-      .init(builder: MarkdownFencedCodeBlockBuilder(),phase: .leafOnLine, priority: 10),
-      .init(builder: MarkdownATXHeadingBuilder(),     phase: .leafOnLine, priority: 20),
-      .init(builder: MarkdownThematicBreakBuilder(),  phase: .leafOnLine, priority: 30),
-  .init(builder: MarkdownHTMLBlockBuilder(),      phase: .leafOnLine, priority: 35),
+      .init(builder: MarkdownEOFBuilder(), phase: .leafOnLine, priority: 0),
+      .init(builder: MarkdownFencedCodeBlockBuilder(), phase: .leafOnLine, priority: 10),
+      .init(builder: MarkdownATXHeadingBuilder(), phase: .leafOnLine, priority: 20),
+      .init(builder: MarkdownThematicBreakBuilder(), phase: .leafOnLine, priority: 30),
+      .init(builder: MarkdownHTMLBlockBuilder(), phase: .leafOnLine, priority: 35),
       .init(builder: MarkdownIndentedCodeBlockBuilder(), phase: .leafOnLine, priority: 40),
-      .init(builder: MarkdownParagraphBuilder(),      phase: .leafOnLine, priority: 1000), // fallback
+      .init(builder: MarkdownParagraphBuilder(), phase: .leafOnLine, priority: 1000),  // fallback
 
       // Post paragraph (needs previous paragraph context)
-      .init(builder: MarkdownSetextHeadingBuilder(),  phase: .postParagraph, priority: 10),
+      .init(builder: MarkdownSetextHeadingBuilder(), phase: .postParagraph, priority: 10),
     ]
 
     var grouped: [BlockPhase: [BlockRule]] = [:]
@@ -44,12 +44,16 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
       grouped[r.phase, default: []].append(r)
     }
     // Sort each phase by priority while preserving declaration order as tie-breaker (stable sort)
-    self.rulesByPhase = Dictionary(uniqueKeysWithValues: grouped.map { phase, arr in
-      (phase, arr.sorted { (a, b) in
-        if a.priority == b.priority { return true } // keep stable
-        return a.priority < b.priority
+    self.rulesByPhase = Dictionary(
+      uniqueKeysWithValues: grouped.map { phase, arr in
+        (
+          phase,
+          arr.sorted { (a, b) in
+            if a.priority == b.priority { return true }  // keep stable
+            return a.priority < b.priority
+          }
+        )
       })
-    })
   }
 
   public func build(from context: inout CodeConstructContext<Node, Token>) -> Bool {
@@ -82,14 +86,15 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
     state.position = 0
     state.isPartialLine = false
 
-
     repeat {
       state.refreshed = false
 
       // Ensure position doesn't exceed line bounds, but allow empty lines for EOF processing
       guard state.position < line.count || (line.isEmpty && state.position == 0) else { break }
 
-      let tokens = state.position < line.count ? line.suffix(from: state.position) : ArraySlice<any CodeToken<MarkdownTokenElement>>()
+      let tokens =
+        state.position < line.count
+        ? line.suffix(from: state.position) : ArraySlice<any CodeToken<MarkdownTokenElement>>()
 
       // Run phases in order
       var handledInAnyPhase = false
@@ -128,7 +133,7 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
           }
         }
 
-        if state.refreshed { break } // restart outer repeat
+        if state.refreshed { break }  // restart outer repeat
 
         // If openContainer phase consumed and didn't refresh, proceed to next phase naturally
         if handledInPhase && phase == .openContainer {
@@ -142,7 +147,9 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
     } while state.refreshed
   }
 
-  private func lines(from context: CodeConstructContext<Node, Token>) -> [[any CodeToken<MarkdownTokenElement>]] {
+  private func lines(from context: CodeConstructContext<Node, Token>) -> [[any CodeToken<
+    MarkdownTokenElement
+  >]] {
     var result: [[any CodeToken<MarkdownTokenElement>]] = []
     var line: [any CodeToken<MarkdownTokenElement>] = []
     var index = context.consuming
