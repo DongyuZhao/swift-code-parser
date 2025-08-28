@@ -19,15 +19,19 @@ struct MarkdownTokenEntitiesTests {
   // 321: named entities across lines -> each should be a .href token
   @Test("Spec 321 (token): named entity references are tokenized as .href")
   func spec321_token() async throws {
-    let input = "&nbsp; &amp; &copy; &AElig; &Dcaron;\n&frac34; &HilbertSpace; &DifferentialD;\n&ClockwiseContourIntegral; &ngE;\n"
+    let input = [
+      ##"&nbsp; &amp; &copy; &AElig; &Dcaron;"##,
+      ##"&frac34; &HilbertSpace; &DifferentialD;"##,
+      ##"&ClockwiseContourIntegral; &ngE;"##
+    ].joined(separator: "\n") + "\n"
     let toks = tokens(input)
     let expected: [(MarkdownTokenElement, String)] = [
-      (.charef, "&nbsp;"), (.whitespaces, " "), (.charef, "&amp;"), (.whitespaces, " "),
-      (.charef, "&copy;"), (.whitespaces, " "), (.charef, "&AElig;"), (.whitespaces, " "),
-      (.charef, "&Dcaron;"), (.newline, "\n"),
-      (.charef, "&frac34;"), (.whitespaces, " "), (.charef, "&HilbertSpace;"), (.whitespaces, " "),
-      (.charef, "&DifferentialD;"), (.newline, "\n"),
-      (.charef, "&ClockwiseContourIntegral;"), (.whitespaces, " "), (.charef, "&ngE;"),
+      (.charef, ##"&nbsp;"##), (.whitespaces, " "), (.charef, ##"&amp;"##), (.whitespaces, " "),
+      (.charef, ##"&copy;"##), (.whitespaces, " "), (.charef, ##"&AElig;"##), (.whitespaces, " "),
+      (.charef, ##"&Dcaron;"##), (.newline, "\n"),
+      (.charef, ##"&frac34;"##), (.whitespaces, " "), (.charef, ##"&HilbertSpace;"##), (.whitespaces, " "),
+      (.charef, ##"&DifferentialD;"##), (.newline, "\n"),
+      (.charef, ##"&ClockwiseContourIntegral;"##), (.whitespaces, " "), (.charef, ##"&ngE;"##),
       (.newline, "\n"), (.eof, "")
     ]
     #expect(toks.count == expected.count)
@@ -37,11 +41,11 @@ struct MarkdownTokenEntitiesTests {
   // 322: decimal numeric references -> .href
   @Test("Spec 322 (token): decimal numeric references are .href")
   func spec322_token() async throws {
-    let input = "&#35; &#1234; &#992; &#0;\n"
+    let input = ##"&#35; &#1234; &#992; &#0;"## + "\n"
     let toks = tokens(input)
     let expected: [(MarkdownTokenElement, String)] = [
-      (.charef, "&#35;"), (.whitespaces, " "), (.charef, "&#1234;"), (.whitespaces, " "),
-      (.charef, "&#992;"), (.whitespaces, " "), (.charef, "&#0;"), (.newline, "\n"), (.eof, "")
+      (.charef, ##"&#35;"##), (.whitespaces, " "), (.charef, ##"&#1234;"##), (.whitespaces, " "),
+      (.charef, ##"&#992;"##), (.whitespaces, " "), (.charef, ##"&#0;"##), (.newline, "\n"), (.eof, "")
     ]
     #expect(toks.count == expected.count)
     for i in 0..<expected.count { #expect(pair(toks[i]) == expected[i]) }
