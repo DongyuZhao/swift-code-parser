@@ -17,40 +17,40 @@ struct MarkdownStrikethroughExtensionTests {
 
   @Test("Basic strikethrough with tildes wrapping text")
   func basicStrikethroughWithTildes() {
-    let input = "~~Hi~~ Hello, world!"
+    let input = #"~~Hi~~ Hello, world!"#
     let result = parser.parse(input, language: language)
 
-    #expect(sig(result.root) == "document[paragraph[strike[text(\"Hi\")],text(\" Hello, world!\")]]")
+    #expect(sig(result.root) == #"document[paragraph[strike[text("Hi")],text(" Hello, world!")]]"#)
   }
 
   // MARK: - Strikethrough parsing limitations
 
   @Test("Strikethrough parsing ceases across paragraph boundaries")
   func strikethroughCeasesAcrossParagraphs() {
-    let input = """
+    let input = #"""
     This ~~has a
 
     new paragraph~~.
-    """
+    """#
     let result = parser.parse(input, language: language)
 
-    #expect(sig(result.root) == "document[paragraph[text(\"This ~~has a\")],paragraph[text(\"new paragraph~~.\")]]")
+    #expect(sig(result.root) == #"document[paragraph[text("This ~~has a")],paragraph[text("new paragraph~~.")]]"#)
   }
 
   @Test("Simple strikethrough content")  
   func simpleStrikethroughContent() {
-    let input = "~~simple~~"
+    let input = #"~~simple~~"#
     let result = parser.parse(input, language: language)
 
-    #expect(sig(result.root) == "document[paragraph[strike[text(\"simple\")]]]")
+    #expect(sig(result.root) == #"document[paragraph[strike[text("simple")]]]"#)
   }
 
   @Test("Strikethrough with emphasis inside")
   func strikethroughWithEmphasisInside() {
-    let input = "~~**bold**~~"
+    let input = #"~~**bold**~~"#
     let result = parser.parse(input, language: language)
 
-    #expect(sig(result.root) == "document[paragraph[strike[strong[text(\"bold\")]]]]")
+    #expect(sig(result.root) == #"document[paragraph[strike[strong[text("bold")]]]]"#)
   }
 
   // @Test("Triple tildes should not create strikethrough")
