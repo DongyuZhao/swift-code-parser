@@ -9,7 +9,17 @@ public class MarkdownParagraphBuilder: MarkdownBlockBuilderProtocol {
   public var priority: Int { return 1000 } // Lowest priority - fallback
   public var blockType: MarkdownNodeElement { return .paragraph }
   
-  public init() {}
+  private let inlineProcessor: MarkdownInlineProcessor
+  
+  /// Initialize with a custom inline processor
+  public init(inlineProcessor: MarkdownInlineProcessor) {
+    self.inlineProcessor = inlineProcessor
+  }
+  
+  /// Initialize with standard inline processing
+  public convenience init() {
+    self.init(inlineProcessor: MarkdownInlineProcessor())
+  }
   
   public func canContinue(
     block: MarkdownNodeBase, 
@@ -58,8 +68,7 @@ public class MarkdownParagraphBuilder: MarkdownBlockBuilderProtocol {
   ) -> Bool {
     guard let paragraph = block as? ParagraphNode else { return false }
     
-    // Process inline content using the inline processor
-    let inlineProcessor = MarkdownInlineProcessor()
+    // Process inline content using the configured inline processor
     inlineProcessor.processInlineContent(tokens: line, in: paragraph, context: &context)
     
     // Mark the entire line as consumed

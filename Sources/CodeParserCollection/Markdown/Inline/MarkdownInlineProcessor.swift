@@ -14,9 +14,20 @@ public class MarkdownInlineProcessor {
     self.builders = builders.sorted { $0.priority < $1.priority }
   }
   
+  /// Initialize with a configuration object
+  public init(configuration: MarkdownBuilderConfiguration) {
+    do {
+      try configuration.validate()
+      self.builders = configuration.getInlineBuilders()
+    } catch {
+      // Fallback to standard builders if configuration is invalid
+      self.builders = Self.createStandardBuilders()
+    }
+  }
+  
   /// Initialize with the standard set of inline builders
   public convenience init() {
-    self.init(builders: Self.createStandardBuilders())
+    self.init(configuration: .standard())
   }
   
   /// Process inline content within a block
@@ -83,6 +94,7 @@ public class MarkdownInlineProcessor {
   }
   
   /// Create the standard set of inline builders
+  /// Note: Consider using MarkdownBuilderConfiguration.standard() instead
   private static func createStandardBuilders() -> [MarkdownInlineBuilderProtocol] {
     return [
       // High priority builders (processed first)
@@ -104,5 +116,27 @@ public class MarkdownInlineProcessor {
       // Fallback text builder (lowest priority)
       MarkdownTextBuilder()                // Plain text
     ]
+  }
+  
+  // MARK: - Convenience Factory Methods
+  
+  /// Create a processor with only basic text processing
+  public static func textOnly() -> MarkdownInlineProcessor {
+    return MarkdownInlineProcessor(configuration: .minimal())
+  }
+  
+  /// Create a processor with GitHub Flavored Markdown support
+  public static func githubFlavored() -> MarkdownInlineProcessor {
+    return MarkdownInlineProcessor(configuration: .githubFlavored())
+  }
+  
+  /// Create a processor with strict CommonMark compliance
+  public static func strictCommonMark() -> MarkdownInlineProcessor {
+    return MarkdownInlineProcessor(configuration: .strictCommonMark())
+  }
+  
+  /// Create a processor optimized for documentation
+  public static func documentation() -> MarkdownInlineProcessor {
+    return MarkdownInlineProcessor(configuration: .documentation())
   }
 }

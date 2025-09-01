@@ -24,9 +24,20 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
     self.builders = builders.sorted { $0.priority < $1.priority }
   }
   
+  /// Initialize with a configuration object
+  public init(configuration: MarkdownBuilderConfiguration) {
+    do {
+      try configuration.validate()
+      self.builders = configuration.getConfiguredBlockBuilders()
+    } catch {
+      // Fallback to standard builders if configuration is invalid
+      self.builders = Self.createStandardBuilders()
+    }
+  }
+  
   /// Initialize with the standard set of CommonMark builders
   public convenience init() {
-    self.init(builders: Self.createStandardBuilders())
+    self.init(configuration: .standard())
   }
   
   public func build(from context: inout CodeConstructContext<Node, Token>) -> Bool {
@@ -224,6 +235,7 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
   
   /// Create the standard set of Markdown block builders
   /// This replaces the hardcoded rules from the old implementation
+  /// Note: Consider using MarkdownBuilderConfiguration.standard() instead
   private static func createStandardBuilders() -> [MarkdownBlockBuilderProtocol] {
     return [
       // Container blocks (processed first, higher priority = lower number)
@@ -235,5 +247,27 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
       // Fallback paragraph builder (lowest priority)
       MarkdownParagraphBuilder()
     ]
+  }
+  
+  // MARK: - Convenience Factory Methods
+  
+  /// Create a builder with only basic text processing
+  public static func textOnly() -> MarkdownBlockBuilder {
+    return MarkdownBlockBuilder(configuration: .minimal())
+  }
+  
+  /// Create a builder with GitHub Flavored Markdown support
+  public static func githubFlavored() -> MarkdownBlockBuilder {
+    return MarkdownBlockBuilder(configuration: .githubFlavored())
+  }
+  
+  /// Create a builder with strict CommonMark compliance
+  public static func strictCommonMark() -> MarkdownBlockBuilder {
+    return MarkdownBlockBuilder(configuration: .strictCommonMark())
+  }
+  
+  /// Create a builder optimized for documentation
+  public static func documentation() -> MarkdownBlockBuilder {
+    return MarkdownBlockBuilder(configuration: .documentation())
   }
 }
