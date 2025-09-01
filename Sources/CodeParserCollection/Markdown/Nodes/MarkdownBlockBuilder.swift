@@ -28,6 +28,7 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
 
       // Leaf on line
       .init(builder: MarkdownEOFBuilder(), phase: .leafOnLine, priority: 0),
+      .init(builder: MarkdownReferenceLinkDefinitionBuilder(), phase: .leafOnLine, priority: 5),
       .init(builder: MarkdownFencedCodeBlockBuilder(), phase: .leafOnLine, priority: 10),
       .init(builder: MarkdownATXHeadingBuilder(), phase: .leafOnLine, priority: 20),
       .init(builder: MarkdownThematicBreakBuilder(), phase: .leafOnLine, priority: 30),

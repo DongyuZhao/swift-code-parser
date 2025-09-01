@@ -22,6 +22,7 @@ public class MarkdownContentBuilder: CodeNodeBuilder {
       HardLineBreakRebuildProcessor(priority: 0),
       UnmatchedDelimiterInlineProcessor(priority: 0),
       // pair processors
+      ReferenceLinkPairProcessor(priority: 3),
       AutolinkPairProcessor(priority: 4),
       LinkImagePairProcessor(priority: 5),
       EmphasisStrongPairProcessor(priority: 10),

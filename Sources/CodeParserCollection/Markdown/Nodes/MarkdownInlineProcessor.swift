@@ -731,6 +731,73 @@ public struct AutolinkDelimiterScanProcessor: MarkdownInlinePhaseProcessor {
   }
 }
 
+/// Pair processor for reference links using bracket delimiters; supports [text][id], [text][], and [text] forms
+public struct ReferenceLinkPairProcessor: MarkdownInlinePhaseProcessor {
+  public let phase: MarkdownInlinePhase = .rebuild
+  public let priority: Int
+  public init(priority: Int = 3) { self.priority = priority } // Higher priority than inline links
+
+  public func canHandlePair(for delimiter: MarkdownDelimiter) -> Bool { delimiter == .openBracket }
+
+  public func createNodeForPair(
+    delimiter: MarkdownDelimiter,
+    openerRun: MarkdownDelimiterRun,
+    closerRun: MarkdownDelimiterRun,
+    contentTokens: ArraySlice<any CodeToken<MarkdownTokenElement>>,
+    allTokens: [any CodeToken<MarkdownTokenElement>]
+  ) -> (node: MarkdownNodeBase, closerEndOverride: Int)? {
+    // Determine if this is image: opener length 2 means '!['
+    let isImage = openerRun.length >= 2
+
+    // Build inner inline nodes for link text / alt text
+    let inner = MarkdownContentBuilder().process(Array(contentTokens))
+
+    // After closer ']' look for reference label in various forms
+    var idx = closerRun.index + closerRun.length
+    let referenceId: String?
+    var consumedEnd = idx
+
+    // Skip spaces
+    while idx < allTokens.count, allTokens[idx].element == .whitespaces { idx += 1 }
+
+    if idx < allTokens.count, allTokens[idx].element == .punctuation, allTokens[idx].text == "[" {
+      // Full or collapsed reference form: [text][id] or [text][]
+      idx += 1 // consume '['
+      let refStart = idx
+      
+      // Find closing ']'
+      while idx < allTokens.count, !(allTokens[idx].element == .punctuation && allTokens[idx].text == "]") {
+        idx += 1
+      }
+      
+      guard idx < allTokens.count else { return nil }
+      
+      // Extract reference ID
+      let refTokens = allTokens[refStart..<idx]
+      let refText = refTokens.map { $0.text }.joined().trimmingCharacters(in: .whitespacesAndNewlines)
+      
+      if refText.isEmpty {
+        // Collapsed form [text][] - use link text as reference ID
+        referenceId = LinkImagePairProcessor.flattenText(from: inner)
+      } else {
+        // Full form [text][id] - use explicit reference ID
+        referenceId = refText
+      }
+      
+      consumedEnd = idx + 1 // Include closing ']'
+    } else {
+      // Shortcut form [text] - use link text as reference ID
+      referenceId = LinkImagePairProcessor.flattenText(from: inner)
+      consumedEnd = closerRun.index + closerRun.length
+    }
+
+    // Look up reference definition (this would need to access a reference table)
+    // For now, return nil to let it fall back to literal text
+    // TODO: Implement reference resolution with document-level reference table
+    return nil
+  }
+}
+
 /// Pair processor for links and images using bracket delimiters; supports inline form: [text](dest "title") and ![alt](dest "title")
 public struct LinkImagePairProcessor: MarkdownInlinePhaseProcessor {
   public let phase: MarkdownInlinePhase = .rebuild
@@ -793,7 +860,7 @@ public struct LinkImagePairProcessor: MarkdownInlinePhaseProcessor {
     }
   }
 
-  private static func flattenText(from nodes: [MarkdownNodeBase]) -> String {
+  public static func flattenText(from nodes: [MarkdownNodeBase]) -> String {
     var out = ""
     func dfs(_ n: MarkdownNodeBase) {
       if let t = n as? TextNode { out += t.content; return }
@@ -807,20 +874,79 @@ public struct LinkImagePairProcessor: MarkdownInlinePhaseProcessor {
     // Trim outer spaces
     let s = inside.trimmingCharacters(in: .whitespacesAndNewlines)
     if s.isEmpty { return ("", "") }
-    // If contains a quoted title at the end
-    if let quoteStart = s.lastIndex(where: { $0 == "\"" || $0 == "'" }) {
-      let quote = s[quoteStart]
-      if quoteStart > s.startIndex, s[quoteStart...] .first == quote, s.last == quote, quoteStart < s.index(before: s.endIndex) {
-        // Title in quotes; split at the preceding space
-        let before = s[..<quoteStart]
-        if let sp = before.lastIndex(where: { $0.isWhitespace }) {
-          let dest = String(before[..<sp]).trimmingCharacters(in: .whitespaces)
-          let title = String(s[s.index(after: quoteStart)..<s.index(before: s.endIndex)])
-          return (dest, title)
+    
+    // Handle angle-bracket enclosed destination <url>
+    var dest = ""
+    var remaining = s
+    
+    if s.hasPrefix("<") {
+      // Find matching >
+      if let closingIndex = s.firstIndex(of: ">") {
+        dest = String(s[s.index(after: s.startIndex)..<closingIndex])
+        remaining = String(s[s.index(after: closingIndex)...]).trimmingCharacters(in: .whitespacesAndNewlines)
+      } else {
+        // No matching >, treat as regular destination
+        dest = s
+        remaining = ""
+      }
+    } else {
+      // Regular destination - find where title starts
+      // Look for title pattern: whitespace followed by quoted string at end
+      if let quoteMatch = findTitleInDestination(s) {
+        dest = quoteMatch.dest
+        remaining = quoteMatch.titlePart
+      } else {
+        dest = s
+        remaining = ""
+      }
+    }
+    
+    // Parse title from remaining content if any
+    let title = parseTitleFromString(remaining)
+    
+    return (dest, title)
+  }
+  
+  private static func findTitleInDestination(_ s: String) -> (dest: String, titlePart: String)? {
+    // Find the last quoted string that could be a title
+    // Title can be in double quotes, single quotes, or parentheses
+    let quoteChars: [Character] = ["\"", "'", "("]
+    var bestMatch: (dest: String, titlePart: String)? = nil
+    
+    for quote in quoteChars {
+      let closeQuote = quote == "(" ? ")" : quote
+      
+      // Find the last occurrence of the quote character
+      if let lastQuoteIndex = s.lastIndex(of: quote) {
+        // Make sure there's a corresponding closing quote
+        if let closeIndex = s[s.index(after: lastQuoteIndex)...].firstIndex(of: closeQuote) {
+          // Check if this is at the end of the string (after trimming)
+          let afterClose = String(s[s.index(after: closeIndex)...]).trimmingCharacters(in: .whitespacesAndNewlines)
+          if afterClose.isEmpty {
+            // This looks like a title - split here
+            let beforeQuote = String(s[..<lastQuoteIndex]).trimmingCharacters(in: .whitespacesAndNewlines)
+            let titlePart = String(s[lastQuoteIndex...])
+            bestMatch = (beforeQuote, titlePart)
+          }
         }
       }
     }
-    return (s, "")
+    
+    return bestMatch
+  }
+  
+  private static func parseTitleFromString(_ s: String) -> String {
+    let trimmed = s.trimmingCharacters(in: .whitespacesAndNewlines)
+    if trimmed.isEmpty { return "" }
+    
+    // Check for quoted title
+    if (trimmed.hasPrefix("\"") && trimmed.hasSuffix("\"")) ||
+       (trimmed.hasPrefix("'") && trimmed.hasSuffix("'")) ||
+       (trimmed.hasPrefix("(") && trimmed.hasSuffix(")")) {
+      return String(trimmed.dropFirst().dropLast())
+    }
+    
+    return ""
   }
 }
 
