@@ -442,6 +442,11 @@ public class MarkdownUnifiedListBuilder: CodeNodeBuilder {
     if markerToken.element == .punctuation {
       switch markerToken.text {
       case "-", "*", "+":
+        // Before treating as list marker, check if this might be a thematic break
+        if couldBeThematicBreak(tokens: tokens, startIndex: startIndex, markerChar: markerToken.text) {
+          return nil  // Let thematic break builder handle this
+        }
+        
         // Must be followed by space or end of line
         if index + 1 < tokens.count {
           let nextToken = tokens[index + 1]
@@ -766,6 +771,53 @@ public class MarkdownUnifiedListBuilder: CodeNodeBuilder {
       i += 1
     }
     return false
+  }
+  
+  /// Check if a line could be a thematic break pattern instead of a list
+  private func couldBeThematicBreak(tokens: [any CodeToken<MarkdownTokenElement>], startIndex: Int, markerChar: String) -> Bool {
+    var index = startIndex
+    var charCount = 0
+    var hasOnlyMarkerAndSpaces = true
+    
+    // Skip leading whitespace (up to 3 spaces allowed for thematic breaks)
+    var leadingSpaces = 0
+    while index < tokens.count, tokens[index].element == .whitespaces {
+      let spaceCount = tokens[index].text.count
+      if leadingSpaces + spaceCount > 3 {
+        return false  // Too much indentation for thematic break
+      }
+      leadingSpaces += spaceCount
+      index += 1
+    }
+    
+    // Count occurrences of the marker character and check for other content
+    while index < tokens.count {
+      let token = tokens[index]
+      
+      switch token.element {
+      case .punctuation:
+        if token.text == markerChar {
+          charCount += 1
+        } else {
+          // Other punctuation characters disqualify it as thematic break
+          hasOnlyMarkerAndSpaces = false
+        }
+      case .whitespaces:
+        // Spaces are allowed between marker characters
+        break
+      case .newline, .eof:
+        // End of line - we can make the determination
+        break
+      default:
+        // Any other content disqualifies it as thematic break
+        hasOnlyMarkerAndSpaces = false
+      }
+      
+      index += 1
+    }
+    
+    // Thematic break requires at least 3 marker characters and only marker + spaces
+    return charCount >= 3 && hasOnlyMarkerAndSpaces
   }
 }
 
