@@ -2,6 +2,7 @@ import CodeParserCore
 import Foundation
 
 /// Builder for reference link definitions: [id]: destination "title"
+/// Supports multi-line definitions according to CommonMark spec
 public class MarkdownReferenceLinkDefinitionBuilder: CodeNodeBuilder {
   public typealias Node = MarkdownNodeElement
   public typealias Token = MarkdownTokenElement
@@ -9,9 +10,21 @@ public class MarkdownReferenceLinkDefinitionBuilder: CodeNodeBuilder {
   public init() {}
 
   public func build(from context: inout CodeConstructContext<Node, Token>) -> Bool {
-    guard context.state is MarkdownConstructState else { return false }
+    guard let state = context.state as? MarkdownConstructState else { return false }
 
-    // In phased pipeline, builders receive the suffix tokens; always start at local 0
+    // Check if we're continuing a pending reference definition
+    if let pending = state.pendingReference {
+      return continuePendingReference(pending: pending, context: &context, state: state)
+    }
+    
+    // Try to start a new reference definition
+    return startNewReference(context: &context, state: state)
+  }
+  
+  private func startNewReference(
+    context: inout CodeConstructContext<Node, Token>,
+    state: MarkdownConstructState
+  ) -> Bool {
     let startIndex = 0
     guard startIndex < context.tokens.count else { return false }
 
@@ -20,17 +33,13 @@ public class MarkdownReferenceLinkDefinitionBuilder: CodeNodeBuilder {
     var indentationSpaces = 0
 
     if currentIndex < context.tokens.count,
-       context.tokens[currentIndex].element == .whitespaces {
-      // Count spaces in the whitespace token
-      for char in context.tokens[currentIndex].text {
-        if char == " " {
-          indentationSpaces += 1
-        } else if char == "\t" {
-          indentationSpaces += 4
-        }
-        if indentationSpaces >= 4 {
-          return false // Too much indentation
-        }
+       let token = context.tokens[currentIndex] as? MarkdownToken,
+       token.element == .whitespaces {
+      // Count spaces
+      indentationSpaces = token.text.count
+      // Reference definitions allow 0-3 spaces of indentation
+      if indentationSpaces >= 4 {
+        return false // Too much indentation - would be code block
       }
       currentIndex += 1
     }
@@ -38,92 +47,175 @@ public class MarkdownReferenceLinkDefinitionBuilder: CodeNodeBuilder {
     // Must have enough tokens left for [id]:
     guard currentIndex + 2 < context.tokens.count else { return false }
 
-    // Check for '[' punctuation
-    guard context.tokens[currentIndex].element == .punctuation,
-          context.tokens[currentIndex].text == "[" else { return false }
+    // Check for '[' 
+    guard currentIndex < context.tokens.count,
+          let token1 = context.tokens[currentIndex] as? MarkdownToken,
+          token1.element == .punctuation && token1.text == "[" else { return false }
     currentIndex += 1
 
-    // Extract ID
+    // Extract ID tokens until ']'
     let idStart = currentIndex
     var idEnd = currentIndex
-    while idEnd < context.tokens.count,
-          !(context.tokens[idEnd].element == .punctuation && context.tokens[idEnd].text == "]") {
+    while idEnd < context.tokens.count {
+      if let token = context.tokens[idEnd] as? MarkdownToken,
+         token.element == .punctuation && token.text == "]" {
+        break
+      }
       idEnd += 1
     }
 
     guard idEnd < context.tokens.count else { return false }
-    let id = context.tokens[idStart..<idEnd].map { $0.text }.joined().trimmingCharacters(in: .whitespacesAndNewlines)
+    
+    // Build identifier from tokens
+    let idTokens = context.tokens[idStart..<idEnd]
+    let id = idTokens.map { $0.text }.joined().trimmingCharacters(in: .whitespacesAndNewlines)
     guard !id.isEmpty else { return false }
 
     currentIndex = idEnd + 1 // Skip past ']'
 
     // Check for ':'
     guard currentIndex < context.tokens.count,
-          context.tokens[currentIndex].element == .punctuation,
-          context.tokens[currentIndex].text == ":" else { return false }
+          let colonToken = context.tokens[currentIndex] as? MarkdownToken,
+          colonToken.element == .punctuation && colonToken.text == ":" else { return false }
     currentIndex += 1
-
-    // Parse destination and title from remaining tokens
-    let remaining = context.tokens[currentIndex...].map { $0.text }.joined()
-    let (url, title) = parseDestinationAndTitle(remaining.trimmingCharacters(in: .whitespacesAndNewlines))
-
-    // Create ReferenceNode
-    let referenceNode = ReferenceNode(
-      identifier: id,
-      url: url,
-      title: title
-    )
-
-    // Add to current container
+    
+    // Create reference node
+    let referenceNode = ReferenceNode(identifier: id, url: "", title: "")
     context.current.append(referenceNode)
     
-    // Store reference definition in construct state for later resolution
-    if let markdownState = context.state as? MarkdownConstructState {
-      markdownState.addReferenceDefinition(identifier: id, url: url, title: title)
+    // Try to parse destination and title from remaining tokens on this line
+    let remainingTokens = Array(context.tokens[currentIndex...])
+    let parsed = parseDestinationAndTitle(tokens: remainingTokens)
+    
+    if parsed.found {
+      // Complete definition found on this line
+      referenceNode.url = parsed.url
+      referenceNode.title = parsed.title
+      state.addReferenceDefinition(identifier: id, url: parsed.url, title: parsed.title)
+      return true
+    } else {
+      // Check if line has only whitespace after colon - if so, continue to next line
+      let remainingText = remainingTokens.map { $0.text }.joined().trimmingCharacters(in: .whitespacesAndNewlines)
+      if remainingText.isEmpty {
+        // Set up pending reference to continue on next line
+        let pending = PendingReferenceDefinition(identifier: id, referenceNode: referenceNode)
+        state.pendingReference = pending
+        return true
+      } else {
+        // Invalid reference definition
+        return false
+      }
     }
-
-    return true
   }
   
-  private func parseDestinationAndTitle(_ content: String) -> (url: String, title: String) {
-    if content.isEmpty { return ("", "") }
+  private func continuePendingReference(
+    pending: PendingReferenceDefinition,
+    context: inout CodeConstructContext<Node, Token>,
+    state: MarkdownConstructState
+  ) -> Bool {
+    let startIndex = 0
+    guard startIndex < context.tokens.count else { 
+      // Empty line - complete the reference if we have destination
+      if pending.hasDestination {
+        state.addReferenceDefinition(identifier: pending.identifier, url: pending.referenceNode.url, title: pending.referenceNode.title)
+      }
+      state.pendingReference = nil
+      return false
+    }
+
+    let tokens = Array(context.tokens[startIndex...])
+    let parsed = parseDestinationAndTitle(tokens: tokens)
     
-    var url = ""
-    var title = ""
+    var mutablePending = pending
     
-    // Handle angle-bracket enclosed destination
-    if content.hasPrefix("<") {
-      if let closeIndex = content.firstIndex(of: ">") {
-        url = String(content[content.index(after: content.startIndex)..<closeIndex])
-        let remaining = String(content[content.index(after: closeIndex)...]).trimmingCharacters(in: .whitespacesAndNewlines)
-        title = parseTitle(remaining)
+    if !mutablePending.hasDestination {
+      // Looking for destination
+      if parsed.found && !parsed.url.isEmpty {
+        mutablePending.referenceNode.url = parsed.url
+        mutablePending.referenceNode.title = parsed.title
+        mutablePending.hasDestination = true
+        state.addReferenceDefinition(identifier: mutablePending.identifier, url: parsed.url, title: parsed.title)
+        state.pendingReference = nil
+        return true
       } else {
-        url = content
+        // Still no destination - check if we have other content that would invalidate
+        let content = tokens.map { $0.text }.joined().trimmingCharacters(in: .whitespacesAndNewlines)
+        if !content.isEmpty {
+          // Non-whitespace content that's not a valid destination
+          state.pendingReference = nil
+          return false
+        }
+        // Keep waiting for destination
+        state.pendingReference = mutablePending
+        return true
       }
     } else {
-      // Find where URL ends and title begins
-      let parts = splitUrlAndTitle(content)
-      url = parts.url
-      title = parts.title
+      // We already have destination, looking for title
+      if parsed.foundTitle {
+        mutablePending.referenceNode.title = parsed.title
+        mutablePending.hasTitle = true
+        state.addReferenceDefinition(identifier: mutablePending.identifier, url: mutablePending.referenceNode.url, title: parsed.title)
+        state.pendingReference = nil
+        return true
+      } else {
+        // No title found, complete with empty title
+        state.addReferenceDefinition(identifier: mutablePending.identifier, url: mutablePending.referenceNode.url, title: "")
+        state.pendingReference = nil
+        return false
+      }
+    }
+  }
+  
+  private struct ParseResult {
+    let found: Bool
+    let url: String
+    let title: String
+    let foundTitle: Bool
+    
+    init(found: Bool = false, url: String = "", title: String = "", foundTitle: Bool = false) {
+      self.found = found
+      self.url = url
+      self.title = title
+      self.foundTitle = foundTitle
+    }
+  }
+  
+  private func parseDestinationAndTitle(tokens: [any CodeToken<MarkdownTokenElement>]) -> ParseResult {
+    let content = tokens.map { $0.text }.joined().trimmingCharacters(in: .whitespacesAndNewlines)
+    if content.isEmpty { 
+      return ParseResult()
     }
     
-    return (url, title)
+    // Check for angle-bracket enclosed destination
+    if content.hasPrefix("<") {
+      if let closeIndex = content.firstIndex(of: ">") {
+        let url = String(content[content.index(after: content.startIndex)..<closeIndex])
+        let remaining = String(content[content.index(after: closeIndex)...]).trimmingCharacters(in: .whitespacesAndNewlines)
+        let title = parseTitle(remaining)
+        return ParseResult(found: true, url: url, title: title, foundTitle: !title.isEmpty)
+      } else {
+        return ParseResult()
+      }
+    } else {
+      // Split URL and title
+      let parts = splitUrlAndTitle(content)
+      if parts.url.isEmpty {
+        return ParseResult()
+      }
+      return ParseResult(found: true, url: parts.url, title: parts.title, foundTitle: !parts.title.isEmpty)
+    }
   }
   
   private func splitUrlAndTitle(_ content: String) -> (url: String, title: String) {
-    // Look for title at the end (in quotes or parentheses)
     let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
     
-    // Check if content ends with a quoted title
+    // Look for title at the end (in quotes or parentheses)
     let quoteChars: [(open: Character, close: Character)] = [("\"", "\""), ("'", "'"), ("(", ")")]
     
     for (openQuote, closeQuote) in quoteChars {
       if trimmed.hasSuffix(String(closeQuote)) {
-        // For same quotes (like " "), we need to find the matching opening quote
-        // For different quotes (like ( )), we can use lastIndex
-        
         if openQuote == closeQuote {
-          // Find the last whitespace-delimited quoted string
+          // For same quotes, find the last whitespace-delimited quoted string
           if let spaceIndex = trimmed.lastIndex(where: { $0.isWhitespace }) {
             let possibleTitle = String(trimmed[trimmed.index(after: spaceIndex)...])
             if possibleTitle.count >= 2 && possibleTitle.first == openQuote && possibleTitle.last == closeQuote {
@@ -133,7 +225,7 @@ public class MarkdownReferenceLinkDefinitionBuilder: CodeNodeBuilder {
             }
           }
         } else {
-          // Different open/close quotes - use lastIndex approach
+          // Different open/close quotes
           if let lastOpenIndex = trimmed.lastIndex(of: openQuote) {
             let beforeQuote = String(trimmed[..<lastOpenIndex]).trimmingCharacters(in: .whitespacesAndNewlines)
             let titlePart = String(trimmed[lastOpenIndex...])
@@ -147,7 +239,7 @@ public class MarkdownReferenceLinkDefinitionBuilder: CodeNodeBuilder {
       }
     }
     
-    // No title found
+    // No title found - the entire content is the URL
     return (trimmed, "")
   }
   
