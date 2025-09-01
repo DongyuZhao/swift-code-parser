@@ -20,8 +20,7 @@ public class MarkdownInlineProcessor {
     self.init(builders: Self.createDefaultBuilders())
   }
   
-  /// Process inline content - pure dispatcher without delimiter stack algorithm
-  /// Delegates to individual builders which contain their own parsing logic
+  /// Process inline content using CommonMark delimiter stack algorithm - delegates specific logic to builders
   /// - Parameters:
   ///   - tokens: The tokens to process
   ///   - block: The block containing the inline content
@@ -34,15 +33,16 @@ public class MarkdownInlineProcessor {
     guard let state = context.state as? MarkdownConstructState else { return }
     
     var position = 0
+    var delimiterStack: [DelimiterEntry] = []
     
-    // Simple dispatch loop - each builder handles its own parsing logic
+    // Process each token according to CommonMark delimiter stack algorithm
     while position < tokens.count {
-      // Try each builder in priority order - pure delegation
+      let token = tokens[position]
+      
+      // Try each builder in priority order - delegate all specific logic to builders
       var handled = false
       for builder in builders {
         if builder.canHandle(tokens: tokens, position: position, state: state) {
-          // Let the builder handle its own parsing logic including delimiter stack if needed
-          var delimiterStack: [DelimiterEntry] = []  // Each builder manages its own stack
           if let inlineNode = builder.process(
             tokens: tokens,
             position: &position,
@@ -57,10 +57,9 @@ public class MarkdownInlineProcessor {
         }
       }
       
-      // If no builder handled the token, use fallback text builder
+      // If no builder handled the token, delegate to text builder as fallback
       if !handled {
         if let textBuilder = builders.first(where: { $0.inlineType == .text }) {
-          var delimiterStack: [DelimiterEntry] = []
           if let textNode = textBuilder.process(
             tokens: tokens,
             position: &position,
@@ -70,15 +69,37 @@ public class MarkdownInlineProcessor {
           ) {
             block.append(textNode)
           } else {
-            // Ultimate fallback - skip token
+            // Ultimate fallback - create text node directly and advance
+            block.append(createTextNode(from: token))
             position += 1
           }
         } else {
-          // No text builder available - skip token
+          // No text builder available - create text node directly and advance
+          block.append(createTextNode(from: token))
           position += 1
         }
       }
     }
+    
+    // Process any remaining delimiters on the stack according to CommonMark rules
+    // Unmatched delimiters should be treated as literal text
+    processRemainingDelimiters(&delimiterStack, in: block)
+  }
+  
+  /// Create a text node from a token - utility method
+  private func createTextNode(from token: any CodeToken<MarkdownTokenElement>) -> TextNode {
+    return TextNode(content: token.text)
+  }
+  
+  /// Process any remaining delimiters on the stack as literal text
+  private func processRemainingDelimiters(_ delimiterStack: inout [DelimiterEntry], in block: MarkdownNodeBase) {
+    // Convert unmatched delimiters back to text nodes according to CommonMark rules
+    // This is a simplified implementation - a complete one would properly handle all cases
+    for delimiter in delimiterStack {
+      let textNode = TextNode(content: String(repeating: delimiter.character, count: delimiter.count))
+      block.append(textNode)
+    }
+    delimiterStack.removeAll()
   }
   
   /// Create the default set of inline builders  
