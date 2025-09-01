@@ -15,6 +15,11 @@ public class MarkdownBlockQuoteBuilder: CodeNodeBuilder {
       return false
     }
 
+    // Don't process blockquotes when inside a fenced code block
+    if state.openFence != nil {
+      return false
+    }
+
     // In phased pipeline, builders receive the suffix tokens; always start at local 0
     let startIndex = 0
     guard startIndex < context.tokens.count else {
