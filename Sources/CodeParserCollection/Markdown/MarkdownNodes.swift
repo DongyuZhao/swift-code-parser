@@ -149,7 +149,8 @@ public class ThematicBreakNode: MarkdownNodeBase, MarkdownBlockNode {
   }
 }
 
-public class BlockquoteNode: MarkdownNodeBase {
+public class BlockquoteNode: MarkdownNodeBase, MarkdownBlockNode {
+  public var blockType: String { "blockquote" }
   public var level: Int
 
   public init(level: Int = 1) {
@@ -647,3 +648,5 @@ public typealias MarkdownHeading = HeaderNode
 public typealias MarkdownThematicBreak = ThematicBreakNode
 public typealias MarkdownText = TextNode
 public typealias MarkdownParagraph = ParagraphNode
+public typealias MarkdownBlockquote = BlockquoteNode
+public typealias MarkdownLineBreak = LineBreakNode

@@ -40,10 +40,28 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
     let lines = extractLines(from: remainingTokens, startingAt: 0)
     guard !lines.isEmpty else { return false }
     
-    // Process each line using CommonMark algorithm
-    for line in lines {
+    // Process each line using CommonMark algorithm with setext heading support
+    var lineIndex = 0
+    while lineIndex < lines.count {
+      let line = lines[lineIndex]
       currentLineNumber = line.lineNumber
       
+      // Check for setext headings (requires looking ahead)
+      if lineIndex + 1 < lines.count {
+        let nextLine = lines[lineIndex + 1]
+        let (isUnderline, level) = MarkdownSetextHeadingBuilder.isSetextUnderline(nextLine, for: line)
+        
+        if isUnderline {
+          // Create setext heading and skip the underline
+          if let setextHeading = MarkdownSetextHeadingBuilder.createSetextHeading(from: line, level: level) {
+            closedBlocks.append(setextHeading)
+            lineIndex += 2 // Skip both the text line and underline
+            continue
+          }
+        }
+      }
+      
+      // Normal CommonMark processing
       // Phase 1: Check continuation of open blocks (from innermost to outermost)
       checkBlockContinuation(line: line)
       
@@ -59,6 +77,8 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
       if let currentBlock = openBlocks.last {
         processLineForBlock(block: currentBlock, line: line)
       }
+      
+      lineIndex += 1
     }
     
     // Close all remaining open blocks and add them to context
@@ -206,7 +226,9 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
       if (block.blockType == "paragraph" && builder is MarkdownParagraphBuilder) ||
          (block.blockType == "code_block" && builder is MarkdownIndentedCodeBlockBuilder) ||
          (block.blockType == "heading" && builder is MarkdownATXHeadingBuilder) ||
-         (block.blockType == "thematic_break" && builder is MarkdownThematicBreakBuilder) {
+         (block.blockType == "thematic_break" && builder is MarkdownThematicBreakBuilder) ||
+         (block.blockType == "blockquote" && builder is MarkdownBlockquoteBuilder) ||
+         (block.blockType == "fenced_code_block" && builder is MarkdownFencedCodeBlockBuilder) {
         builder.closeBlock(block: block)
         break
       }
@@ -252,6 +274,8 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
       // Order matters: more specific builders should come first
       MarkdownATXHeadingBuilder(),
       MarkdownThematicBreakBuilder(),
+      MarkdownFencedCodeBlockBuilder(),
+      MarkdownBlockquoteBuilder(),
       MarkdownIndentedCodeBlockBuilder(),
       MarkdownParagraphBuilder() // Paragraph should be last as it's the fallback
     ]
