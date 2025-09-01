@@ -37,31 +37,61 @@ private struct ProcessedEmphasis {
 /// Works directly with tokens without string conversion
 public class MarkdownInlineProcessor {
   
+  private let codeSpanBuilder = MarkdownCodeSpanBuilder()
+  private let strikethroughBuilder = MarkdownStrikethroughBuilder()
+  
   public init() {}
   
   /// Process inline content from tokens using CommonMark delimiter stack algorithm
+  /// Precedence: Code spans > Links > Emphasis/Strong > Strikethrough
   public func processInlineTokens(_ tokens: [any CodeToken<MarkdownTokenElement>]) -> [MarkdownNodeBase] {
     if tokens.isEmpty {
       return []
     }
     
-    // Build delimiter stack from punctuation tokens only
-    let delimiterStack = buildDelimiterStack(from: tokens)
+    // 1. Process code spans first (highest precedence)
+    let codeSpans = codeSpanBuilder.processCodeSpans(in: tokens)
     
-    // Process emphasis using delimiter stack
+    // 2. Filter tokens for emphasis processing (exclude those in code spans)
+    let emphasisTokens = filterTokensExcluding(tokens, ranges: codeSpans.map { $0.range })
+    
+    // 3. Process emphasis/strong emphasis
+    let delimiterStack = buildDelimiterStack(from: emphasisTokens, originalTokens: tokens)
     let processedEmphasis = processEmphasisWithDelimiterStack(tokens: tokens, delimiters: delimiterStack)
     
-    // Build final node tree
-    return buildNodeTree(from: tokens, processedEmphasis: processedEmphasis)
+    // 4. Process strikethrough (lower precedence than emphasis)
+    let allUsedRanges = codeSpans.map { $0.range } + processedEmphasis.map { $0.range }
+    let strikethroughTokens = filterTokensExcluding(tokens, ranges: allUsedRanges)
+    let processedStrikethrough = strikethroughBuilder.processStrikethrough(in: strikethroughTokens)
+    
+    // 5. Build final node tree
+    return buildNodeTree(from: tokens, 
+                        codeSpans: codeSpans,
+                        processedEmphasis: processedEmphasis,
+                        processedStrikethrough: processedStrikethrough)
+  }
+  
+  /// Filter tokens excluding those in specified ranges
+  private func filterTokensExcluding(_ tokens: [any CodeToken<MarkdownTokenElement>], ranges: [ClosedRange<Int>]) -> [any CodeToken<MarkdownTokenElement>] {
+    var filteredTokens: [any CodeToken<MarkdownTokenElement>] = []
+    
+    for (index, token) in tokens.enumerated() {
+      let isInRange = ranges.contains { range in range.contains(index) }
+      if !isInRange {
+        filteredTokens.append(token)
+      }
+    }
+    
+    return filteredTokens
   }
   
   /// Build delimiter stack from punctuation tokens
-  private func buildDelimiterStack(from tokens: [any CodeToken<MarkdownTokenElement>]) -> [EmphasisDelimiter] {
+  private func buildDelimiterStack(from tokens: [any CodeToken<MarkdownTokenElement>], originalTokens: [any CodeToken<MarkdownTokenElement>]) -> [EmphasisDelimiter] {
     var delimiters: [EmphasisDelimiter] = []
     var index = 0
     
-    while index < tokens.count {
-      let token = tokens[index]
+    while index < originalTokens.count {
+      let token = originalTokens[index]
       
       // Only consider punctuation tokens - escaped content is in .characters tokens
       guard token.element == .punctuation else {
@@ -79,8 +109,8 @@ public class MarkdownInlineProcessor {
       // Count consecutive delimiters of the same type
       var delimiterLength = 0
       var currentIndex = index
-      while currentIndex < tokens.count {
-        let currentToken = tokens[currentIndex]
+      while currentIndex < originalTokens.count {
+        let currentToken = originalTokens[currentIndex]
         if currentToken.element == .punctuation && currentToken.text == token.text {
           delimiterLength += 1
           currentIndex += 1
@@ -90,7 +120,7 @@ public class MarkdownInlineProcessor {
       }
       
       // Determine if this delimiter run can open or close emphasis
-      let (canOpen, canClose) = determineFlankingRules(at: index, delimiterLength: delimiterLength, in: tokens)
+      let (canOpen, canClose) = determineFlankingRules(at: index, delimiterLength: delimiterLength, in: originalTokens)
       
       if canOpen || canClose {
         let delimiter = EmphasisDelimiter(
@@ -173,7 +203,7 @@ public class MarkdownInlineProcessor {
         continue
       }
       
-      // Look backwards for matching opening delimiter
+      // Look backwards for matching opening delimiter of same character
       var openingIndex: Int? = nil
       for i in (0..<stackIndex).reversed() {
         let openingDelimiter = delimiterStack[i]
@@ -190,14 +220,29 @@ public class MarkdownInlineProcessor {
       if let openingIndex = openingIndex {
         let openingDelimiter = delimiterStack[openingIndex]
         
-        // Determine how many delimiters to use (1 for emphasis, 2 for strong)
-        let useCount = min(2, min(openingDelimiter.length, currentDelimiter.length))
+        // Apply the multiple of 3 rule: if total delimiters is multiple of 3,
+        // and both opener and closer have length not multiple of 3, don't match
+        let totalLength = openingDelimiter.length + currentDelimiter.length
+        if totalLength % 3 == 0 && 
+           openingDelimiter.length % 3 != 0 && 
+           currentDelimiter.length % 3 != 0 {
+          stackIndex += 1
+          continue
+        }
         
-        // Calculate actual token ranges
+        // Determine how many delimiters to use
+        let useCount: Int
+        if openingDelimiter.length >= 2 && currentDelimiter.length >= 2 {
+          useCount = 2  // Strong emphasis
+        } else {
+          useCount = 1  // Regular emphasis
+        }
+        
+        // Calculate token positions after using delimiters
         let openingStartToken = openingDelimiter.tokenIndex
-        let openingEndToken = openingDelimiter.tokenIndex + useCount - 1
-        let closingStartToken = currentDelimiter.tokenIndex + currentDelimiter.length - useCount
-        let closingEndToken = currentDelimiter.tokenIndex + currentDelimiter.length - 1
+        let _ = openingDelimiter.tokenIndex + useCount - 1  // openingEndToken
+        let _ = currentDelimiter.tokenIndex                 // closingStartToken  
+        let closingEndToken = currentDelimiter.tokenIndex + useCount - 1
         
         // Create range for the entire emphasis span (including delimiters)
         let tokenRange = openingStartToken...closingEndToken
@@ -205,9 +250,46 @@ public class MarkdownInlineProcessor {
         
         processedEmphasis.append(ProcessedEmphasis(range: tokenRange, isStrong: isStrong))
         
-        // Remove processed delimiters from stack
-        delimiterStack.removeSubrange(openingIndex...stackIndex)
+        // Update or remove delimiters based on usage
+        var newDelimiters: [EmphasisDelimiter] = Array(delimiterStack[0..<openingIndex])
+        
+        // Add remaining opening delimiter if any
+        if openingDelimiter.length > useCount {
+          let remainingOpener = EmphasisDelimiter(
+            tokenIndex: openingDelimiter.tokenIndex + useCount,
+            character: openingDelimiter.character,
+            length: openingDelimiter.length - useCount,
+            canOpen: openingDelimiter.canOpen,
+            canClose: openingDelimiter.canClose
+          )
+          newDelimiters.append(remainingOpener)
+        }
+        
+        // Add delimiters between opener and closer (these remain in stack)
+        newDelimiters.append(contentsOf: delimiterStack[(openingIndex + 1)..<stackIndex])
+        
+        // Add remaining closing delimiter if any
+        if currentDelimiter.length > useCount {
+          let remainingCloser = EmphasisDelimiter(
+            tokenIndex: currentDelimiter.tokenIndex + useCount,
+            character: currentDelimiter.character,
+            length: currentDelimiter.length - useCount,
+            canOpen: currentDelimiter.canOpen,
+            canClose: currentDelimiter.canClose
+          )
+          newDelimiters.append(remainingCloser)
+        }
+        
+        // Add remaining delimiters after closer
+        newDelimiters.append(contentsOf: delimiterStack[(stackIndex + 1)...])
+        
+        delimiterStack = newDelimiters
+        
+        // Continue processing from the updated position
         stackIndex = openingIndex
+        if openingDelimiter.length > useCount {
+          stackIndex += 1
+        }
       } else {
         stackIndex += 1
       }
@@ -216,17 +298,26 @@ public class MarkdownInlineProcessor {
     return processedEmphasis
   }
   
-  /// Build node tree from tokens and processed emphasis ranges
-  private func buildNodeTree(from tokens: [any CodeToken<MarkdownTokenElement>], processedEmphasis: [ProcessedEmphasis]) -> [MarkdownNodeBase] {
+  /// Build node tree from tokens and processed inline elements
+  private func buildNodeTree(from tokens: [any CodeToken<MarkdownTokenElement>], 
+                            codeSpans: [ProcessedCodeSpan],
+                            processedEmphasis: [ProcessedEmphasis],
+                            processedStrikethrough: [ProcessedStrikethrough]) -> [MarkdownNodeBase] {
     var nodes: [MarkdownNodeBase] = []
     var index = 0
     
     while index < tokens.count {
-      // Check if this token is part of an emphasis range
-      let emphasisMatch = processedEmphasis.first { $0.range.contains(index) }
+      // Check if this token is part of a code span (highest precedence)
+      if let codeSpan = codeSpans.first(where: { $0.range.contains(index) }) {
+        let content = codeSpanBuilder.extractCodeContent(from: tokens, in: codeSpan.range)
+        let codeNode = CodeSpanNode(code: content)
+        nodes.append(codeNode)
+        index = codeSpan.range.upperBound + 1
+        continue
+      }
       
-      if let emphasis = emphasisMatch {
-        // Create emphasis node
+      // Check if this token is part of an emphasis range
+      if let emphasis = processedEmphasis.first(where: { $0.range.contains(index) }) {
         let range = emphasis.range
         
         // Calculate delimiter length (1 for *, 2 for **)
@@ -260,20 +351,47 @@ public class MarkdownInlineProcessor {
         
         // Skip to after this range
         index = range.upperBound + 1
-      } else {
-        // Regular token - convert to text
-        let token = tokens[index]
-        if token.element != .eof && token.element != .newline {
-          if let lastNode = nodes.last as? MarkdownText {
-            // Combine with previous text node
-            lastNode.content += token.text
-          } else {
-            // Create new text node
-            nodes.append(MarkdownText(content: token.text))
-          }
-        }
-        index += 1
+        continue
       }
+      
+      // Check if this token is part of a strikethrough range
+      if let strikethrough = processedStrikethrough.first(where: { $0.range.contains(index) }) {
+        let range = strikethrough.range
+        
+        // Skip opening ~~ delimiter (1 token)
+        let contentStart = range.lowerBound + 1
+        let contentEnd = range.upperBound - 1
+        
+        if contentStart <= contentEnd {
+          let contentTokens = Array(tokens[contentStart...contentEnd])
+          
+          // Recursively process content
+          let contentNodes = processInlineTokens(contentTokens)
+          
+          let strikeNode = StrikeNode(content: "")
+          for child in contentNodes {
+            strikeNode.append(child)
+          }
+          nodes.append(strikeNode)
+        }
+        
+        // Skip to after this range
+        index = range.upperBound + 1
+        continue
+      }
+      
+      // Regular token - convert to text
+      let token = tokens[index]
+      if token.element != .eof && token.element != .newline {
+        if let lastNode = nodes.last as? MarkdownText {
+          // Combine with previous text node
+          lastNode.content += token.text
+        } else {
+          // Create new text node
+          nodes.append(MarkdownText(content: token.text))
+        }
+      }
+      index += 1
     }
     
     return nodes
