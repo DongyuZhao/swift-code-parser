@@ -220,6 +220,8 @@ public class MarkdownUnifiedListBuilder: CodeNodeBuilder {
         // Handle paragraph continuation vs creation based on blank line context
         handleParagraphContinuationInListItem(targetListItem, state: state, hasBlankLineBefore: state.lastWasBlankLine)
         
+        // Return true to indicate we've set the correct context
+        // Let the leafOnLine phase builders handle the actual content in this context
         return true
       }
     }

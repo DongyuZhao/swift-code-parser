@@ -71,6 +71,16 @@ public class MarkdownIndentedCodeBlockBuilder: CodeNodeBuilder {
     if context.current.element == .paragraph {
       return false
     }
+    
+    // Check if we're in a list item context - indented content should be treated as list continuation
+    // rather than code block if the indentation matches list item requirements
+    if let listItem = findContainingListItem(context.current) {
+      // If the indentation is exactly what's needed for list item continuation,
+      // don't create a code block - let list continuation handle it
+      if indentationSpaces < listItem.contentIndent + 4 {
+        return false
+      }
+    }
 
     // If we reached end of tokens, this is just indented whitespace - not a code block
     guard index < context.tokens.count else {
@@ -130,5 +140,16 @@ public class MarkdownIndentedCodeBlockBuilder: CodeNodeBuilder {
     }
 
     return true
+  }
+
+  private func findContainingListItem(_ node: CodeNode<MarkdownNodeElement>) -> ListItemNode? {
+    var current: CodeNode<MarkdownNodeElement>? = node
+    while let n = current {
+      if let listItem = n as? ListItemNode {
+        return listItem
+      }
+      current = n.parent
+    }
+    return nil
   }
 }
