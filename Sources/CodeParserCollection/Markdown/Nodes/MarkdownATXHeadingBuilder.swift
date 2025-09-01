@@ -14,8 +14,8 @@ public class MarkdownATXHeadingBuilder: MarkdownBlockBuilderProtocol {
       return false
     }
     
-    // Find first non-whitespace content
-    let content = line.content.trimmingCharacters(in: .whitespaces)
+    // Find first non-whitespace content (excluding potential trailing newlines/eof)
+    let content = line.content.trimmingCharacters(in: .whitespacesAndNewlines)
     
     // Must start with 1-6 # characters
     let hashCount = content.prefix { $0 == "#" }.count
@@ -38,7 +38,7 @@ public class MarkdownATXHeadingBuilder: MarkdownBlockBuilderProtocol {
   }
   
   public func createBlock(from line: MarkdownLine) -> (any MarkdownBlockNode)? {
-    let content = line.content.trimmingCharacters(in: .whitespaces)
+    let content = line.content.trimmingCharacters(in: .whitespacesAndNewlines)
     
     // Extract level (number of # characters)
     let level = content.prefix { $0 == "#" }.count

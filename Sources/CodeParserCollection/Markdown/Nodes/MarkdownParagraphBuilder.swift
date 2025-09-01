@@ -96,10 +96,9 @@ public class MarkdownParagraphBuilder: MarkdownBlockBuilderProtocol {
       return true
     }
     
-    // Check for heading markers
-    if firstToken.element == .punctuation && firstToken.text.hasPrefix("#") {
-      return true
-    }
+    // Don't check for heading markers here - let the actual heading builders decide
+    // This prevents conflicts where "#5 bolt" gets marked as a block starter
+    // when it should be a paragraph
     
     // Check for thematic break (---, ***, ___)
     if firstToken.element == .punctuation {
@@ -117,10 +116,8 @@ public class MarkdownParagraphBuilder: MarkdownBlockBuilderProtocol {
   private func startsWithInterruptingBlockMarker(line: MarkdownLine) -> Bool {
     guard let firstToken = line.tokens.first else { return false }
     
-    // Check for heading markers (these DO interrupt paragraphs)
-    if firstToken.element == .punctuation && firstToken.text.hasPrefix("#") {
-      return true
-    }
+    // Don't check for heading markers here either - let the actual heading builders decide
+    // This prevents conflicts with lines like "#5 bolt" when they're part of a paragraph
     
     // Check for thematic break (these DO interrupt paragraphs)
     if firstToken.element == .punctuation {
