@@ -963,17 +963,29 @@ public struct LinkImagePairProcessor: MarkdownInlinePhaseProcessor {
     let quoteChars: [(open: Character, close: Character)] = [("\"", "\""), ("'", "'"), ("(", ")")]
     
     for (openQuote, closeQuote) in quoteChars {
-      // Look for patterns that end with a quoted title
       if s.hasSuffix(String(closeQuote)) {
-        // Find the opening quote
-        if let lastOpenIndex = s.dropLast().lastIndex(of: openQuote) {
-          // This is a potential title - check if there's a destination before it
-          let beforeQuote = String(s[..<lastOpenIndex]).trimmingCharacters(in: .whitespacesAndNewlines)
-          let titlePart = String(s[lastOpenIndex...])
-          
-          // Make sure there's some destination before the quote
-          if !beforeQuote.isEmpty {
-            return (beforeQuote, titlePart)
+        if openQuote == closeQuote {
+          // For matching quotes, find the rightmost whitespace-delimited quoted string
+          if let lastSpaceIndex = s.lastIndex(where: { $0.isWhitespace }) {
+            let possibleTitle = String(s[s.index(after: lastSpaceIndex)...])
+            if possibleTitle.count >= 2 && possibleTitle.first == openQuote && possibleTitle.last == closeQuote {
+              // Validate the title content doesn't have unescaped quotes
+              let titleContent = String(possibleTitle.dropFirst().dropLast())
+              if !hasUnescapedQuotes(titleContent, quote: openQuote) {
+                let dest = String(s[..<lastSpaceIndex]).trimmingCharacters(in: .whitespacesAndNewlines)
+                return (dest, possibleTitle)
+              }
+            }
+          }
+        } else {
+          // Different open/close quotes - use lastIndex approach
+          if let lastOpenIndex = s.lastIndex(of: openQuote) {
+            let beforeQuote = String(s[..<lastOpenIndex]).trimmingCharacters(in: .whitespacesAndNewlines)
+            let titlePart = String(s[lastOpenIndex...])
+            
+            if titlePart.count >= 2 && titlePart.first == openQuote && titlePart.last == closeQuote {
+              return (beforeQuote, titlePart)
+            }
           }
         }
       }
@@ -982,15 +994,46 @@ public struct LinkImagePairProcessor: MarkdownInlinePhaseProcessor {
     return nil
   }
   
+  /// Check if a string contains unescaped quotes of the specified type
+  private static func hasUnescapedQuotes(_ content: String, quote: Character) -> Bool {
+    var escaped = false
+    for char in content {
+      if escaped {
+        escaped = false
+        continue
+      }
+      if char == "\\" {
+        escaped = true
+        continue
+      }
+      if char == quote {
+        return true // Found unescaped quote
+      }
+    }
+    return false
+  }
+  
   private static func parseTitleFromString(_ s: String) -> String {
     let trimmed = s.trimmingCharacters(in: .whitespacesAndNewlines)
     if trimmed.isEmpty { return "" }
     
     // Check for quoted title
-    if (trimmed.hasPrefix("\"") && trimmed.hasSuffix("\"")) ||
-       (trimmed.hasPrefix("'") && trimmed.hasSuffix("'")) ||
-       (trimmed.hasPrefix("(") && trimmed.hasSuffix(")")) {
-      return String(trimmed.dropFirst().dropLast())
+    let quoteChars: [(open: Character, close: Character)] = [("\"", "\""), ("'", "'"), ("(", ")")]
+    
+    for (openQuote, closeQuote) in quoteChars {
+      if trimmed.hasPrefix(String(openQuote)) && trimmed.hasSuffix(String(closeQuote)) && trimmed.count >= 2 {
+        let content = String(trimmed.dropFirst().dropLast())
+        
+        // For same open/close quotes, validate no unescaped quotes inside
+        if openQuote == closeQuote {
+          // Check if the content contains unescaped quotes of the same type
+          if hasUnescapedQuotes(content, quote: openQuote) {
+            return "" // Invalid title
+          }
+        }
+        
+        return content
+      }
     }
     
     return ""
