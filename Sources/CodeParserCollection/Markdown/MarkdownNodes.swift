@@ -112,6 +112,7 @@ public class DocumentNode: MarkdownNodeBase {
 // MARK: - Block Elements
 public class ParagraphNode: MarkdownNodeBase, MarkdownBlockNode {
   public var blockType: String { "paragraph" }
+  internal var lastLineEndedWithTwoSpaces: Bool = false
   
   public init(range: Range<String.Index>) {
     super.init(element: .paragraph)

@@ -25,8 +25,7 @@ public class MarkdownIndentedCodeBlockBuilder: MarkdownBlockBuilderProtocol {
     
     let codeBlock = CodeBlockNode(source: "", language: nil)
     
-    // Process the first line
-    _ = processLine(block: codeBlock, line: line)
+    // Don't process the first line here - it will be processed in the main loop
     return codeBlock
   }
   

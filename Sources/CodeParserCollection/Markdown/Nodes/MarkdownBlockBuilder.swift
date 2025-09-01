@@ -16,6 +16,7 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
   
   private let blockBuilders: [MarkdownBlockBuilderProtocol]
   private var openBlocks: [any MarkdownBlockNode] = []
+  private var closedBlocks: [MarkdownNodeBase] = []
   private var currentLineNumber: Int = 0
   
   /// Initialize with custom block builders (pluggable architecture)
@@ -32,33 +33,57 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
   public func build(from context: inout CodeConstructContext<Node, Token>) -> Bool {
     guard context.consuming < context.tokens.count else { return false }
     
-    // For now, simplify: process all remaining tokens as a single block
+    // Extract lines from remaining tokens
     let remainingTokens = Array(context.tokens[context.consuming...])
     guard !remainingTokens.isEmpty else { return false }
     
-    // Convert to a single line for processing
-    let line = MarkdownLine(tokens: remainingTokens, lineNumber: 0)
+    let lines = extractLines(from: remainingTokens, startingAt: 0)
+    guard !lines.isEmpty else { return false }
     
-    // Try to create a block with one of the builders
-    for builder in blockBuilders {
-      if builder.canStart(line: line) {
-        if let newBlock = builder.createBlock(from: line) {
-          // Add the block to context and consume all tokens
-          if let markdownNode = newBlock as? MarkdownNodeBase {
-            context.current.append(markdownNode)
-          }
-          context.consuming = context.tokens.count // Consume all tokens
-          
-          // Close the block
-          builder.closeBlock(block: newBlock)
-          return true
-        }
+    // Process each line using CommonMark algorithm
+    for line in lines {
+      currentLineNumber = line.lineNumber
+      
+      // Phase 1: Check continuation of open blocks (from innermost to outermost)
+      checkBlockContinuation(line: line)
+      
+      // Phase 2: Close blocks that cannot continue (handled in checkBlockContinuation)
+      closeUnmatchedBlocks()
+      
+      // Phase 3: Try to open new blocks with current line
+      if openBlocks.isEmpty || !canCurrentBlockContinue(line: line) {
+        openNewBlocks(line: line)
+      }
+      
+      // Phase 4: Process line content for current block
+      if let currentBlock = openBlocks.last {
+        processLineForBlock(block: currentBlock, line: line)
       }
     }
     
-    return false
+    // Close all remaining open blocks and add them to context
+    closeAllBlocks()
+    addBlocksToContext(context: &context)
+    
+    // Consume all processed tokens
+    context.consuming = context.tokens.count
+    
+    return true
   }
   
+  /// Check if the current block can continue with the given line
+  private func canCurrentBlockContinue(line: MarkdownLine) -> Bool {
+    guard let currentBlock = openBlocks.last else { return false }
+    
+    // Find the builder for the current block
+    for builder in blockBuilders {
+      if builder.canContinue(block: currentBlock, line: line) {
+        return true
+      }
+    }
+    return false
+  }
+
   /// Extract lines from token stream starting at given position
   private func extractLines(from tokens: [any CodeToken<MarkdownTokenElement>], startingAt: Int) -> [MarkdownLine] {
     var lines: [MarkdownLine] = []
@@ -67,10 +92,12 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
     
     while index < tokens.count {
       let token = tokens[index]
+      
+      // Add the token to current line
       currentLineTokens.append(token)
       
-      // End of line or end of input
-      if token.element == .newline || token.element == .eof || index == tokens.count - 1 {
+      // Check if this token ends the line
+      if token.element == .newline || token.element == .eof {
         let line = MarkdownLine(tokens: currentLineTokens, lineNumber: lines.count)
         lines.append(line)
         currentLineTokens = []
@@ -83,7 +110,7 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
       index += 1
     }
     
-    // Add any remaining tokens as final line
+    // Add any remaining tokens as final line if needed
     if !currentLineTokens.isEmpty {
       let line = MarkdownLine(tokens: currentLineTokens, lineNumber: lines.count)
       lines.append(line)
@@ -95,6 +122,18 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
   /// Phase 1: Check which open blocks can continue with the current line
   private func checkBlockContinuation(line: MarkdownLine) {
     var continuableBlocks: [any MarkdownBlockNode] = []
+    
+    // For blank lines, most blocks (like paragraphs) cannot continue
+    if line.isBlank {
+      // Close and finalize all open blocks before clearing them
+      for block in openBlocks {
+        closeBlock(block: block)
+        addBlockToContext(block: block)
+      }
+      // Empty the open blocks - blank lines close most block types
+      openBlocks = []
+      return
+    }
     
     // Check from innermost to outermost
     for block in openBlocks.reversed() {
@@ -113,6 +152,14 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
       }
     }
     
+    // Close blocks that couldn't continue
+    for block in openBlocks {
+      if !continuableBlocks.contains(where: { $0 === block }) {
+        closeBlock(block: block)
+        addBlockToContext(block: block)
+      }
+    }
+    
     openBlocks = continuableBlocks
   }
   
@@ -124,6 +171,11 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
   
   /// Phase 3: Try to open new blocks with the current line
   private func openNewBlocks(line: MarkdownLine) {
+    // Don't try to open new blocks on blank lines
+    if line.isBlank {
+      return
+    }
+    
     // Try each builder to see if it can start a new block
     for builder in blockBuilders {
       if builder.canStart(line: line) {
@@ -146,23 +198,44 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
     }
   }
   
+  /// Close and finalize a single block
+  private func closeBlock(block: any MarkdownBlockNode) {
+    // Find the appropriate builder and close the block
+    for builder in blockBuilders {
+      // Use block type comparison instead of canContinue for closing
+      if (block.blockType == "paragraph" && builder is MarkdownParagraphBuilder) ||
+         (block.blockType == "code_block" && builder is MarkdownIndentedCodeBlockBuilder) {
+        builder.closeBlock(block: block)
+        break
+      }
+    }
+  }
+  
+  /// Add a single block to the context
+  private func addBlockToContext(block: any MarkdownBlockNode) {
+    if let markdownNode = block as? MarkdownNodeBase {
+      // We need access to the context here, but this method doesn't have it
+      // Let's store blocks and add them later
+      self.closedBlocks.append(markdownNode)
+    }
+  }
+
   /// Close all open blocks and perform post-processing
   private func closeAllBlocks() {
     for block in openBlocks {
-      // Find the appropriate builder and close the block
-      for builder in blockBuilders {
-        // We can use canContinue as a proxy for "this builder handles this block type"
-        let dummyLine = MarkdownLine(tokens: [], lineNumber: 0)
-        if builder.canContinue(block: block, line: dummyLine) {
-          builder.closeBlock(block: block)
-          break
-        }
-      }
+      closeBlock(block: block)
     }
   }
   
   /// Add all closed blocks to the context
   private func addBlocksToContext(context: inout CodeConstructContext<Node, Token>) {
+    // Add previously closed blocks
+    for block in closedBlocks {
+      context.current.append(block)
+    }
+    closedBlocks.removeAll()
+    
+    // Add any remaining open blocks
     for block in openBlocks {
       if let markdownNode = block as? MarkdownNodeBase {
         context.current.append(markdownNode)

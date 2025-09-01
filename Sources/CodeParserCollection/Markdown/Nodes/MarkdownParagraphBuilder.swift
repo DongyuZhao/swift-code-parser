@@ -14,32 +14,61 @@ public class MarkdownParagraphBuilder: MarkdownBlockBuilderProtocol {
   public func canContinue(block: any MarkdownBlockNode, line: MarkdownLine) -> Bool {
     // Paragraphs continue until a blank line or another block marker
     guard block.blockType == "paragraph" else { return false }
-    return !line.isBlank && !startsWithBlockMarker(line: line)
+    
+    // Blank lines end paragraphs
+    if line.isBlank { return false }
+    
+    // For continuation lines, we're more permissive than for starting lines
+    // Only check for block markers that would definitely interrupt a paragraph
+    return !startsWithInterruptingBlockMarker(line: line)
   }
   
   public func createBlock(from line: MarkdownLine) -> (any MarkdownBlockNode)? {
     guard let firstToken = line.tokens.first else { return nil }
     let paragraph = ParagraphNode(range: firstToken.range)
     
-    // Process the first line
-    _ = processLine(block: paragraph, line: line)
+    // Don't process the first line here - it will be processed in the main loop
     return paragraph
   }
   
   public func processLine(block: any MarkdownBlockNode, line: MarkdownLine) -> Bool {
     guard let paragraph = block as? ParagraphNode else { return false }
     
+    // If paragraph already has content, add a line break first
+    if !paragraph.children.isEmpty {
+      // Check if previous line ended with two spaces (hard line break)
+      let isHardBreak = paragraph.lastLineEndedWithTwoSpaces
+      let lineBreak = LineBreakNode(variant: isHardBreak ? .hard : .soft)
+      paragraph.append(lineBreak)
+    }
+    
     // Extract text content from the line, combining all tokens
     var textContent = ""
-    for token in line.tokens {
+    var endsWithTwoSpaces = false
+    
+    for (index, token) in line.tokens.enumerated() {
       if token.element == .characters || token.element == .punctuation {
         textContent += token.text
       } else if token.element == .whitespaces {
-        // Normalize whitespace to single spaces
-        textContent += " "
+        // Check if this is trailing whitespace (followed only by newline/eof)
+        let isTrailing = line.tokens.suffix(from: index + 1).allSatisfy { 
+          $0.element == .newline || $0.element == .eof 
+        }
+        
+        if isTrailing && token.text.count >= 2 {
+          // Two or more trailing spaces = hard line break
+          endsWithTwoSpaces = true
+          // Don't add the trailing spaces to content
+        } else {
+          // Normalize other whitespace to single spaces
+          textContent += " "
+        }
       }
       // Skip newlines and EOF for now - inline processing will handle them later
     }
+    
+    // Store whether this line ended with two spaces for next line's line break
+    paragraph.lastLineEndedWithTwoSpaces = endsWithTwoSpaces
     
     // Add text content if not empty (normalize whitespace)
     let trimmedContent = textContent.trimmingCharacters(in: .whitespaces)
@@ -59,7 +88,7 @@ public class MarkdownParagraphBuilder: MarkdownBlockBuilderProtocol {
   
   /// Check if line starts with a block marker that would interrupt a paragraph
   private func startsWithBlockMarker(line: MarkdownLine) -> Bool {
-    // For now, keep it simple - check for common block starters
+    // For new paragraphs, check for common block starters
     guard let firstToken = line.tokens.first else { return false }
     
     // Check for indented code block (4+ spaces)
@@ -79,6 +108,29 @@ public class MarkdownParagraphBuilder: MarkdownBlockBuilderProtocol {
         return true
       }
     }
+    
+    return false
+  }
+  
+  /// Check if line starts with a block marker that would interrupt a paragraph continuation
+  /// This is more restrictive than startsWithBlockMarker - indented code doesn't interrupt paragraphs
+  private func startsWithInterruptingBlockMarker(line: MarkdownLine) -> Bool {
+    guard let firstToken = line.tokens.first else { return false }
+    
+    // Check for heading markers (these DO interrupt paragraphs)
+    if firstToken.element == .punctuation && firstToken.text.hasPrefix("#") {
+      return true
+    }
+    
+    // Check for thematic break (these DO interrupt paragraphs)
+    if firstToken.element == .punctuation {
+      let text = firstToken.text
+      if text.hasPrefix("---") || text.hasPrefix("***") || text.hasPrefix("___") {
+        return true
+      }
+    }
+    
+    // NOTE: Indented code blocks (4+ spaces) do NOT interrupt paragraphs
     
     return false
   }
