@@ -284,6 +284,7 @@ public struct HardLineBreakRebuildProcessor: MarkdownInlinePhaseProcessor {
       case .punctuation:
         // Backslash must be immediately before newline (no trailing spaces)
         if tok.text == "\\" && trailingSpaces == 0 {
+          cleanupTrailingBackslash(in: &context)
           context.add(LineBreakNode(variant: .hard))
           return true
         }
@@ -340,6 +341,33 @@ public struct HardLineBreakRebuildProcessor: MarkdownInlinePhaseProcessor {
         }
       }
       idx -= 1
+    }
+  }
+
+  private func cleanupTrailingBackslash(in context: inout MarkdownContentContext) {
+    guard !context.inlined.isEmpty else { return }
+    
+    // Look for the most recent text node that ends with a backslash
+    for idx in (0..<context.inlined.count).reversed() {
+      if let textNode = context.inlined[idx] as? TextNode {
+        let text = textNode.content
+        if text.hasSuffix("\\") {
+          if text.count == 1 {
+            // Remove the entire text node if it's just the backslash
+            context.inlined.remove(at: idx)
+          } else {
+            // Remove just the trailing backslash
+            textNode.content = String(text.dropLast())
+          }
+          return
+        } else if !text.isEmpty {
+          // Stop looking once we find a non-empty text node that doesn't end with backslash
+          return
+        }
+      } else {
+        // Stop looking once we find a non-text node
+        return
+      }
     }
   }
 }
