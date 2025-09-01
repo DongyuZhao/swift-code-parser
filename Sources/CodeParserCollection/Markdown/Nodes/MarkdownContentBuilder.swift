@@ -16,12 +16,14 @@ public class MarkdownContentBuilder: CodeNodeBuilder {
       EmphasisDelimiterScanProcessor(priority: -300),
       StrikethroughDelimiterScanProcessor(priority: -295),
       CodeSpanDelimiterScanProcessor(priority: -290),
-  BracketDelimiterScanProcessor(priority: -285),
+      BracketDelimiterScanProcessor(priority: -285),
+      AutolinkDelimiterScanProcessor(priority: -280),
       // rebuild-phase processors
       HardLineBreakRebuildProcessor(priority: 0),
       UnmatchedDelimiterInlineProcessor(priority: 0),
       // pair processors
-  LinkImagePairProcessor(priority: 5),
+      AutolinkPairProcessor(priority: 4),
+      LinkImagePairProcessor(priority: 5),
       EmphasisStrongPairProcessor(priority: 10),
       StrikethroughPairProcessor(priority: 10),
       CodeSpanPairProcessor(priority: 10),

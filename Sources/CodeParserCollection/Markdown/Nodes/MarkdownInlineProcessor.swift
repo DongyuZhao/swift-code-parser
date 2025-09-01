@@ -59,6 +59,7 @@ public enum MarkdownDelimiter: Hashable {
   case openBracket
   case openImageBracket
   case backtick(count: Int)
+  case angleBracket
   case custom(String)
 }
 
@@ -534,6 +535,33 @@ public struct BracketDelimiterScanProcessor: MarkdownInlinePhaseProcessor {
   }
 }
 
+/// Scan for < and > for autolinks and push delimiter runs into the stack.
+public struct AutolinkDelimiterScanProcessor: MarkdownInlinePhaseProcessor {
+  public let phase: MarkdownInlinePhase = .scan
+  public let priority: Int
+  public init(priority: Int = -280) { self.priority = priority }
+
+  public func canHandle(token: any CodeToken<MarkdownTokenElement>, at index: Int, context: MarkdownContentContext) -> Bool {
+    token.element == .punctuation && (token.text == "<" || token.text == ">")
+  }
+
+  public func handle(token: any CodeToken<MarkdownTokenElement>, at index: Int, context: inout MarkdownContentContext) -> Bool {
+    if token.text == "<" {
+      // '<' as opener
+      let run = MarkdownDelimiterRun(type: .angleBracket, length: 1, openable: true, closable: false, index: index)
+      context.delimiters.push(run, textNode: nil)
+      context.advance(by: 1)
+      return true
+    } else {
+      // '>' as closer
+      let run = MarkdownDelimiterRun(type: .angleBracket, length: 1, openable: false, closable: true, index: index)
+      context.delimiters.push(run, textNode: nil)
+      context.advance(by: 1)
+      return true
+    }
+  }
+}
+
 /// Pair processor for links and images using bracket delimiters; supports inline form: [text](dest "title") and ![alt](dest "title")
 public struct LinkImagePairProcessor: MarkdownInlinePhaseProcessor {
   public let phase: MarkdownInlinePhase = .rebuild
@@ -624,5 +652,97 @@ public struct LinkImagePairProcessor: MarkdownInlinePhaseProcessor {
       }
     }
     return (s, "")
+  }
+}
+
+/// Pair processor for autolinks using angle bracket delimiters; supports autolink form: <url> and <email>
+public struct AutolinkPairProcessor: MarkdownInlinePhaseProcessor {
+  public let phase: MarkdownInlinePhase = .rebuild
+  public let priority: Int
+  public init(priority: Int = 4) { self.priority = priority } // Higher priority than LinkImagePairProcessor
+
+  public func canHandlePair(for delimiter: MarkdownDelimiter) -> Bool { delimiter == .angleBracket }
+
+  public func createNodeForPair(
+    delimiter: MarkdownDelimiter,
+    openerRun: MarkdownDelimiterRun,
+    closerRun: MarkdownDelimiterRun,
+    contentTokens: ArraySlice<any CodeToken<MarkdownTokenElement>>,
+    allTokens: [any CodeToken<MarkdownTokenElement>]
+  ) -> (node: MarkdownNodeBase, closerEndOverride: Int)? {
+    // Extract content between angle brackets
+    let content = contentTokens.map { $0.text }.joined()
+    
+    // Validate autolink content
+    guard isValidAutolink(content) else { return nil }
+    
+    // Determine URL and create LinkNode
+    let url: String
+    if isEmailAddress(content) {
+      url = "mailto:" + content
+    } else {
+      url = content
+    }
+    
+    let link = LinkNode(url: url, title: "")
+    let textNode = TextNode(content: content)
+    link.append(textNode)
+    
+    return (link, closerRun.index + closerRun.length)
+  }
+  
+  private func isValidAutolink(_ content: String) -> Bool {
+    // Check for invalid characters (spaces, newlines, control characters)
+    if content.isEmpty || content.contains(" ") || content.contains("\n") || content.contains("\r") || content.contains("\t") {
+      return false
+    }
+    
+    // Check if it's either a valid URI or email
+    return isValidURI(content) || isEmailAddress(content)
+  }
+  
+  private func isValidURI(_ content: String) -> Bool {
+    // Check for scheme:path pattern according to CommonMark spec
+    guard let colonIndex = content.firstIndex(of: ":") else { return false }
+    
+    let scheme = String(content[..<colonIndex])
+    let path = String(content[content.index(after: colonIndex)...])
+    
+    // Scheme must be 2-32 characters: [A-Za-z][A-Za-z0-9.+-]{1,31}
+    guard scheme.count >= 2 && scheme.count <= 32 else { return false }
+    guard scheme.first?.isLetter == true else { return false }
+    
+    // Check remaining characters in scheme
+    for char in scheme.dropFirst() {
+      if !char.isLetter && !char.isNumber && char != "." && char != "+" && char != "-" {
+        return false
+      }
+    }
+    
+    // Path must not be empty and must not contain unescaped < or >
+    guard !path.isEmpty else { return false }
+    
+    // Basic validation - no unescaped angle brackets
+    if path.contains("<") || path.contains(">") {
+      return false
+    }
+    
+    return true
+  }
+  
+  private func isEmailAddress(_ content: String) -> Bool {
+    // Simple email validation according to CommonMark spec
+    guard let atIndex = content.firstIndex(of: "@") else { return false }
+    
+    let local = String(content[..<atIndex])
+    let domain = String(content[content.index(after: atIndex)...])
+    
+    // Local part must not be empty and must contain valid characters
+    guard !local.isEmpty && !domain.isEmpty else { return false }
+    
+    // Basic validation - contains @ and has reasonable structure
+    let emailRegex = try! NSRegularExpression(pattern: "^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
+    let range = NSRange(location: 0, length: content.count)
+    return emailRegex.firstMatch(in: content, options: [], range: range) != nil
   }
 }
