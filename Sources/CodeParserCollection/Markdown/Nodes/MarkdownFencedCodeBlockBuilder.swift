@@ -177,12 +177,14 @@ public class MarkdownFencedCodeBlockBuilder: CodeNodeBuilder {
     let codeBlock = CodeBlockNode(source: "", language: language)
     context.current.append(codeBlock)
 
-    // Store the open fence info for subsequent lines
+    // Store the open fence info for subsequent lines with container context
+    let containerContext = context.current.element == .blockquote ? context.current as? MarkdownNodeBase : nil
     state.openFence = OpenFenceInfo(
       character: fenceChar,
       length: fenceLength,
       indentation: leadingSpaces,
-      codeBlock: codeBlock
+      codeBlock: codeBlock,
+      containerContext: containerContext
     )
 
     return true
@@ -194,6 +196,32 @@ public class MarkdownFencedCodeBlockBuilder: CodeNodeBuilder {
     state: MarkdownConstructState
   ) -> Bool {
     let startIndex = 0
+
+    // For now, disable container context checking to test basic functionality
+    // TODO: Implement proper container boundary detection
+    /*
+    // Check if we're still in the same container context
+    if let expectedContainer = currentFence.containerContext {
+      // If we were inside a container (like blockquote), check if we're still in a container of the same type
+      var foundExpectedContainer = false
+      
+      // Check if current context is in a container of the same type as expected
+      var currentContext: CodeNode<MarkdownNodeElement>? = context.current
+      while let ctx = currentContext {
+        if ctx.element == expectedContainer.element {
+          foundExpectedContainer = true
+          break
+        }
+        currentContext = ctx.parent
+      }
+      
+      // If we're no longer in the expected container type, close the fenced code block
+      if !foundExpectedContainer {
+        state.openFence = nil
+        return false  // Let other builders handle this line
+      }
+    }
+    */
 
     // Check if this line is a closing fence
     if let closingFenceLength = checkClosingFence(

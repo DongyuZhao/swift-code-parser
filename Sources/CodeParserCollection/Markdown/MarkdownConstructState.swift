@@ -96,12 +96,14 @@ public struct OpenFenceInfo {
   public let length: Int
   public let indentation: Int
   public let codeBlock: CodeBlockNode
+  public let containerContext: MarkdownNodeBase?  // Track the container this fence is inside
   
-  public init(character: String, length: Int, indentation: Int, codeBlock: CodeBlockNode) {
+  public init(character: String, length: Int, indentation: Int, codeBlock: CodeBlockNode, containerContext: MarkdownNodeBase? = nil) {
     self.character = character
     self.length = length
     self.indentation = indentation
     self.codeBlock = codeBlock
+    self.containerContext = containerContext
   }
 }
 
