@@ -228,7 +228,8 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
          (block.blockType == "heading" && builder is MarkdownATXHeadingBuilder) ||
          (block.blockType == "thematic_break" && builder is MarkdownThematicBreakBuilder) ||
          (block.blockType == "blockquote" && builder is MarkdownBlockquoteBuilder) ||
-         (block.blockType == "fenced_code_block" && builder is MarkdownFencedCodeBlockBuilder) {
+         (block.blockType == "fenced_code_block" && builder is MarkdownFencedCodeBlockBuilder) ||
+         (block.blockType == "list_item" && builder is MarkdownListItemBuilder) {
         builder.closeBlock(block: block)
         break
       }
@@ -275,6 +276,7 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
       MarkdownATXHeadingBuilder(),
       MarkdownThematicBreakBuilder(),
       MarkdownFencedCodeBlockBuilder(),
+      MarkdownListItemBuilder(),
       MarkdownBlockquoteBuilder(),
       MarkdownIndentedCodeBlockBuilder(),
       MarkdownParagraphBuilder() // Paragraph should be last as it's the fallback

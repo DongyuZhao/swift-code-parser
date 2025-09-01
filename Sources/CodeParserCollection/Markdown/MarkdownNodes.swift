@@ -204,7 +204,8 @@ public class UnorderedListNode: ListNode {
   }
 }
 
-public class ListItemNode: MarkdownNodeBase {
+public class ListItemNode: MarkdownNodeBase, MarkdownBlockNode {
+  public var blockType: String { "list_item" }
   public var marker: String
   // indentation before marker and content indent column for continuation
   public var markerIndent: Int = 0
@@ -650,3 +651,4 @@ public typealias MarkdownText = TextNode
 public typealias MarkdownParagraph = ParagraphNode
 public typealias MarkdownBlockquote = BlockquoteNode
 public typealias MarkdownLineBreak = LineBreakNode
+public typealias MarkdownListItem = ListItemNode
