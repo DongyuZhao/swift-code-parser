@@ -14,12 +14,16 @@ public struct MarkdownContentContext {
 
   /// All tokens in the content
   public let tokens: [any CodeToken<MarkdownTokenElement>]
+  
+  /// Reference to the construct state for accessing reference definitions
+  public weak var constructState: MarkdownConstructState?
 
-  public init(tokens: [any CodeToken<MarkdownTokenElement>]) {
+  public init(tokens: [any CodeToken<MarkdownTokenElement>], constructState: MarkdownConstructState? = nil) {
     self.delimiters = MarkdownDelimiterStack()
     self.inlined = []
     self.current = 0
     self.tokens = tokens
+    self.constructState = constructState
   }
 
   /// Helper to add text node or merge with previous text node
@@ -208,6 +212,17 @@ public protocol MarkdownInlinePhaseProcessor {
   func canHandlePair(for delimiter: MarkdownDelimiter) -> Bool
   // Return value allows processor to extend the consumed range beyond closer (e.g., parse (dest "title")).
   // closerEndOverride: if provided, it's the exclusive end index to consume (>= closerRun.index + closerRun.length).
+  
+  /// Optional method for processors that need access to context (e.g., for reference resolution)
+  func createNodeForPairWithContext(
+    delimiter: MarkdownDelimiter,
+    openerRun: MarkdownDelimiterRun,
+    closerRun: MarkdownDelimiterRun,
+    contentTokens: ArraySlice<any CodeToken<MarkdownTokenElement>>,
+    allTokens: [any CodeToken<MarkdownTokenElement>],
+    context: MarkdownContentContext
+  ) -> (node: MarkdownNodeBase, closerEndOverride: Int)?
+  
   func createNodeForPair(
     delimiter: MarkdownDelimiter,
     openerRun: MarkdownDelimiterRun,
@@ -225,6 +240,14 @@ public extension MarkdownInlinePhaseProcessor {
   func canHandleRebuildToken(token: any CodeToken<MarkdownTokenElement>, at index: Int, context: MarkdownContentContext) -> Bool { false }
   func handleRebuildToken(token: any CodeToken<MarkdownTokenElement>, at index: Int, context: inout MarkdownContentContext) -> Bool { false }
   func canHandlePair(for delimiter: MarkdownDelimiter) -> Bool { false }
+  func createNodeForPairWithContext(
+    delimiter: MarkdownDelimiter,
+    openerRun: MarkdownDelimiterRun,
+    closerRun: MarkdownDelimiterRun,
+    contentTokens: ArraySlice<any CodeToken<MarkdownTokenElement>>,
+    allTokens: [any CodeToken<MarkdownTokenElement>],
+    context: MarkdownContentContext
+  ) -> (node: MarkdownNodeBase, closerEndOverride: Int)? { nil }
   func createNodeForPair(
     delimiter: MarkdownDelimiter,
     openerRun: MarkdownDelimiterRun,
@@ -739,12 +762,13 @@ public struct ReferenceLinkPairProcessor: MarkdownInlinePhaseProcessor {
 
   public func canHandlePair(for delimiter: MarkdownDelimiter) -> Bool { delimiter == .openBracket }
 
-  public func createNodeForPair(
+  public func createNodeForPairWithContext(
     delimiter: MarkdownDelimiter,
     openerRun: MarkdownDelimiterRun,
     closerRun: MarkdownDelimiterRun,
     contentTokens: ArraySlice<any CodeToken<MarkdownTokenElement>>,
-    allTokens: [any CodeToken<MarkdownTokenElement>]
+    allTokens: [any CodeToken<MarkdownTokenElement>],
+    context: MarkdownContentContext
   ) -> (node: MarkdownNodeBase, closerEndOverride: Int)? {
     // Determine if this is image: opener length 2 means '!['
     let isImage = openerRun.length >= 2
@@ -791,10 +815,24 @@ public struct ReferenceLinkPairProcessor: MarkdownInlinePhaseProcessor {
       consumedEnd = closerRun.index + closerRun.length
     }
 
-    // Look up reference definition (this would need to access a reference table)
-    // For now, return nil to let it fall back to literal text
-    // TODO: Implement reference resolution with document-level reference table
-    return nil
+    // Look up reference definition
+    guard let refId = referenceId,
+          let constructState = context.constructState,
+          let refDef = constructState.getReferenceDefinition(for: refId) else {
+      // No reference found - let it fall back to literal text
+      return nil
+    }
+
+    // Build node using reference definition
+    if isImage {
+      let alt = LinkImagePairProcessor.flattenText(from: inner)
+      let image = ImageNode(url: refDef.url, alt: alt, title: refDef.title)
+      return (image, consumedEnd)
+    } else {
+      let link = LinkNode(url: refDef.url, title: refDef.title)
+      inner.forEach { link.append($0) }
+      return (link, consumedEnd)
+    }
   }
 }
 

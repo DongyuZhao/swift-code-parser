@@ -76,6 +76,11 @@ public class MarkdownReferenceLinkDefinitionBuilder: CodeNodeBuilder {
 
     // Add to current container
     context.current.append(referenceNode)
+    
+    // Store reference definition in construct state for later resolution
+    if let markdownState = context.state as? MarkdownConstructState {
+      markdownState.addReferenceDefinition(identifier: id, url: url, title: title)
+    }
 
     return true
   }
@@ -107,24 +112,43 @@ public class MarkdownReferenceLinkDefinitionBuilder: CodeNodeBuilder {
   
   private func splitUrlAndTitle(_ content: String) -> (url: String, title: String) {
     // Look for title at the end (in quotes or parentheses)
+    let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
+    
+    // Check if content ends with a quoted title
     let quoteChars: [(open: Character, close: Character)] = [("\"", "\""), ("'", "'"), ("(", ")")]
     
     for (openQuote, closeQuote) in quoteChars {
-      if let lastOpenIndex = content.lastIndex(of: openQuote),
-         content.hasSuffix(String(closeQuote)) {
-        // Check if this forms a valid title
-        let beforeQuote = String(content[..<lastOpenIndex]).trimmingCharacters(in: .whitespacesAndNewlines)
-        let titlePart = String(content[lastOpenIndex...])
+      if trimmed.hasSuffix(String(closeQuote)) {
+        // For same quotes (like " "), we need to find the matching opening quote
+        // For different quotes (like ( )), we can use lastIndex
         
-        if titlePart.count >= 2 && titlePart.first == openQuote && titlePart.last == closeQuote {
-          let title = String(titlePart.dropFirst().dropLast())
-          return (beforeQuote, title)
+        if openQuote == closeQuote {
+          // Find the last whitespace-delimited quoted string
+          if let spaceIndex = trimmed.lastIndex(where: { $0.isWhitespace }) {
+            let possibleTitle = String(trimmed[trimmed.index(after: spaceIndex)...])
+            if possibleTitle.count >= 2 && possibleTitle.first == openQuote && possibleTitle.last == closeQuote {
+              let url = String(trimmed[..<spaceIndex]).trimmingCharacters(in: .whitespacesAndNewlines)
+              let title = String(possibleTitle.dropFirst().dropLast())
+              return (url, title)
+            }
+          }
+        } else {
+          // Different open/close quotes - use lastIndex approach
+          if let lastOpenIndex = trimmed.lastIndex(of: openQuote) {
+            let beforeQuote = String(trimmed[..<lastOpenIndex]).trimmingCharacters(in: .whitespacesAndNewlines)
+            let titlePart = String(trimmed[lastOpenIndex...])
+            
+            if titlePart.count >= 2 && titlePart.first == openQuote && titlePart.last == closeQuote {
+              let title = String(titlePart.dropFirst().dropLast())
+              return (beforeQuote, title)
+            }
+          }
         }
       }
     }
     
     // No title found
-    return (content, "")
+    return (trimmed, "")
   }
   
   private func parseTitle(_ content: String) -> String {
