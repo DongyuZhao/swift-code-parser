@@ -22,6 +22,9 @@ public class MarkdownConstructState: CodeConstructState {
   /// Stack for nested list processing
   public var listStack: [ListNode] = []
   public var currentDefinitionList: DefinitionListNode?
+  
+  /// Enhanced list context tracking for better indentation and nesting management
+  public var listContextStack: [ListContextInfo] = []
 
   /// Indicates the last consumed line break formed a blank line (two or more consecutive newlines)
   public var lastWasBlankLine: Bool = false
@@ -127,5 +130,27 @@ public struct HTMLBlockTypeInfo {
     self.name = name
     self.closedOnSameLine = closedOnSameLine
     self.endCondition = endCondition
+  }
+}
+
+/// Enhanced list context information for better nesting and indentation management
+public struct ListContextInfo {
+  /// The list node itself
+  public let list: ListNode
+  /// The parent list item that contains this list (nil for top-level lists)
+  public let parentListItem: ListItemNode?
+  /// The calculated indentation level for content in this list context
+  public let contentIndent: Int
+  /// The nesting level (1 for top-level, 2 for first nested, etc.)
+  public let level: Int
+  /// The marker type for compatibility checking
+  public let markerType: String
+  
+  public init(list: ListNode, parentListItem: ListItemNode?, contentIndent: Int, level: Int, markerType: String) {
+    self.list = list
+    self.parentListItem = parentListItem
+    self.contentIndent = contentIndent
+    self.level = level
+    self.markerType = markerType
   }
 }

@@ -34,42 +34,166 @@ public class MarkdownUnifiedListBuilder: CodeNodeBuilder {
     return false
   }
 
-  // MARK: - List Continuation Logic (from original MarkdownListBuilder)
+  // MARK: - Enhanced List Continuation Logic with AST Traversal
   
   private func handleListContinuation(
     context: inout CodeConstructContext<Node, Token>,
     state: MarkdownConstructState
   ) -> Bool? {
-    // Check if we're currently in a list context and need to handle continuation
-    if let currentList = context.current as? ListNode {
-      return handleListContinuation(inList: currentList, context: &context)
-    }
+    // Use enhanced AST traversal to find the appropriate list context
+    let listContext = findCurrentListContext(from: context.current, state: state)
     
-    // Also handle when current is inside a list item or paragraph under it
-    if let li = nearestListItem(from: context.current) {
-      return handleListContinuation(inItem: li, context: &context)
+    if let listContextInfo = listContext {
+      return handleListContinuation(inContext: listContextInfo, tokens: context.tokens, state: state, constructContext: &context)
     }
     
     return nil // Indicates no continuation context found
   }
-
-  private func handleListContinuation(
-    inList list: ListNode,
-    context: inout CodeConstructContext<Node, Token>
-  ) -> Bool {
-    // If the current is the list container, try to continue the last item
-    guard let lastItem = list.children.last as? ListItemNode else { return false }
-    return handleListContinuation(inItem: lastItem, context: &context)
+  
+  /// Enhanced AST traversal to find the current list context with full indentation info
+  private func findCurrentListContext(from current: CodeNode<MarkdownNodeElement>, state: MarkdownConstructState) -> ListContextInfo? {
+    // First, try to use the enhanced context stack if available
+    if let lastContext = state.listContextStack.last {
+      // Verify the context is still valid by checking AST ancestry
+      if isContextValidForCurrentPosition(lastContext, current: current) {
+        return lastContext
+      }
+    }
+    
+    // Fallback to AST traversal to rebuild context
+    return buildListContextFromAST(current: current)
+  }
+  
+  /// Validate that a cached list context is still valid for the current AST position
+  private func isContextValidForCurrentPosition(_ context: ListContextInfo, current: CodeNode<MarkdownNodeElement>) -> Bool {
+    // Walk up from current to see if we're still in the context of this list
+    var node: CodeNode<MarkdownNodeElement>? = current
+    while let n = node {
+      if n === context.list {
+        return true
+      }
+      if let listItem = n as? ListItemNode, listItem === context.parentListItem {
+        return true
+      }
+      node = n.parent
+    }
+    return false
+  }
+  
+  /// Build list context information by traversing the AST
+  private func buildListContextFromAST(current: CodeNode<MarkdownNodeElement>) -> ListContextInfo? {
+    var node: CodeNode<MarkdownNodeElement>? = current
+    var listLevels: [ListContextInfo] = []
+    
+    // Walk up the AST to find all list contexts
+    while let n = node {
+      if let list = n as? ListNode {
+        let parentListItem = findParentListItem(for: list)
+        let level = listLevels.count + 1
+        let markerType = getListMarkerType(list)
+        let contentIndent = calculateContentIndent(for: list, parentListItem: parentListItem, level: level)
+        
+        let contextInfo = ListContextInfo(
+          list: list,
+          parentListItem: parentListItem,
+          contentIndent: contentIndent,
+          level: level,
+          markerType: markerType
+        )
+        listLevels.insert(contextInfo, at: 0) // Insert at beginning to maintain order
+      }
+      node = n.parent
+    }
+    
+    // Return the deepest (most nested) list context
+    return listLevels.last
+  }
+  
+  /// Find the parent list item that contains a given list
+  private func findParentListItem(for list: ListNode) -> ListItemNode? {
+    return list.parent as? ListItemNode
+  }
+  
+  /// Get the marker type string for a list
+  private func getListMarkerType(_ list: ListNode) -> String {
+    if let ul = list as? UnorderedListNode {
+      return ul.marker
+    } else if let ol = list as? OrderedListNode {
+      return ol.delimiter
+    }
+    return ""
+  }
+  
+  /// Calculate proper content indentation for a list context
+  private func calculateContentIndent(for list: ListNode, parentListItem: ListItemNode?, level: Int) -> Int {
+    if let parentItem = parentListItem {
+      // For nested lists, base indentation on parent list item's content indent
+      // This is the key fix: nested lists should use parent's content indent as base
+      return parentItem.contentIndent
+    } else {
+      // For top-level lists, calculate based on the marker
+      if let ul = list as? UnorderedListNode {
+        return 2 // "- " = 2 characters minimum
+      } else if let ol = list as? OrderedListNode {
+        // Calculate based on start number length + delimiter + space
+        let numberStr = String(ol.start)
+        return numberStr.count + 1 + 1 // number + delimiter + space
+      }
+      return 2 // fallback
+    }
+  }
+  
+  /// Enhanced list item creation with proper content indent calculation
+  private func createListItemWithProperIndent(
+    markerInfo: ListMarkerInfo,
+    list: ListNode,
+    state: MarkdownConstructState
+  ) -> ListItemNode {
+    let markerText = markerInfo.type.markerText
+    let listItem = ListItemNode(marker: markerText)
+    listItem.markerIndent = markerInfo.indentation
+    
+    // Enhanced content indent calculation based on actual context
+    let enhancedContentIndent = calculateEnhancedContentIndent(
+      markerInfo: markerInfo,
+      list: list,
+      state: state
+    )
+    listItem.contentIndent = enhancedContentIndent
+    
+    return listItem
+  }
+  
+  /// Calculate enhanced content indent based on full context
+  private func calculateEnhancedContentIndent(
+    markerInfo: ListMarkerInfo,
+    list: ListNode,
+    state: MarkdownConstructState
+  ) -> Int {
+    // Use the marker info's calculated content indent as base
+    var contentIndent = markerInfo.contentIndent
+    
+    // For nested lists, ensure we account for the full nesting context
+    if let parentListItem = findParentListItem(for: list) {
+      // Ensure nested content indent is at least as much as parent's content indent
+      contentIndent = max(contentIndent, parentListItem.contentIndent)
+    }
+    
+    return contentIndent
   }
 
+  
+  /// Enhanced continuation logic using list context information
   private func handleListContinuation(
-    inItem listItem: ListItemNode,
-    context: inout CodeConstructContext<Node, Token>
+    inContext contextInfo: ListContextInfo,
+    tokens: [any CodeToken<MarkdownTokenElement>],
+    state: MarkdownConstructState,
+    constructContext: inout CodeConstructContext<Node, Token>
   ) -> Bool {
-    let tokens = context.tokens
+    // Handle blank lines differently - they should not immediately force continuation
     guard !tokens.isEmpty else {
-      // Blank line within list item: allow proper blank line handling
-      // Don't force continuation - let other builders handle paragraph closing/opening
+      // Blank line within list: allow proper blank line handling by other builders
+      state.lastWasBlankLine = true
       return false
     }
 
@@ -77,27 +201,161 @@ public class MarkdownUnifiedListBuilder: CodeNodeBuilder {
     if startsWithListOrQuoteMarker(tokens) {
       return false
     }
+    
+    // If this line begins with other block-starting constructs, do not treat as continuation
+    if startsWithBlockConstruct(tokens) {
+      return false
+    }
 
-    // Count leading spaces
-    var leadingSpaces = 0
-    if tokens.first?.element == .whitespaces {
-      for ch in tokens.first!.text { 
-        if ch == " " { leadingSpaces += 1 } 
-        else if ch == "\t" { leadingSpaces += 4 } 
+    // Calculate actual leading indentation
+    let leadingIndent = calculateLeadingIndentation(tokens)
+    
+    // Enhanced indentation logic: check if this content should continue the current list context
+    if shouldContinueInListContext(leadingIndent: leadingIndent, contextInfo: contextInfo, tokens: tokens) {
+      // Find the appropriate list item to continue
+      if let targetListItem = findTargetListItemForContinuation(contextInfo: contextInfo, leadingIndent: leadingIndent, constructContext: constructContext) {
+        // Set context to the target list item for content continuation
+        constructContext.current = targetListItem
+        
+        // Handle paragraph continuation vs creation based on blank line context
+        handleParagraphContinuationInListItem(targetListItem, state: state, hasBlankLineBefore: state.lastWasBlankLine)
+        
+        return true
       }
     }
 
-    // Continuation requires sufficient indentation relative to content indent
-    if leadingSpaces >= listItem.contentIndent {
-      // Sufficient indentation - this content belongs to the list item
-      // But let the paragraph builder decide whether to continue existing paragraph
-      // or create a new one based on blank line context
-      context.current = listItem
+    return false
+  }
+  
+  /// Check if line starts with block-starting constructs that should interrupt list continuation
+  private func startsWithBlockConstruct(_ tokens: [any CodeToken<MarkdownTokenElement>]) -> Bool {
+    var index = 0
+    
+    // Skip leading whitespace
+    if index < tokens.count && tokens[index].element == .whitespaces {
+      index += 1
+    }
+    
+    guard index < tokens.count else { return false }
+    
+    let token = tokens[index]
+    
+    // ATX headings (# ## ### etc)
+    if token.element == .punctuation && token.text.hasPrefix("#") {
       return true
     }
-
-    // Insufficient indentation - content doesn't belong to this list item
+    
+    // Thematic breaks (--- *** ___)
+    if token.element == .punctuation && (token.text == "-" || token.text == "*" || token.text == "_") {
+      // Check if this could be a thematic break (need at least 3 characters)
+      var count = 0
+      var i = index
+      while i < tokens.count && tokens[i].element == .punctuation && tokens[i].text == token.text {
+        count += 1
+        i += 1
+      }
+      if count >= 3 {
+        return true
+      }
+    }
+    
+    // HTML blocks starting with <
+    if token.element == .punctuation && token.text == "<" {
+      return true
+    }
+    
     return false
+  }
+  
+  /// Calculate leading indentation accounting for spaces and tabs
+  private func calculateLeadingIndentation(_ tokens: [any CodeToken<MarkdownTokenElement>]) -> Int {
+    var leadingSpaces = 0
+    if let firstToken = tokens.first, firstToken.element == .whitespaces {
+      for ch in firstToken.text {
+        if ch == " " {
+          leadingSpaces += 1
+        } else if ch == "\t" {
+          leadingSpaces += 4 // Tab equals 4 spaces
+        }
+      }
+    }
+    return leadingSpaces
+  }
+  
+  /// Determine if content should continue in the given list context
+  private func shouldContinueInListContext(
+    leadingIndent: Int,
+    contextInfo: ListContextInfo,
+    tokens: [any CodeToken<MarkdownTokenElement>]
+  ) -> Bool {
+    // Content needs at least the content indentation of the list context
+    if leadingIndent >= contextInfo.contentIndent {
+      // Sufficient indentation for this context level
+      return true
+    }
+    
+    // Check for lazy continuation (CommonMark allows this in some cases)
+    // But be more restrictive - only allow lazy continuation if:
+    // 1. There's some indentation (> 0)
+    // 2. There's actual content (not just whitespace)
+    // 3. The indentation is reasonable (not too much less than required)
+    if leadingIndent > 0 && 
+       hasNonWhitespaceAfterFirst(tokens) &&
+       leadingIndent >= (contextInfo.contentIndent - 2) { // Allow up to 2 spaces less for lazy continuation
+      return true
+    }
+    
+    return false
+  }
+  
+  /// Find the appropriate list item to continue based on indentation and context
+  private func findTargetListItemForContinuation(
+    contextInfo: ListContextInfo,
+    leadingIndent: Int,
+    constructContext: CodeConstructContext<Node, Token>
+  ) -> ListItemNode? {
+    // Start from the current context and find the most appropriate list item
+    
+    // If we're already in a list item, check if we should continue it or a parent
+    if let currentListItem = constructContext.current as? ListItemNode {
+      // Check if indentation matches this list item's content indent
+      if leadingIndent >= currentListItem.contentIndent {
+        return currentListItem
+      }
+      
+      // Check parent list items for proper nesting level
+      var parentNode = currentListItem.parent
+      while let node = parentNode {
+        if let parentListItem = node.parent as? ListItemNode {
+          if leadingIndent >= parentListItem.contentIndent {
+            return parentListItem
+          }
+        }
+        parentNode = node.parent
+      }
+    }
+    
+    // Fallback: use the last item in the context list
+    return contextInfo.list.children.last as? ListItemNode
+  }
+  
+  /// Handle paragraph continuation vs creation within a list item
+  private func handleParagraphContinuationInListItem(
+    _ listItem: ListItemNode,
+    state: MarkdownConstructState,
+    hasBlankLineBefore: Bool
+  ) {
+    if hasBlankLineBefore {
+      // Blank line before: create new paragraph instead of continuing existing one
+      // Don't set current to existing paragraph - let paragraph builder create new one
+      state.lastWasBlankLine = false // Reset the flag
+    } else {
+      // No blank line: try to continue existing paragraph
+      if let lastParagraph = listItem.children.last as? ParagraphNode {
+        // Let paragraph builder handle the continuation
+        // We don't force context here to allow proper paragraph building
+      }
+    }
   }
 
   // MARK: - New List Item Detection and Creation (from original MarkdownListItemBuilder)
@@ -142,13 +400,12 @@ public class MarkdownUnifiedListBuilder: CodeNodeBuilder {
     var index = startIndex
     var indentation = 0
 
-    // Count leading indentation (up to 3 spaces allowed)
+    // Count leading indentation
+    // Note: We don't enforce the 3-space limit here for nested contexts
+    // That validation should be done by the context determination logic
     while index < tokens.count,
           tokens[index].element == .whitespaces {
       let spaceCount = tokens[index].text.count
-      if indentation + spaceCount > 3 {
-        return nil // Too much indentation for list item
-      }
       indentation += spaceCount
       index += 1
     }
@@ -321,11 +578,8 @@ public class MarkdownUnifiedListBuilder: CodeNodeBuilder {
     // Create appropriate list container if needed
     let list = getOrCreateList(for: markerInfo.type, in: &context, state: state)
 
-    // Create list item
-    let markerText = markerInfo.type.markerText
-    let listItem = ListItemNode(marker: markerText)
-    listItem.markerIndent = markerInfo.indentation
-    listItem.contentIndent = markerInfo.contentIndent
+    // Create list item with enhanced indentation calculation
+    let listItem = createListItemWithProperIndent(markerInfo: markerInfo, list: list, state: state)
     list.append(listItem)
 
     // Update list stack for nesting tracking
@@ -367,6 +621,40 @@ public class MarkdownUnifiedListBuilder: CodeNodeBuilder {
     if !state.listStack.contains(where: { $0 === list }) {
       state.listStack.append(list)
     }
+    
+    // Update enhanced context stack
+    updateListContextStack(list: list, state: state)
+  }
+  
+  /// Update the enhanced context stack with proper indentation and level information
+  private func updateListContextStack(list: ListNode, state: MarkdownConstructState) {
+    let parentListItem = findParentListItem(for: list)
+    let level = state.listContextStack.count + 1
+    let markerType = getListMarkerType(list)
+    let contentIndent = calculateContentIndent(for: list, parentListItem: parentListItem, level: level)
+    
+    let contextInfo = ListContextInfo(
+      list: list,
+      parentListItem: parentListItem,
+      contentIndent: contentIndent,
+      level: level,
+      markerType: markerType
+    )
+    
+    // Remove any invalid contexts that are no longer ancestors
+    state.listContextStack = state.listContextStack.filter { context in
+      var current: CodeNode<MarkdownNodeElement>? = list
+      while let node = current {
+        if node === context.list {
+          return true
+        }
+        current = node.parent
+      }
+      return false
+    }
+    
+    // Add new context
+    state.listContextStack.append(contextInfo)
   }
 
   private func getOrCreateList(
