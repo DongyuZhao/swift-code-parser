@@ -2,7 +2,7 @@ import CodeParserCore
 import Foundation
 
 /// Builder for reference link definitions: [id]: destination "title"
-/// Supports multi-line definitions according to CommonMark spec
+/// Uses a permissive approach during parsing, with validation handled by MarkdownEOFBuilder
 public class MarkdownReferenceLinkDefinitionBuilder: CodeNodeBuilder {
   public typealias Node = MarkdownNodeElement
   public typealias Token = MarkdownTokenElement
@@ -18,7 +18,6 @@ public class MarkdownReferenceLinkDefinitionBuilder: CodeNodeBuilder {
     }
     
     // Try to start a new reference definition
-    // Only proceed if we can either complete it on this line or are confident it will succeed
     return startNewReference(context: &context, state: state)
   }
   
@@ -34,31 +33,35 @@ public class MarkdownReferenceLinkDefinitionBuilder: CodeNodeBuilder {
       return false
     }
     
+    // Create reference node optimistically - validation will happen in MarkdownEOFBuilder
+    let referenceNode = ReferenceNode(identifier: id, url: "", title: "")
+    
     // Try to parse destination and title from remaining tokens on this line
     let parsed = parseDestinationAndTitle(tokens: remainingTokens)
     
-    if parsed.found {
-      // Complete definition found on this line - create the reference node
-      let referenceNode = ReferenceNode(identifier: id, url: parsed.url, title: parsed.title)
+    if parsed.found && !parsed.url.isEmpty {
+      // Complete definition found on this line
+      referenceNode.url = parsed.url
+      referenceNode.title = parsed.title
       context.current.append(referenceNode)
-      state.addReferenceDefinition(identifier: id, url: parsed.url, title: parsed.title)
+      context.consuming = context.tokens.count
       return true
     } else {
-      // Check if line has only whitespace after colon
+      // Check if line has only whitespace after colon - this might be multi-line
       let remainingText = remainingTokens.map { $0.text }.joined().trimmingCharacters(in: .whitespacesAndNewlines)
       if remainingText.isEmpty {
-        // This might be a multi-line reference definition
-        // Be optimistic and set up pending reference, but track original tokens for fallback
-        let referenceNode = ReferenceNode(identifier: id, url: "", title: "")
+        // Set up pending reference for multi-line definition
         let pending = PendingReferenceDefinition(
           identifier: id, 
           referenceNode: referenceNode,
           originalLineTokens: Array(context.tokens)
         )
         state.pendingReference = pending
+        context.consuming = context.tokens.count
         return true
       } else {
-        // Has content but not a valid destination - this is not a valid reference definition
+        // Has content but might still be valid - let EOF builder validate
+        // For now, don't consume tokens and let paragraph builder handle it
         return false
       }
     }
@@ -131,9 +134,8 @@ public class MarkdownReferenceLinkDefinitionBuilder: CodeNodeBuilder {
   ) -> Bool {
     let startIndex = 0
     guard startIndex < context.tokens.count else { 
-      // Empty line - this invalidates the reference definition since we don't have a destination yet
-      // Create a paragraph with the original tokens
-      createParagraphFromTokens(pending.originalLineTokens, context: &context)
+      // Empty line - end the pending reference without destination
+      context.current.append(pending.referenceNode)
       state.pendingReference = nil
       return false
     }
@@ -146,30 +148,28 @@ public class MarkdownReferenceLinkDefinitionBuilder: CodeNodeBuilder {
     if !mutablePending.hasDestination {
       // Looking for destination
       if parsed.found && !parsed.url.isEmpty {
-        // Found valid destination - now we can create the reference node
+        // Found valid destination
         mutablePending.referenceNode.url = parsed.url
         mutablePending.referenceNode.title = parsed.title
         mutablePending.hasDestination = true
         
         // Add the reference node to the AST
         context.current.append(mutablePending.referenceNode)
-        
-        // Store the reference definition
-        state.addReferenceDefinition(identifier: mutablePending.identifier, url: parsed.url, title: parsed.title)
         state.pendingReference = nil
+        context.consuming = context.tokens.count
         return true
       } else {
-        // Still no destination - check if we have other content that would invalidate
+        // Still no destination - check if we have content that would end the reference
         let content = tokens.map { $0.text }.joined().trimmingCharacters(in: .whitespacesAndNewlines)
         if !content.isEmpty {
-          // Non-whitespace content that's not a valid destination - invalidate the reference
-          // Create paragraphs from both the original line and this line
-          createParagraphFromTokens(mutablePending.originalLineTokens, context: &context)
+          // Non-whitespace content - end the pending reference and let this line be handled normally
+          context.current.append(mutablePending.referenceNode)
           state.pendingReference = nil
-          return false // Let the paragraph builder handle this line
+          return false // Let other builders handle this line
         }
         // Keep waiting for destination (empty line)
         state.pendingReference = mutablePending
+        context.consuming = context.tokens.count
         return true
       }
     } else {
@@ -177,39 +177,14 @@ public class MarkdownReferenceLinkDefinitionBuilder: CodeNodeBuilder {
       if parsed.foundTitle {
         mutablePending.referenceNode.title = parsed.title
         mutablePending.hasTitle = true
-        state.addReferenceDefinition(identifier: mutablePending.identifier, url: mutablePending.referenceNode.url, title: parsed.title)
         state.pendingReference = nil
+        context.consuming = context.tokens.count
         return true
       } else {
-        // No title found, complete with empty title
-        state.addReferenceDefinition(identifier: mutablePending.identifier, url: mutablePending.referenceNode.url, title: "")
+        // No title found, complete with current title
         state.pendingReference = nil
         return false
       }
-    }
-  }
-  
-  private func createParagraphFromTokens(
-    _ tokens: [any CodeToken<MarkdownTokenElement>],
-    context: inout CodeConstructContext<Node, Token>
-  ) {
-    // Create a paragraph node and add content from the stored tokens
-    // Use the range from the first token, or create a synthetic range
-    let range = tokens.first?.range ?? "".startIndex..<"".endIndex
-    let paragraph = ParagraphNode(range: range)
-    context.current.append(paragraph)
-    
-    // Convert tokens to content nodes
-    var contentTokens: [any CodeToken<MarkdownTokenElement>] = []
-    for token in tokens {
-      if token.element != .newline {
-        contentTokens.append(token)
-      }
-    }
-    
-    if !contentTokens.isEmpty {
-      let contentNode = ContentNode(tokens: contentTokens)
-      paragraph.append(contentNode)
     }
   }
   
@@ -244,20 +219,14 @@ public class MarkdownReferenceLinkDefinitionBuilder: CodeNodeBuilder {
         let url = String(content[content.index(after: content.startIndex)..<closeIndex])
         let remaining = String(content[content.index(after: closeIndex)...]).trimmingCharacters(in: .whitespacesAndNewlines)
         
-        // Validate that there's either nothing after > or valid title
         if remaining.isEmpty {
           return ParseResult(found: true, url: url, title: "", foundTitle: false)
         } else {
           let title = parseTitle(remaining)
-          if !title.isEmpty || isValidTitleFormat(remaining) {
-            return ParseResult(found: true, url: url, title: title, foundTitle: !title.isEmpty)
-          } else {
-            // Invalid content after >
-            return ParseResult()
-          }
+          return ParseResult(found: true, url: url, title: title, foundTitle: !title.isEmpty)
         }
       } else {
-        // Unclosed < is invalid
+        // Unclosed < - might be invalid, but let EOF builder decide
         return ParseResult()
       }
     } else {
@@ -267,27 +236,8 @@ public class MarkdownReferenceLinkDefinitionBuilder: CodeNodeBuilder {
         return ParseResult()
       }
       
-      // Additional validation for bare URLs
-      if parts.url.hasPrefix("[") {
-        // URLs can't start with [ (that would be a reference)
-        return ParseResult()
-      }
-      
-      // Check for invalid characters or malformed content
-      if parts.url.contains(" ") && !parts.url.hasPrefix("\"") && !parts.url.hasPrefix("'") {
-        // URLs can't contain unescaped spaces unless they're quoted
-        return ParseResult()
-      }
-      
       return ParseResult(found: true, url: parts.url, title: parts.title, foundTitle: !parts.title.isEmpty)
     }
-  }
-  
-  private func isValidTitleFormat(_ content: String) -> Bool {
-    let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
-    return (trimmed.hasPrefix("\"") && trimmed.hasSuffix("\"")) ||
-           (trimmed.hasPrefix("'") && trimmed.hasSuffix("'")) ||
-           (trimmed.hasPrefix("(") && trimmed.hasSuffix(")"))
   }
   
   private func splitUrlAndTitle(_ content: String) -> (url: String, title: String) {
