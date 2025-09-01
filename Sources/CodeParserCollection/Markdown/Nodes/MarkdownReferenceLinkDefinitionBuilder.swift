@@ -240,13 +240,24 @@ public class MarkdownReferenceLinkDefinitionBuilder: CodeNodeBuilder {
     if content.hasPrefix("<") {
       if let closeIndex = content.firstIndex(of: ">") {
         let url = String(content[content.index(after: content.startIndex)..<closeIndex])
-        let remaining = String(content[content.index(after: closeIndex)...]).trimmingCharacters(in: .whitespacesAndNewlines)
+        let afterClose = String(content[content.index(after: closeIndex)...])
         
-        if remaining.isEmpty {
+        if afterClose.isEmpty {
           return ParseResult(found: true, url: url, title: "", foundTitle: false)
         } else {
-          let title = parseTitle(remaining)
-          return ParseResult(found: true, url: url, title: title, foundTitle: !title.isEmpty)
+          // Check if there's whitespace between destination and title (required by CommonMark)
+          if afterClose.first?.isWhitespace == true {
+            let remaining = afterClose.trimmingCharacters(in: .whitespacesAndNewlines)
+            if remaining.isEmpty {
+              return ParseResult(found: true, url: url, title: "", foundTitle: false)
+            } else {
+              let title = parseTitle(remaining)
+              return ParseResult(found: true, url: url, title: title, foundTitle: !title.isEmpty)
+            }
+          } else {
+            // No whitespace separation - invalid per CommonMark spec
+            return ParseResult()
+          }
         }
       } else {
         // Unclosed < - might be invalid, but let EOF builder decide
