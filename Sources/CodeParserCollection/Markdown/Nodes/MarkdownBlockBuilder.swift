@@ -70,19 +70,16 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
       
       // Phase 3: Try to open new blocks with current line  
       // Check if any new block can interrupt the current block
-      var newBlockStarted = false
       if canNewBlockInterrupt(line: line) {
         // Close current blocks that can be interrupted
         closeInterruptedBlocks(line: line)
         openNewBlocks(line: line)
-        newBlockStarted = !openBlocks.isEmpty
       } else if openBlocks.isEmpty || !canCurrentBlockContinue(line: line) {
         openNewBlocks(line: line)
-        newBlockStarted = !openBlocks.isEmpty
       }
       
-      // Phase 4: Process line content for current block (only if no new block started)
-      if !newBlockStarted, let currentBlock = openBlocks.last {
+      // Phase 4: Process line content for current block
+      if let currentBlock = openBlocks.last {
         processLineForBlock(block: currentBlock, line: line)
       }
       

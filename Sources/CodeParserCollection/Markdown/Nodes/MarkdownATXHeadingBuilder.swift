@@ -16,27 +16,53 @@ public class MarkdownATXHeadingBuilder: MarkdownBlockBuilderProtocol {
       return false
     }
     
-    // Find first non-whitespace content (excluding potential trailing newlines/eof)
-    let content = line.content.trimmingCharacters(in: .whitespacesAndNewlines)
+    // Check tokens directly for escaped content
+    var hashCount = 0
+    var tokenIndex = 0
     
-    // Handle escaped hash at start
-    if content.hasPrefix("\\#") {
-      return false // Escaped hash doesn't start a heading
+    // Skip leading whitespace token
+    if tokenIndex < line.tokens.count && line.tokens[tokenIndex].element == .whitespaces {
+      tokenIndex += 1
     }
     
-    // Must start with 1-6 # characters
-    let hashCount = content.prefix { $0 == "#" }.count
+    // Check for escaped hash at start
+    if tokenIndex < line.tokens.count {
+      let token = line.tokens[tokenIndex]
+      // If it's a characters token starting with #, it was likely escaped
+      if token.element == .characters && token.text.hasPrefix("#") {
+        return false
+      }
+    }
+    
+    // Count hash tokens
+    while tokenIndex < line.tokens.count {
+      let token = line.tokens[tokenIndex]
+      if token.element == .punctuation && token.text == "#" {
+        hashCount += 1
+        tokenIndex += 1
+      } else {
+        break
+      }
+    }
+    
+    // Must have 1-6 # characters
     if hashCount < 1 || hashCount > 6 {
       return false
     }
     
-    // After the hashes, must be either end of line or space/tab
-    if content.count == hashCount {
-      return true // Just hashes, valid empty heading
+    // After the hashes, must be either end of line or whitespace
+    if tokenIndex >= line.tokens.count {
+      return true // Just hashes at end of line, valid empty heading
     }
     
-    let afterHashes = content.dropFirst(hashCount)
-    return afterHashes.first == " " || afterHashes.first == "\t"
+    // Check next token after hashes
+    let nextToken = line.tokens[tokenIndex]
+    if nextToken.element == .whitespaces || nextToken.element == .newline || nextToken.element == .eof {
+      return true
+    }
+    
+    // If next token is not whitespace, it's not a valid heading
+    return false
   }
   
   public func canContinue(block: any MarkdownBlockNode, line: MarkdownLine) -> Bool {
@@ -45,21 +71,32 @@ public class MarkdownATXHeadingBuilder: MarkdownBlockBuilderProtocol {
   }
   
   public func createBlock(from line: MarkdownLine) -> (any MarkdownBlockNode)? {
-    let content = line.content.trimmingCharacters(in: .whitespacesAndNewlines)
+    // Extract level by counting hash tokens
+    var level = 0
+    var tokenIndex = 0
     
-    // Handle escaped hash at start - should not create heading
-    if content.hasPrefix("\\#") {
-      return nil
+    // Skip leading whitespace token
+    if tokenIndex < line.tokens.count && line.tokens[tokenIndex].element == .whitespaces {
+      tokenIndex += 1
     }
     
-    // Extract level (number of # characters)
-    let level = content.prefix { $0 == "#" }.count
+    // Count hash tokens
+    while tokenIndex < line.tokens.count {
+      let token = line.tokens[tokenIndex]
+      if token.element == .punctuation && token.text == "#" {
+        level += 1
+        tokenIndex += 1
+      } else {
+        break
+      }
+    }
+    
     guard level >= 1 && level <= 6 else { return nil }
     
     // Create heading node
     let heading = MarkdownHeading(level: level)
     
-    // Extract content tokens after the hashes and whitespace
+    // Extract content tokens after the hashes and whitespace  
     let contentTokens = extractContentTokens(from: line.tokens, level: level)
     
     // Process content with inline elements if not empty
@@ -110,22 +147,43 @@ public class MarkdownATXHeadingBuilder: MarkdownBlockBuilderProtocol {
   
   /// Remove closing sequence tokens from the end
   private func removeClosingSequenceTokens(from tokens: [any CodeToken<MarkdownTokenElement>]) -> [any CodeToken<MarkdownTokenElement>] {
-    // Simple approach: remove trailing hash punctuation tokens if preceded by whitespace
     var result = tokens
     
     // Work backwards to find trailing hash tokens
-    while !result.isEmpty {
-      let lastToken = result.last!
-      if lastToken.element == .punctuation && lastToken.text == "#" {
-        result.removeLast()
-        
-        // Check if preceded by whitespace - if so, remove the whitespace too
-        if !result.isEmpty && result.last!.element == .whitespaces {
-          result.removeLast()
-        }
+    var foundClosingHashes = false
+    var trailingHashCount = 0
+    
+    // First pass: count trailing hashes
+    var index = result.count - 1
+    while index >= 0 {
+      let token = result[index]
+      if token.element == .punctuation && token.text == "#" {
+        trailingHashCount += 1
+        foundClosingHashes = true
+        index -= 1
+      } else if token.element == .whitespaces && foundClosingHashes {
+        // Whitespace before closing hashes
+        index -= 1
+        break
       } else {
+        // Non-hash, non-whitespace token
         break
       }
+    }
+    
+    // If we found closing hashes and there's content before them with whitespace
+    if foundClosingHashes && index >= 0 && trailingHashCount > 0 {
+      // Check if the content before the whitespace and hashes is valid
+      let beforeWhitespace = index
+      if beforeWhitespace >= 0 {
+        // Remove the trailing hashes and the whitespace before them
+        let removeCount = trailingHashCount + 1 // +1 for whitespace
+        let newCount = max(0, result.count - removeCount)
+        result = Array(result[0..<newCount])
+      }
+    } else if foundClosingHashes && index < 0 {
+      // Only hashes, remove all
+      result = []
     }
     
     return result
