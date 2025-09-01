@@ -146,7 +146,7 @@ public class MarkdownInlineProcessor {
     
     // Get preceding and following characters
     let precedingChar = getPrecedingCharacter(at: index, in: tokens)
-    let followingChar = getFollowingCharacter(at: index + delimiterLength - 1, in: tokens)
+    let followingChar = getFollowingCharacter(at: index + delimiterLength, in: tokens) // Fixed: should be after the entire run
     
     // Determine if left-flanking and right-flanking
     let leftFlanking = !followingChar.isWhitespace && 
@@ -178,9 +178,9 @@ public class MarkdownInlineProcessor {
   
   /// Get character following the token at index  
   private func getFollowingCharacter(at index: Int, in tokens: [any CodeToken<MarkdownTokenElement>]) -> Character {
-    if index >= tokens.count - 1 { return "\n" } // End of line
+    if index >= tokens.count { return "\n" } // End of line
     
-    let nextToken = tokens[index + 1]
+    let nextToken = tokens[index]
     if let firstChar = nextToken.text.first {
       return firstChar
     }
@@ -220,12 +220,16 @@ public class MarkdownInlineProcessor {
       if let openingIndex = openingIndex {
         let openingDelimiter = delimiterStack[openingIndex]
         
-        // Apply the multiple of 3 rule: if total delimiters is multiple of 3,
-        // and both opener and closer have length not multiple of 3, don't match
+        // Apply the multiple of 3 rule: if one of the delimiters can both open and close,
+        // then the sum of lengths must not be multiple of 3 unless both can be openers or both closers
         let totalLength = openingDelimiter.length + currentDelimiter.length
-        if totalLength % 3 == 0 && 
-           openingDelimiter.length % 3 != 0 && 
-           currentDelimiter.length % 3 != 0 {
+        let openerCanBoth = openingDelimiter.canOpen && openingDelimiter.canClose
+        let closerCanBoth = currentDelimiter.canOpen && currentDelimiter.canClose
+        
+        if (openerCanBoth || closerCanBoth) && 
+           totalLength % 3 == 0 && 
+           !(openingDelimiter.canOpen && currentDelimiter.canOpen) &&
+           !(openingDelimiter.canClose && currentDelimiter.canClose) {
           stackIndex += 1
           continue
         }
@@ -239,9 +243,9 @@ public class MarkdownInlineProcessor {
         }
         
         // Calculate token positions after using delimiters
-        let openingStartToken = openingDelimiter.tokenIndex
-        let _ = openingDelimiter.tokenIndex + useCount - 1  // openingEndToken
-        let _ = currentDelimiter.tokenIndex                 // closingStartToken  
+        let openingStartToken = openingDelimiter.tokenIndex + (openingDelimiter.length - useCount)
+        let openingEndToken = openingDelimiter.tokenIndex + openingDelimiter.length - 1
+        let closingStartToken = currentDelimiter.tokenIndex                 
         let closingEndToken = currentDelimiter.tokenIndex + useCount - 1
         
         // Create range for the entire emphasis span (including delimiters)
