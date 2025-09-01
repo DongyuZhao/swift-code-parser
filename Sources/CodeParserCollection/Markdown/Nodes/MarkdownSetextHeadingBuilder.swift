@@ -14,25 +14,64 @@ public class MarkdownSetextHeadingBuilder: CodeNodeBuilder {
       return false
     }
 
-    // In the postParagraph phase, we need to check if the current line is a setext underline
-    // and if there's a previous paragraph (now a completed child) to convert
-    
     // Check if this line is a setext underline
     guard let underlineInfo = checkSetextUnderline(tokens: context.tokens, startIndex: 0) else {
       return false
     }
 
     // Look for a preceding paragraph to convert
-    // In the postParagraph phase, the preceding paragraph should be the last child of the current context
-    guard let lastChild = context.current.children.last,
-          lastChild.element == .paragraph else {
-      // No preceding paragraph found
-      return false
+    // The logic differs based on the current context:
+    // - If we're in a paragraph context, we need to convert the current paragraph to a heading
+    // - If we're at document level, we need to look at the last child
+    
+    let targetParagraph: CodeNode<MarkdownNodeElement>
+    let parentContext: CodeNode<MarkdownNodeElement>
+    
+    if context.current.element == .paragraph {
+      // We're in leafOnLine phase, and the current paragraph contains the content that should become a heading
+      // The "=========" line is about to be added to this paragraph, but instead we should convert the paragraph to a heading
+      
+      targetParagraph = context.current
+      guard let parent = context.current.parent else {
+        return false
+      }
+      parentContext = parent
+    } else {
+      // We're likely in postParagraph phase, at document level
+      // Look for the last child that's a paragraph, or a thematic break that could be converted to a setext heading
+      
+      if let lastChild = context.current.children.last, lastChild.element == .paragraph {
+        // Case 1: Last child is a paragraph (for "=" underlines that weren't processed by thematic break builder)
+        targetParagraph = lastChild
+        parentContext = context.current
+      } else if context.current.children.count >= 2,
+                let lastChild = context.current.children.last,
+                lastChild.element == .thematicBreak {
+        // Case 2: Last child is a thematic break, second-to-last is a paragraph
+        // This happens when "---------" was processed as a thematic break but should be a setext heading
+        
+        let secondLastChild = context.current.children[context.current.children.count - 2]
+        guard secondLastChild.element == .paragraph else {
+          return false
+        }
+        
+        // Check if the thematic break could be a setext underline (only "-" can be both)
+        if underlineInfo.level == 2 { // Only level 2 (dash) can conflict with thematic breaks
+          // Remove the thematic break and convert the paragraph to a heading
+          lastChild.remove()
+          targetParagraph = secondLastChild
+          parentContext = context.current
+        } else {
+          return false
+        }
+      } else {
+        return false
+      }
     }
 
     // Check if we're inside a container where setext headings cannot be formed
     // According to CommonMark spec, setext heading underlines cannot be lazy continuation lines in blockquotes or list items
-    if isInsideContainer(context: context, checkingNode: lastChild) {
+    if isInsideContainer(context: context, checkingNode: targetParagraph) {
       // We're inside a container - the underline should be treated as lazy continuation text
       // or as a thematic break, not as a setext heading underline
       return false
@@ -42,15 +81,20 @@ public class MarkdownSetextHeadingBuilder: CodeNodeBuilder {
     let heading = HeaderNode(level: underlineInfo.level)
 
     // Move all children from paragraph to heading
-    while let child = lastChild.children.first {
+    while let child = targetParagraph.children.first {
       child.remove()
       heading.append(child)
     }
 
     // Replace paragraph with heading
-    let insertIndex = context.current.children.firstIndex { $0 === lastChild } ?? (context.current.children.count - 1)
-    lastChild.remove()
-    context.current.insert(heading, at: insertIndex)
+    let insertIndex = parentContext.children.firstIndex { $0 === targetParagraph } ?? (parentContext.children.count - 1)
+    targetParagraph.remove()
+    parentContext.insert(heading, at: insertIndex)
+
+    // Update context if needed
+    if context.current === targetParagraph {
+      context.current = parentContext
+    }
 
     return true
   }

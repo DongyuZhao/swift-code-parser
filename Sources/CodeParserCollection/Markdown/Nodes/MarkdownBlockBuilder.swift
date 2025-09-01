@@ -32,6 +32,7 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
       .init(builder: MarkdownFencedCodeBlockBuilder(), phase: .leafOnLine, priority: 10),
       .init(builder: MarkdownATXHeadingBuilder(), phase: .leafOnLine, priority: 20),
       .init(builder: MarkdownThematicBreakBuilder(), phase: .leafOnLine, priority: 30),
+      .init(builder: MarkdownSetextHeadingBuilder(), phase: .leafOnLine, priority: 32),
       .init(builder: MarkdownHTMLBlockBuilder(), phase: .leafOnLine, priority: 35),
       .init(builder: MarkdownIndentedCodeBlockBuilder(), phase: .leafOnLine, priority: 40),
       .init(builder: MarkdownParagraphBuilder(), phase: .leafOnLine, priority: 1000),  // fallback
@@ -126,8 +127,11 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
               if phase == .openContainer {
                 // Continue to next phase without returning; break out of builder loop
                 break
+              } else if phase == .leafOnLine {
+                // For leafOnLine phase, allow proceeding to postParagraph phase
+                break
               } else {
-                // For leaf/post phases, we're done with this line
+                // For postParagraph phase, we're done with this line
                 return
               }
             }
