@@ -110,13 +110,16 @@ public class DocumentNode: MarkdownNodeBase {
 }
 
 // MARK: - Block Elements
-public class ParagraphNode: MarkdownNodeBase {
+public class ParagraphNode: MarkdownNodeBase, MarkdownBlockNode {
+  public var blockType: String { "paragraph" }
+  
   public init(range: Range<String.Index>) {
     super.init(element: .paragraph)
   }
 }
 
-public class HeaderNode: MarkdownNodeBase {
+public class HeaderNode: MarkdownNodeBase, MarkdownBlockNode {
+  public var blockType: String { "heading" }
   public var level: Int
 
   public init(level: Int) {
@@ -215,7 +218,8 @@ public class ListItemNode: MarkdownNodeBase {
   }
 }
 
-public class CodeBlockNode: MarkdownNodeBase {
+public class CodeBlockNode: MarkdownNodeBase, MarkdownBlockNode {
+  public var blockType: String { "code_block" }
   public var language: String?
   public var source: String
 
