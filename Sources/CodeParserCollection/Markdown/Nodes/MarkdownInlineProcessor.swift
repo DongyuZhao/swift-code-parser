@@ -14,12 +14,16 @@ public struct MarkdownContentContext {
 
   /// All tokens in the content
   public let tokens: [any CodeToken<MarkdownTokenElement>]
+  
+  /// Reference to the construct state for accessing reference definitions
+  public weak var constructState: MarkdownConstructState?
 
-  public init(tokens: [any CodeToken<MarkdownTokenElement>]) {
+  public init(tokens: [any CodeToken<MarkdownTokenElement>], constructState: MarkdownConstructState? = nil) {
     self.delimiters = MarkdownDelimiterStack()
     self.inlined = []
     self.current = 0
     self.tokens = tokens
+    self.constructState = constructState
   }
 
   /// Helper to add text node or merge with previous text node
@@ -59,6 +63,7 @@ public enum MarkdownDelimiter: Hashable {
   case openBracket
   case openImageBracket
   case backtick(count: Int)
+  case angleBracket
   case custom(String)
 }
 
@@ -207,6 +212,17 @@ public protocol MarkdownInlinePhaseProcessor {
   func canHandlePair(for delimiter: MarkdownDelimiter) -> Bool
   // Return value allows processor to extend the consumed range beyond closer (e.g., parse (dest "title")).
   // closerEndOverride: if provided, it's the exclusive end index to consume (>= closerRun.index + closerRun.length).
+  
+  /// Optional method for processors that need access to context (e.g., for reference resolution)
+  func createNodeForPairWithContext(
+    delimiter: MarkdownDelimiter,
+    openerRun: MarkdownDelimiterRun,
+    closerRun: MarkdownDelimiterRun,
+    contentTokens: ArraySlice<any CodeToken<MarkdownTokenElement>>,
+    allTokens: [any CodeToken<MarkdownTokenElement>],
+    context: MarkdownContentContext
+  ) -> (node: MarkdownNodeBase, closerEndOverride: Int)?
+  
   func createNodeForPair(
     delimiter: MarkdownDelimiter,
     openerRun: MarkdownDelimiterRun,
@@ -224,6 +240,14 @@ public extension MarkdownInlinePhaseProcessor {
   func canHandleRebuildToken(token: any CodeToken<MarkdownTokenElement>, at index: Int, context: MarkdownContentContext) -> Bool { false }
   func handleRebuildToken(token: any CodeToken<MarkdownTokenElement>, at index: Int, context: inout MarkdownContentContext) -> Bool { false }
   func canHandlePair(for delimiter: MarkdownDelimiter) -> Bool { false }
+  func createNodeForPairWithContext(
+    delimiter: MarkdownDelimiter,
+    openerRun: MarkdownDelimiterRun,
+    closerRun: MarkdownDelimiterRun,
+    contentTokens: ArraySlice<any CodeToken<MarkdownTokenElement>>,
+    allTokens: [any CodeToken<MarkdownTokenElement>],
+    context: MarkdownContentContext
+  ) -> (node: MarkdownNodeBase, closerEndOverride: Int)? { nil }
   func createNodeForPair(
     delimiter: MarkdownDelimiter,
     openerRun: MarkdownDelimiterRun,
@@ -259,7 +283,7 @@ public struct HardLineBreakRebuildProcessor: MarkdownInlinePhaseProcessor {
         continue
       case .punctuation:
         // Backslash must be immediately before newline (no trailing spaces)
-        if tok.text == "\\" {
+        if tok.text == "\\" && trailingSpaces == 0 {
           context.add(LineBreakNode(variant: .hard))
           return true
         }
@@ -340,7 +364,7 @@ public struct UnmatchedDelimiterInlineProcessor: MarkdownInlinePhaseProcessor {
 
 // MARK: - Scan processors for delimiter runs
 
-/// Scan asterisk/underscore sequences and push delimiter runs into the stack
+/// Scan asterisk/underscore sequences and push delimiter runs into the stack with proper flanking detection
 public struct EmphasisDelimiterScanProcessor: MarkdownInlinePhaseProcessor {
   public let phase: MarkdownInlinePhase = .scan
   public let priority: Int
@@ -359,11 +383,105 @@ public struct EmphasisDelimiterScanProcessor: MarkdownInlinePhaseProcessor {
       len += 1
       i += 1
     }
+    
+    // Determine flanking properties according to CommonMark spec
+    let (leftFlanking, rightFlanking) = determineFlankingProperties(
+      delimiterStart: start, 
+      delimiterLength: len, 
+      character: ch,
+      tokens: context.tokens
+    )
+    
     let type: MarkdownDelimiter = (ch == "*") ? .asterisk : .underscore
-    let run = MarkdownDelimiterRun(type: type, length: len, openable: true, closable: true, index: start)
+    
+    // According to CommonMark:
+    // - A delimiter run can open emphasis iff it is left-flanking and either not right-flanking or preceded by Unicode punctuation
+    // - A delimiter run can close emphasis iff it is right-flanking and either not left-flanking or followed by Unicode punctuation
+    let canOpen: Bool
+    let canClose: Bool
+    
+    if ch == "*" {
+      // For asterisks: left-flanking can open, right-flanking can close
+      canOpen = leftFlanking
+      canClose = rightFlanking
+    } else {
+      // For underscores: more restrictive rules
+      canOpen = leftFlanking && (!rightFlanking || isPrecededByPunctuation(start, tokens: context.tokens))
+      canClose = rightFlanking && (!leftFlanking || isFollowedByPunctuation(start + len, tokens: context.tokens))
+    }
+    
+    let run = MarkdownDelimiterRun(type: type, length: len, openable: canOpen, closable: canClose, index: start)
     context.delimiters.push(run, textNode: nil)
     context.advance(by: len)
     return true
+  }
+  
+  private func determineFlankingProperties(
+    delimiterStart: Int, 
+    delimiterLength: Int, 
+    character: Character,
+    tokens: [any CodeToken<MarkdownTokenElement>]
+  ) -> (leftFlanking: Bool, rightFlanking: Bool) {
+    let delimiterEnd = delimiterStart + delimiterLength
+    
+    // Get preceding character
+    let precedingChar = getPrecedingCharacter(delimiterStart, tokens: tokens)
+    
+    // Get following character  
+    let followingChar = getFollowingCharacter(delimiterEnd, tokens: tokens)
+    
+    // According to CommonMark spec:
+    // A delimiter run is left-flanking if:
+    // 1. It is not followed by whitespace
+    // 2. Either not followed by punctuation, or preceded by whitespace or punctuation
+    let leftFlanking = !followingChar.isWhitespace && 
+                      (!followingChar.isPunctuation || precedingChar.isWhitespace || precedingChar.isPunctuation)
+    
+    // A delimiter run is right-flanking if:
+    // 1. It is not preceded by whitespace  
+    // 2. Either not preceded by punctuation, or followed by whitespace or punctuation
+    let rightFlanking = !precedingChar.isWhitespace &&
+                       (!precedingChar.isPunctuation || followingChar.isWhitespace || followingChar.isPunctuation)
+    
+    return (leftFlanking, rightFlanking)
+  }
+  
+  private func getPrecedingCharacter(_ index: Int, tokens: [any CodeToken<MarkdownTokenElement>]) -> Character {
+    if index <= 0 { return " " } // Treat start of line as whitespace
+    
+    var i = index - 1
+    while i >= 0 {
+      let token = tokens[i]
+      if !token.text.isEmpty {
+        return token.text.last!
+      }
+      i -= 1
+    }
+    return " " // Default to whitespace
+  }
+  
+  private func getFollowingCharacter(_ index: Int, tokens: [any CodeToken<MarkdownTokenElement>]) -> Character {
+    if index >= tokens.count { return " " } // Treat end of line as whitespace
+    
+    var i = index
+    while i < tokens.count {
+      let token = tokens[i]
+      if !token.text.isEmpty {
+        return token.text.first!
+      }
+      i += 1
+    }
+    return " " // Default to whitespace
+  }
+  
+  private func isPrecededByPunctuation(_ index: Int, tokens: [any CodeToken<MarkdownTokenElement>]) -> Bool {
+    let char = getPrecedingCharacter(index, tokens: tokens)
+    return char.isPunctuation
+  }
+  
+  private func isFollowedByPunctuation(_ index: Int, tokens: [any CodeToken<MarkdownTokenElement>]) -> Bool {
+    let char = getFollowingCharacter(index, tokens: tokens)
+    return char.isPunctuation
   }
 }
 
@@ -432,19 +550,94 @@ public struct EmphasisStrongPairProcessor: MarkdownInlinePhaseProcessor {
     delimiter: MarkdownDelimiter,
     openerRun: MarkdownDelimiterRun,
     closerRun: MarkdownDelimiterRun,
-    contentTokens: ArraySlice<any CodeToken<MarkdownTokenElement>>
-  ) -> MarkdownNodeBase? {
-    let inner = MarkdownContentBuilder().process(Array(contentTokens))
+    contentTokens: ArraySlice<any CodeToken<MarkdownTokenElement>>,
+    allTokens: [any CodeToken<MarkdownTokenElement>]
+  ) -> (node: MarkdownNodeBase, closerEndOverride: Int)? {
+    // Validate that opener can open and closer can close
+    guard openerRun.openable && closerRun.closable else { return nil }
+    
+    // For underscore emphasis, apply intraword restrictions
+    if case .underscore = delimiter {
+      if !canFormUnderscoreEmphasis(openerRun: openerRun, closerRun: closerRun, allTokens: allTokens) {
+        return nil
+      }
+    }
+    
+    // Determine emphasis vs strong emphasis based on minimum run length
     let minLen = min(openerRun.length, closerRun.length)
+    let consumedLength: Int
+    let node: MarkdownNodeBase
+    
     if minLen >= 2 {
+      // Strong emphasis (**text** or __text__)
+      consumedLength = 2
+      let inner = MarkdownContentBuilder().process(Array(contentTokens))
       let strong = StrongNode(content: "")
       inner.forEach { strong.append($0) }
-      return strong
+      node = strong
     } else {
+      // Regular emphasis (*text* or _text_)
+      consumedLength = 1
+      let inner = MarkdownContentBuilder().process(Array(contentTokens))
       let em = EmphasisNode(content: "")
       inner.forEach { em.append($0) }
-      return em
+      node = em
     }
+    
+    // If we consumed less than the full delimiter run, we need to leave the rest as unmatched
+    // This is handled by the delimiter processing algorithm by updating run lengths
+    
+    return (node, closerRun.index + consumedLength)
+  }
+  
+  /// Check if underscore emphasis can be formed (intraword restrictions)
+  private func canFormUnderscoreEmphasis(
+    openerRun: MarkdownDelimiterRun,
+    closerRun: MarkdownDelimiterRun,
+    allTokens: [any CodeToken<MarkdownTokenElement>]
+  ) -> Bool {
+    // For underscores, we need to check intraword restrictions
+    // Underscore emphasis cannot occur within a word (letters/digits)
+    
+    let precedingChar = getPrecedingCharacter(openerRun.index, tokens: allTokens)
+    let followingChar = getFollowingCharacter(closerRun.index + closerRun.length, tokens: allTokens)
+    
+    // If both preceding and following characters are alphanumeric, this is intraword
+    if precedingChar.isLetter || precedingChar.isNumber {
+      if followingChar.isLetter || followingChar.isNumber {
+        return false // Intraword underscore emphasis is not allowed
+      }
+    }
+    
+    return true
+  }
+  
+  private func getPrecedingCharacter(_ index: Int, tokens: [any CodeToken<MarkdownTokenElement>]) -> Character {
+    if index <= 0 { return " " }
+    
+    var i = index - 1
+    while i >= 0 {
+      let token = tokens[i]
+      if !token.text.isEmpty {
+        return token.text.last!
+      }
+      i -= 1
+    }
+    return " "
+  }
+  
+  private func getFollowingCharacter(_ index: Int, tokens: [any CodeToken<MarkdownTokenElement>]) -> Character {
+    if index >= tokens.count { return " " }
+    
+    var i = index
+    while i < tokens.count {
+      let token = tokens[i]
+      if !token.text.isEmpty {
+        return token.text.first!
+      }
+      i += 1
+    }
+    return " "
   }
 }
 
@@ -490,8 +683,19 @@ public struct CodeSpanPairProcessor: MarkdownInlinePhaseProcessor {
   ) -> (node: MarkdownNodeBase, closerEndOverride: Int)? {
     // Code span content is literal; join token text
     let raw = contentTokens.map { $0.text }.joined()
-    let code = raw.trimmingCharacters(in: .whitespaces)
-    return (CodeSpanNode(code: code), closerRun.index + closerRun.length)
+    
+    // Convert line endings to spaces (CommonMark spec)
+    let withSpaces = raw.replacingOccurrences(of: #"\r?\n"#, with: " ", options: .regularExpression)
+    
+    // Strip exactly one space from each side if both sides have spaces (CommonMark spec)
+    let processed: String
+    if withSpaces.hasPrefix(" ") && withSpaces.hasSuffix(" ") && withSpaces.count >= 2 {
+      processed = String(withSpaces.dropFirst().dropLast())
+    } else {
+      processed = withSpaces
+    }
+    
+    return (CodeSpanNode(code: processed), closerRun.index + closerRun.length)
   }
 }
 
@@ -530,6 +734,115 @@ public struct BracketDelimiterScanProcessor: MarkdownInlinePhaseProcessor {
       context.delimiters.push(run, textNode: nil)
       context.advance(by: 1)
       return true
+    }
+  }
+}
+
+/// Scan for < and > for autolinks and push delimiter runs into the stack.
+public struct AutolinkDelimiterScanProcessor: MarkdownInlinePhaseProcessor {
+  public let phase: MarkdownInlinePhase = .scan
+  public let priority: Int
+  public init(priority: Int = -280) { self.priority = priority }
+
+  public func canHandle(token: any CodeToken<MarkdownTokenElement>, at index: Int, context: MarkdownContentContext) -> Bool {
+    token.element == .punctuation && (token.text == "<" || token.text == ">")
+  }
+
+  public func handle(token: any CodeToken<MarkdownTokenElement>, at index: Int, context: inout MarkdownContentContext) -> Bool {
+    if token.text == "<" {
+      // '<' as opener
+      let run = MarkdownDelimiterRun(type: .angleBracket, length: 1, openable: true, closable: false, index: index)
+      context.delimiters.push(run, textNode: nil)
+      context.advance(by: 1)
+      return true
+    } else {
+      // '>' as closer
+      let run = MarkdownDelimiterRun(type: .angleBracket, length: 1, openable: false, closable: true, index: index)
+      context.delimiters.push(run, textNode: nil)
+      context.advance(by: 1)
+      return true
+    }
+  }
+}
+
+/// Pair processor for reference links using bracket delimiters; supports [text][id], [text][], and [text] forms
+public struct ReferenceLinkPairProcessor: MarkdownInlinePhaseProcessor {
+  public let phase: MarkdownInlinePhase = .rebuild
+  public let priority: Int
+  public init(priority: Int = 3) { self.priority = priority } // Higher priority than inline links
+
+  public func canHandlePair(for delimiter: MarkdownDelimiter) -> Bool { delimiter == .openBracket }
+
+  public func createNodeForPairWithContext(
+    delimiter: MarkdownDelimiter,
+    openerRun: MarkdownDelimiterRun,
+    closerRun: MarkdownDelimiterRun,
+    contentTokens: ArraySlice<any CodeToken<MarkdownTokenElement>>,
+    allTokens: [any CodeToken<MarkdownTokenElement>],
+    context: MarkdownContentContext
+  ) -> (node: MarkdownNodeBase, closerEndOverride: Int)? {
+    // Determine if this is image: opener length 2 means '!['
+    let isImage = openerRun.length >= 2
+
+    // Build inner inline nodes for link text / alt text
+    let inner = MarkdownContentBuilder().process(Array(contentTokens))
+
+    // After closer ']' look for reference label in various forms
+    var idx = closerRun.index + closerRun.length
+    let referenceId: String?
+    var consumedEnd = idx
+
+    // Skip spaces
+    while idx < allTokens.count, allTokens[idx].element == .whitespaces { idx += 1 }
+
+    if idx < allTokens.count, allTokens[idx].element == .punctuation, allTokens[idx].text == "[" {
+      // Full or collapsed reference form: [text][id] or [text][]
+      idx += 1 // consume '['
+      let refStart = idx
+      
+      // Find closing ']'
+      while idx < allTokens.count, !(allTokens[idx].element == .punctuation && allTokens[idx].text == "]") {
+        idx += 1
+      }
+      
+      guard idx < allTokens.count else { return nil }
+      
+      // Extract reference ID
+      let refTokens = allTokens[refStart..<idx]
+      let refText = refTokens.map { $0.text }.joined().trimmingCharacters(in: .whitespacesAndNewlines)
+      
+      if refText.isEmpty {
+        // Collapsed form [text][] - use link text as reference ID
+        referenceId = LinkImagePairProcessor.flattenText(from: inner)
+      } else {
+        // Full form [text][id] - use explicit reference ID
+        referenceId = refText
+      }
+      
+      consumedEnd = idx + 1 // Include closing ']'
+    } else {
+      // Shortcut form [text] - use link text as reference ID
+      referenceId = LinkImagePairProcessor.flattenText(from: inner)
+      consumedEnd = closerRun.index + closerRun.length
+    }
+
+    // Look up reference definition
+    guard let refId = referenceId,
+          let constructState = context.constructState,
+          let refDef = constructState.getReferenceDefinition(for: refId) else {
+      // No reference found - let it fall back to literal text
+      return nil
+    }
+
+    // Build node using reference definition
+    if isImage {
+      let alt = LinkImagePairProcessor.flattenText(from: inner)
+      let image = ImageNode(url: refDef.url, alt: alt, title: refDef.title)
+      return (image, consumedEnd)
+    } else {
+      let link = LinkNode(url: refDef.url, title: refDef.title)
+      inner.forEach { link.append($0) }
+      return (link, consumedEnd)
     }
   }
 }
@@ -596,7 +909,7 @@ public struct LinkImagePairProcessor: MarkdownInlinePhaseProcessor {
     }
   }
 
-  private static func flattenText(from nodes: [MarkdownNodeBase]) -> String {
+  public static func flattenText(from nodes: [MarkdownNodeBase]) -> String {
     var out = ""
     func dfs(_ n: MarkdownNodeBase) {
       if let t = n as? TextNode { out += t.content; return }
@@ -610,19 +923,229 @@ public struct LinkImagePairProcessor: MarkdownInlinePhaseProcessor {
     // Trim outer spaces
     let s = inside.trimmingCharacters(in: .whitespacesAndNewlines)
     if s.isEmpty { return ("", "") }
-    // If contains a quoted title at the end
-    if let quoteStart = s.lastIndex(where: { $0 == "\"" || $0 == "'" }) {
-      let quote = s[quoteStart]
-      if quoteStart > s.startIndex, s[quoteStart...] .first == quote, s.last == quote {
-        // Title in quotes; split at the preceding space
-        let before = s[..<quoteStart]
-        if let sp = before.lastIndex(where: { $0.isWhitespace }) {
-          let dest = String(before[..<sp]).trimmingCharacters(in: .whitespaces)
-          let title = String(s[s.index(after: quoteStart)..<s.index(before: s.endIndex)])
-          return (dest, title)
+    
+    // Handle angle-bracket enclosed destination <url>
+    var dest = ""
+    var remaining = s
+    
+    if s.hasPrefix("<") {
+      // Find matching >
+      if let closingIndex = s.firstIndex(of: ">") {
+        dest = String(s[s.index(after: s.startIndex)..<closingIndex])
+        remaining = String(s[s.index(after: closingIndex)...]).trimmingCharacters(in: .whitespacesAndNewlines)
+      } else {
+        // No matching >, treat as regular destination
+        dest = s
+        remaining = ""
+      }
+    } else {
+      // Regular destination - find where title starts
+      // Look for title pattern: whitespace followed by quoted string at end
+      if let quoteMatch = findTitleInDestination(s) {
+        dest = quoteMatch.dest
+        remaining = quoteMatch.titlePart
+      } else {
+        dest = s
+        remaining = ""
+      }
+    }
+    
+    // Parse title from remaining content if any
+    let title = parseTitleFromString(remaining)
+    
+    return (dest, title)
+  }
+  
+  private static func findTitleInDestination(_ s: String) -> (dest: String, titlePart: String)? {
+    // Look for title at the end (in quotes or parentheses)
+    // We need to find a pattern like: destination whitespace "title" at the end
+    
+    let quoteChars: [(open: Character, close: Character)] = [("\"", "\""), ("'", "'"), ("(", ")")]
+    
+    for (openQuote, closeQuote) in quoteChars {
+      if s.hasSuffix(String(closeQuote)) {
+        if openQuote == closeQuote {
+          // For matching quotes, find the rightmost whitespace-delimited quoted string
+          if let lastSpaceIndex = s.lastIndex(where: { $0.isWhitespace }) {
+            let possibleTitle = String(s[s.index(after: lastSpaceIndex)...])
+            if possibleTitle.count >= 2 && possibleTitle.first == openQuote && possibleTitle.last == closeQuote {
+              // Validate the title content doesn't have unescaped quotes
+              let titleContent = String(possibleTitle.dropFirst().dropLast())
+              if !hasUnescapedQuotes(titleContent, quote: openQuote) {
+                let dest = String(s[..<lastSpaceIndex]).trimmingCharacters(in: .whitespacesAndNewlines)
+                return (dest, possibleTitle)
+              }
+            }
+          }
+        } else {
+          // Different open/close quotes - use lastIndex approach
+          if let lastOpenIndex = s.lastIndex(of: openQuote) {
+            let beforeQuote = String(s[..<lastOpenIndex]).trimmingCharacters(in: .whitespacesAndNewlines)
+            let titlePart = String(s[lastOpenIndex...])
+            
+            if titlePart.count >= 2 && titlePart.first == openQuote && titlePart.last == closeQuote {
+              return (beforeQuote, titlePart)
+            }
+          }
         }
       }
     }
-    return (s, "")
+    
+    return nil
+  }
+  
+  /// Check if a string contains unescaped quotes of the specified type
+  private static func hasUnescapedQuotes(_ content: String, quote: Character) -> Bool {
+    var escaped = false
+    for char in content {
+      if escaped {
+        escaped = false
+        continue
+      }
+      if char == "\\" {
+        escaped = true
+        continue
+      }
+      if char == quote {
+        return true // Found unescaped quote
+      }
+    }
+    return false
+  }
+  
+  private static func parseTitleFromString(_ s: String) -> String {
+    let trimmed = s.trimmingCharacters(in: .whitespacesAndNewlines)
+    if trimmed.isEmpty { return "" }
+    
+    // Check for quoted title
+    let quoteChars: [(open: Character, close: Character)] = [("\"", "\""), ("'", "'"), ("(", ")")]
+    
+    for (openQuote, closeQuote) in quoteChars {
+      if trimmed.hasPrefix(String(openQuote)) && trimmed.hasSuffix(String(closeQuote)) && trimmed.count >= 2 {
+        let content = String(trimmed.dropFirst().dropLast())
+        
+        // For same open/close quotes, validate no unescaped quotes inside
+        if openQuote == closeQuote {
+          // Check if the content contains unescaped quotes of the same type
+          if hasUnescapedQuotes(content, quote: openQuote) {
+            return "" // Invalid title
+          }
+        }
+        
+        return content
+      }
+    }
+    
+    return ""
+  }
+}
+
+/// Pair processor for autolinks using angle bracket delimiters; supports autolink form: <url> and <email>
+public struct AutolinkPairProcessor: MarkdownInlinePhaseProcessor {
+  public let phase: MarkdownInlinePhase = .rebuild
+  public let priority: Int
+  public init(priority: Int = 4) { self.priority = priority } // Higher priority than LinkImagePairProcessor
+
+  public func canHandlePair(for delimiter: MarkdownDelimiter) -> Bool { delimiter == .angleBracket }
+
+  public func createNodeForPair(
+    delimiter: MarkdownDelimiter,
+    openerRun: MarkdownDelimiterRun,
+    closerRun: MarkdownDelimiterRun,
+    contentTokens: ArraySlice<any CodeToken<MarkdownTokenElement>>,
+    allTokens: [any CodeToken<MarkdownTokenElement>]
+  ) -> (node: MarkdownNodeBase, closerEndOverride: Int)? {
+    // Extract content between angle brackets
+    let content = contentTokens.map { $0.text }.joined()
+    
+    // Validate autolink content
+    guard isValidAutolink(content) else { return nil }
+    
+    // Determine URL and create LinkNode
+    let url: String
+    if isEmailAddress(content) {
+      url = "mailto:" + content
+    } else {
+      url = content
+    }
+    
+    let link = LinkNode(url: url, title: "")
+    let textNode = TextNode(content: content)
+    link.append(textNode)
+    
+    return (link, closerRun.index + closerRun.length)
+  }
+  
+  private func isValidAutolink(_ content: String) -> Bool {
+    // Check for invalid characters (spaces, newlines, control characters)
+    if content.isEmpty || content.contains(" ") || content.contains("\n") || content.contains("\r") || content.contains("\t") {
+      return false
+    }
+    
+    // Check if it's either a valid URI or email
+    return isValidURI(content) || isEmailAddress(content)
+  }
+  
+  private func isValidURI(_ content: String) -> Bool {
+    // Check for scheme:path pattern according to CommonMark spec
+    guard let colonIndex = content.firstIndex(of: ":") else { return false }
+    
+    let scheme = String(content[..<colonIndex])
+    let path = String(content[content.index(after: colonIndex)...])
+    
+    // Scheme must be 2-32 characters: [A-Za-z][A-Za-z0-9.+-]{1,31}
+    guard scheme.count >= 2 && scheme.count <= 32 else { return false }
+    guard scheme.first?.isLetter == true else { return false }
+    
+    // Check remaining characters in scheme
+    for char in scheme.dropFirst() {
+      if !char.isLetter && !char.isNumber && char != "." && char != "+" && char != "-" {
+        return false
+      }
+    }
+    
+    // Path must not be empty and must not contain unescaped < or >
+    guard !path.isEmpty else { return false }
+    
+    // Basic validation - no unescaped angle brackets
+    if path.contains("<") || path.contains(">") {
+      return false
+    }
+    
+    return true
+  }
+  
+  private func isEmailAddress(_ content: String) -> Bool {
+    // Simple email validation according to CommonMark spec
+    guard let atIndex = content.firstIndex(of: "@") else { return false }
+    
+    let local = String(content[..<atIndex])
+    let domain = String(content[content.index(after: atIndex)...])
+    
+    // Local part must not be empty and must contain valid characters
+    guard !local.isEmpty && !domain.isEmpty else { return false }
+    
+    // Basic validation - contains @ and has reasonable structure
+    let emailRegex = try! NSRegularExpression(pattern: "^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
+    let range = NSRange(location: 0, length: content.count)
+    return emailRegex.firstMatch(in: content, options: [], range: range) != nil
+  }
+}
+
+// MARK: - Character Extensions for CommonMark processing
+
+extension Character {
+  /// Check if character is whitespace according to CommonMark spec
+  var isWhitespace: Bool {
+    return self == " " || self == "\t" || self == "\n" || self == "\r"
+  }
+  
+  /// Check if character is punctuation according to CommonMark spec
+  var isPunctuation: Bool {
+    // CommonMark defines punctuation characters as characters in categories Pc, Pd, Pe, Pf, Pi, Po, or Ps
+    return self.unicodeScalars.allSatisfy { scalar in
+      let category = CharacterSet.punctuationCharacters
+      return category.contains(scalar)
+    } || ["!", "\"", "#", "$", "%", "&", "'", "(", ")", "*", "+", ",", "-", ".", "/", ":", ";", "<", "=", ">", "?", "@", "[", "\\", "]", "^", "_", "`", "{", "|", "}", "~"].contains(self)
   }
 }

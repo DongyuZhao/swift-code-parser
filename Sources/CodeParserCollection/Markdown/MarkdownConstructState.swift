@@ -37,7 +37,34 @@ public class MarkdownConstructState: CodeConstructState {
   /// semantics where block-starting constructs introduce a new block.
   public var prevBlockquoteLineWasBlockStart: Bool = false
 
+  /// Reference link definitions storage for resolving reference links
+  /// Key is normalized reference identifier (case-insensitive, whitespace collapsed)
+  public var referenceDefinitions: [String: (url: String, title: String)] = [:]
+
   public init() {}
+  
+  /// Add a reference definition with normalized identifier
+  public func addReferenceDefinition(identifier: String, url: String, title: String) {
+    let normalizedId = normalizeReferenceIdentifier(identifier)
+    referenceDefinitions[normalizedId] = (url: url, title: title)
+  }
+  
+  /// Look up a reference definition by identifier
+  public func getReferenceDefinition(for identifier: String) -> (url: String, title: String)? {
+    let normalizedId = normalizeReferenceIdentifier(identifier)
+    return referenceDefinitions[normalizedId]
+  }
+  
+  /// Normalize reference identifier according to CommonMark spec:
+  /// - Case insensitive
+  /// - Collapse whitespace and newlines to single spaces
+  /// - Trim leading/trailing whitespace
+  private func normalizeReferenceIdentifier(_ identifier: String) -> String {
+    return identifier
+      .lowercased()
+      .replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
+      .trimmingCharacters(in: .whitespacesAndNewlines)
+  }
 }
 
 /// Information about an open fenced code block

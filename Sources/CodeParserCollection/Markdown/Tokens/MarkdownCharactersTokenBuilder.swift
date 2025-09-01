@@ -36,8 +36,7 @@ public class MarkdownCharactersTokenBuilder: CodeTokenBuilder {
 
         if !inSpecialMode {
           if nextIndex < source.endIndex && source[nextIndex] == "\n" {
-            // Backslash followed by newline -> line break, consume backslash only
-            current = nextIndex
+            // Backslash followed by newline -> don't consume it here, let punctuation builder handle it
             break
           }
 

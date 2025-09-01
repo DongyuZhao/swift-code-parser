@@ -11,7 +11,12 @@ public class MarkdownListBuilder: CodeNodeBuilder {
   public init() {}
 
   public func build(from context: inout CodeConstructContext<Node, Token>) -> Bool {
-  guard context.state is MarkdownConstructState else {
+    guard let state = context.state as? MarkdownConstructState else {
+      return false
+    }
+
+    // Don't process lists when inside a fenced code block
+    if state.openFence != nil {
       return false
     }
 

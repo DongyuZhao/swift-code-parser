@@ -16,25 +16,31 @@ public class MarkdownContentBuilder: CodeNodeBuilder {
       EmphasisDelimiterScanProcessor(priority: -300),
       StrikethroughDelimiterScanProcessor(priority: -295),
       CodeSpanDelimiterScanProcessor(priority: -290),
-  BracketDelimiterScanProcessor(priority: -285),
+      BracketDelimiterScanProcessor(priority: -285),
+      AutolinkDelimiterScanProcessor(priority: -280),
       // rebuild-phase processors
       HardLineBreakRebuildProcessor(priority: 0),
       UnmatchedDelimiterInlineProcessor(priority: 0),
       // pair processors
-  LinkImagePairProcessor(priority: 5),
+      ReferenceLinkPairProcessor(priority: 3),
+      AutolinkPairProcessor(priority: 4),
+      LinkImagePairProcessor(priority: 5),
+      CodeSpanPairProcessor(priority: 8), // Higher precedence than emphasis/strong
       EmphasisStrongPairProcessor(priority: 10),
       StrikethroughPairProcessor(priority: 10),
-      CodeSpanPairProcessor(priority: 10),
     ]
     self.scanPhaseProcessors = inlineProcessors.filter { $0.phase == .scan }.sorted { $0.priority < $1.priority }
     self.rebuildPhaseProcessors = inlineProcessors.filter { $0.phase == .rebuild }.sorted { $0.priority < $1.priority }
   }
 
   public func build(from context: inout CodeConstructContext<Node, Token>) -> Bool {
+    // Store reference to construct state for processors that need access to reference definitions
+    let markdownState = context.state as? MarkdownConstructState
+    
     // Traverse the AST to parse all the content nodes
     context.root.dfs { node in
       if let node = node as? ContentNode {
-        let inlined = process(node.tokens)
+        let inlined = process(node.tokens, constructState: markdownState)
         finalize(node: node, with: inlined)
       }
     }
@@ -43,8 +49,8 @@ public class MarkdownContentBuilder: CodeNodeBuilder {
 
   /// Process tokens into inline nodes using the configured processors
   /// Internal so processors can reuse it to parse nested content between delimiters.
-  func process(_ tokens: [any CodeToken<MarkdownTokenElement>]) -> [MarkdownNodeBase] {
-    var context = MarkdownContentContext(tokens: tokens)
+  func process(_ tokens: [any CodeToken<MarkdownTokenElement>], constructState: MarkdownConstructState? = nil) -> [MarkdownNodeBase] {
+    var context = MarkdownContentContext(tokens: tokens, constructState: constructState)
 
     // Process all tokens via scan-phase processors
     while context.current < tokens.count {
@@ -112,6 +118,17 @@ public class MarkdownContentBuilder: CodeNodeBuilder {
   // Validate pair and ask processor to create the node
   var built: (node: MarkdownNodeBase, closerEndOverride: Int)? = nil
   for handler in pairHandlers {
+    // Try context-aware method first (for processors that need reference definitions)
+    if let n = handler.createNodeForPairWithContext(
+      delimiter: closerNode.run.delimiter,
+      openerRun: openerNode.run,
+      closerRun: closerNode.run,
+      contentTokens: contentTokens,
+      allTokens: context.tokens,
+      context: context
+    ) { built = n; break }
+    
+    // Fall back to regular method
     if let n = handler.createNodeForPair(
       delimiter: closerNode.run.delimiter,
       openerRun: openerNode.run,
