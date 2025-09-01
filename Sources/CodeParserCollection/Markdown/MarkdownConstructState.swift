@@ -41,6 +41,9 @@ public class MarkdownConstructState: CodeConstructState {
   /// Key is normalized reference identifier (case-insensitive, whitespace collapsed)
   public var referenceDefinitions: [String: (url: String, title: String)] = [:]
 
+  /// Pending reference link definition being parsed across multiple lines
+  public var pendingReference: PendingReferenceDefinition?
+
   public init() {}
   
   /// Add a reference definition with normalized identifier
@@ -64,6 +67,23 @@ public class MarkdownConstructState: CodeConstructState {
       .lowercased()
       .replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
       .trimmingCharacters(in: .whitespacesAndNewlines)
+  }
+}
+
+/// Information about a pending reference link definition being parsed across multiple lines
+public struct PendingReferenceDefinition {
+  public let identifier: String
+  public let referenceNode: ReferenceNode
+  public var hasDestination: Bool
+  public var hasTitle: Bool
+  public let originalLineTokens: [any CodeToken<MarkdownTokenElement>] // For fallback to paragraph
+  
+  public init(identifier: String, referenceNode: ReferenceNode, originalLineTokens: [any CodeToken<MarkdownTokenElement>]) {
+    self.identifier = identifier
+    self.referenceNode = referenceNode
+    self.hasDestination = false
+    self.hasTitle = false
+    self.originalLineTokens = originalLineTokens
   }
 }
 
