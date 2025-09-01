@@ -341,7 +341,7 @@ public struct UnmatchedDelimiterInlineProcessor: MarkdownInlinePhaseProcessor {
 
 // MARK: - Scan processors for delimiter runs
 
-/// Scan asterisk/underscore sequences and push delimiter runs into the stack
+/// Scan asterisk/underscore sequences and push delimiter runs into the stack with proper flanking detection
 public struct EmphasisDelimiterScanProcessor: MarkdownInlinePhaseProcessor {
   public let phase: MarkdownInlinePhase = .scan
   public let priority: Int
@@ -360,11 +360,105 @@ public struct EmphasisDelimiterScanProcessor: MarkdownInlinePhaseProcessor {
       len += 1
       i += 1
     }
+    
+    // Determine flanking properties according to CommonMark spec
+    let (leftFlanking, rightFlanking) = determineFlankingProperties(
+      delimiterStart: start, 
+      delimiterLength: len, 
+      character: ch,
+      tokens: context.tokens
+    )
+    
     let type: MarkdownDelimiter = (ch == "*") ? .asterisk : .underscore
-    let run = MarkdownDelimiterRun(type: type, length: len, openable: true, closable: true, index: start)
+    
+    // According to CommonMark:
+    // - A delimiter run can open emphasis iff it is left-flanking and either not right-flanking or preceded by Unicode punctuation
+    // - A delimiter run can close emphasis iff it is right-flanking and either not left-flanking or followed by Unicode punctuation
+    let canOpen: Bool
+    let canClose: Bool
+    
+    if ch == "*" {
+      // For asterisks: left-flanking can open, right-flanking can close
+      canOpen = leftFlanking
+      canClose = rightFlanking
+    } else {
+      // For underscores: more restrictive rules
+      canOpen = leftFlanking && (!rightFlanking || isPrecededByPunctuation(start, tokens: context.tokens))
+      canClose = rightFlanking && (!leftFlanking || isFollowedByPunctuation(start + len, tokens: context.tokens))
+    }
+    
+    let run = MarkdownDelimiterRun(type: type, length: len, openable: canOpen, closable: canClose, index: start)
     context.delimiters.push(run, textNode: nil)
     context.advance(by: len)
     return true
+  }
+  
+  private func determineFlankingProperties(
+    delimiterStart: Int, 
+    delimiterLength: Int, 
+    character: Character,
+    tokens: [any CodeToken<MarkdownTokenElement>]
+  ) -> (leftFlanking: Bool, rightFlanking: Bool) {
+    let delimiterEnd = delimiterStart + delimiterLength
+    
+    // Get preceding character
+    let precedingChar = getPrecedingCharacter(delimiterStart, tokens: tokens)
+    
+    // Get following character  
+    let followingChar = getFollowingCharacter(delimiterEnd, tokens: tokens)
+    
+    // According to CommonMark spec:
+    // A delimiter run is left-flanking if:
+    // 1. It is not followed by whitespace
+    // 2. Either not followed by punctuation, or preceded by whitespace or punctuation
+    let leftFlanking = !followingChar.isWhitespace && 
+                      (!followingChar.isPunctuation || precedingChar.isWhitespace || precedingChar.isPunctuation)
+    
+    // A delimiter run is right-flanking if:
+    // 1. It is not preceded by whitespace  
+    // 2. Either not preceded by punctuation, or followed by whitespace or punctuation
+    let rightFlanking = !precedingChar.isWhitespace &&
+                       (!precedingChar.isPunctuation || followingChar.isWhitespace || followingChar.isPunctuation)
+    
+    return (leftFlanking, rightFlanking)
+  }
+  
+  private func getPrecedingCharacter(_ index: Int, tokens: [any CodeToken<MarkdownTokenElement>]) -> Character {
+    if index <= 0 { return " " } // Treat start of line as whitespace
+    
+    var i = index - 1
+    while i >= 0 {
+      let token = tokens[i]
+      if !token.text.isEmpty {
+        return token.text.last!
+      }
+      i -= 1
+    }
+    return " " // Default to whitespace
+  }
+  
+  private func getFollowingCharacter(_ index: Int, tokens: [any CodeToken<MarkdownTokenElement>]) -> Character {
+    if index >= tokens.count { return " " } // Treat end of line as whitespace
+    
+    var i = index
+    while i < tokens.count {
+      let token = tokens[i]
+      if !token.text.isEmpty {
+        return token.text.first!
+      }
+      i += 1
+    }
+    return " " // Default to whitespace
+  }
+  
+  private func isPrecededByPunctuation(_ index: Int, tokens: [any CodeToken<MarkdownTokenElement>]) -> Bool {
+    let char = getPrecedingCharacter(index, tokens: tokens)
+    return char.isPunctuation
+  }
+  
+  private func isFollowedByPunctuation(_ index: Int, tokens: [any CodeToken<MarkdownTokenElement>]) -> Bool {
+    let char = getFollowingCharacter(index, tokens: tokens)
+    return char.isPunctuation
   }
 }
 
@@ -433,19 +527,94 @@ public struct EmphasisStrongPairProcessor: MarkdownInlinePhaseProcessor {
     delimiter: MarkdownDelimiter,
     openerRun: MarkdownDelimiterRun,
     closerRun: MarkdownDelimiterRun,
-    contentTokens: ArraySlice<any CodeToken<MarkdownTokenElement>>
-  ) -> MarkdownNodeBase? {
-    let inner = MarkdownContentBuilder().process(Array(contentTokens))
+    contentTokens: ArraySlice<any CodeToken<MarkdownTokenElement>>,
+    allTokens: [any CodeToken<MarkdownTokenElement>]
+  ) -> (node: MarkdownNodeBase, closerEndOverride: Int)? {
+    // Validate that opener can open and closer can close
+    guard openerRun.openable && closerRun.closable else { return nil }
+    
+    // For underscore emphasis, apply intraword restrictions
+    if case .underscore = delimiter {
+      if !canFormUnderscoreEmphasis(openerRun: openerRun, closerRun: closerRun, allTokens: allTokens) {
+        return nil
+      }
+    }
+    
+    // Determine emphasis vs strong emphasis based on minimum run length
     let minLen = min(openerRun.length, closerRun.length)
+    let consumedLength: Int
+    let node: MarkdownNodeBase
+    
     if minLen >= 2 {
+      // Strong emphasis (**text** or __text__)
+      consumedLength = 2
+      let inner = MarkdownContentBuilder().process(Array(contentTokens))
       let strong = StrongNode(content: "")
       inner.forEach { strong.append($0) }
-      return strong
+      node = strong
     } else {
+      // Regular emphasis (*text* or _text_)
+      consumedLength = 1
+      let inner = MarkdownContentBuilder().process(Array(contentTokens))
       let em = EmphasisNode(content: "")
       inner.forEach { em.append($0) }
-      return em
+      node = em
     }
+    
+    // If we consumed less than the full delimiter run, we need to leave the rest as unmatched
+    // This is handled by the delimiter processing algorithm by updating run lengths
+    
+    return (node, closerRun.index + consumedLength)
+  }
+  
+  /// Check if underscore emphasis can be formed (intraword restrictions)
+  private func canFormUnderscoreEmphasis(
+    openerRun: MarkdownDelimiterRun,
+    closerRun: MarkdownDelimiterRun,
+    allTokens: [any CodeToken<MarkdownTokenElement>]
+  ) -> Bool {
+    // For underscores, we need to check intraword restrictions
+    // Underscore emphasis cannot occur within a word (letters/digits)
+    
+    let precedingChar = getPrecedingCharacter(openerRun.index, tokens: allTokens)
+    let followingChar = getFollowingCharacter(closerRun.index + closerRun.length, tokens: allTokens)
+    
+    // If both preceding and following characters are alphanumeric, this is intraword
+    if precedingChar.isLetter || precedingChar.isNumber {
+      if followingChar.isLetter || followingChar.isNumber {
+        return false // Intraword underscore emphasis is not allowed
+      }
+    }
+    
+    return true
+  }
+  
+  private func getPrecedingCharacter(_ index: Int, tokens: [any CodeToken<MarkdownTokenElement>]) -> Character {
+    if index <= 0 { return " " }
+    
+    var i = index - 1
+    while i >= 0 {
+      let token = tokens[i]
+      if !token.text.isEmpty {
+        return token.text.last!
+      }
+      i -= 1
+    }
+    return " "
+  }
+  
+  private func getFollowingCharacter(_ index: Int, tokens: [any CodeToken<MarkdownTokenElement>]) -> Character {
+    if index >= tokens.count { return " " }
+    
+    var i = index
+    while i < tokens.count {
+      let token = tokens[i]
+      if !token.text.isEmpty {
+        return token.text.first!
+      }
+      i += 1
+    }
+    return " "
   }
 }
 
@@ -744,5 +913,23 @@ public struct AutolinkPairProcessor: MarkdownInlinePhaseProcessor {
     let emailRegex = try! NSRegularExpression(pattern: "^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
     let range = NSRange(location: 0, length: content.count)
     return emailRegex.firstMatch(in: content, options: [], range: range) != nil
+  }
+}
+
+// MARK: - Character Extensions for CommonMark processing
+
+extension Character {
+  /// Check if character is whitespace according to CommonMark spec
+  var isWhitespace: Bool {
+    return self == " " || self == "\t" || self == "\n" || self == "\r"
+  }
+  
+  /// Check if character is punctuation according to CommonMark spec
+  var isPunctuation: Bool {
+    // CommonMark defines punctuation characters as characters in categories Pc, Pd, Pe, Pf, Pi, Po, or Ps
+    return self.unicodeScalars.allSatisfy { scalar in
+      let category = CharacterSet.punctuationCharacters
+      return category.contains(scalar)
+    } || ["!", "\"", "#", "$", "%", "&", "'", "(", ")", "*", "+", ",", "-", ".", "/", ":", ";", "<", "=", ">", "?", "@", "[", "\\", "]", "^", "_", "`", "{", "|", "}", "~"].contains(self)
   }
 }
