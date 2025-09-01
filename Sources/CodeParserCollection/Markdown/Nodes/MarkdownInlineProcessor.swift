@@ -908,31 +908,29 @@ public struct LinkImagePairProcessor: MarkdownInlinePhaseProcessor {
   }
   
   private static func findTitleInDestination(_ s: String) -> (dest: String, titlePart: String)? {
-    // Find the last quoted string that could be a title
-    // Title can be in double quotes, single quotes, or parentheses
-    let quoteChars: [Character] = ["\"", "'", "("]
-    var bestMatch: (dest: String, titlePart: String)? = nil
+    // Look for title at the end (in quotes or parentheses)
+    // We need to find a pattern like: destination whitespace "title" at the end
     
-    for quote in quoteChars {
-      let closeQuote = quote == "(" ? ")" : quote
-      
-      // Find the last occurrence of the quote character
-      if let lastQuoteIndex = s.lastIndex(of: quote) {
-        // Make sure there's a corresponding closing quote
-        if let closeIndex = s[s.index(after: lastQuoteIndex)...].firstIndex(of: closeQuote) {
-          // Check if this is at the end of the string (after trimming)
-          let afterClose = String(s[s.index(after: closeIndex)...]).trimmingCharacters(in: .whitespacesAndNewlines)
-          if afterClose.isEmpty {
-            // This looks like a title - split here
-            let beforeQuote = String(s[..<lastQuoteIndex]).trimmingCharacters(in: .whitespacesAndNewlines)
-            let titlePart = String(s[lastQuoteIndex...])
-            bestMatch = (beforeQuote, titlePart)
+    let quoteChars: [(open: Character, close: Character)] = [("\"", "\""), ("'", "'"), ("(", ")")]
+    
+    for (openQuote, closeQuote) in quoteChars {
+      // Look for patterns that end with a quoted title
+      if s.hasSuffix(String(closeQuote)) {
+        // Find the opening quote
+        if let lastOpenIndex = s.dropLast().lastIndex(of: openQuote) {
+          // This is a potential title - check if there's a destination before it
+          let beforeQuote = String(s[..<lastOpenIndex]).trimmingCharacters(in: .whitespacesAndNewlines)
+          let titlePart = String(s[lastOpenIndex...])
+          
+          // Make sure there's some destination before the quote
+          if !beforeQuote.isEmpty {
+            return (beforeQuote, titlePart)
           }
         }
       }
     }
     
-    return bestMatch
+    return nil
   }
   
   private static func parseTitleFromString(_ s: String) -> String {
