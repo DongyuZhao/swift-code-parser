@@ -134,7 +134,8 @@ public class HeaderNode: MarkdownNodeBase, MarkdownBlockNode {
   }
 }
 
-public class ThematicBreakNode: MarkdownNodeBase {
+public class ThematicBreakNode: MarkdownNodeBase, MarkdownBlockNode {
+  public var blockType: String { "thematic_break" }
   public var marker: String
 
   public init(marker: String = "---") {
@@ -640,3 +641,9 @@ public class ContentNode: MarkdownNodeBase {
     super.init(element: .content)
   }
 }
+
+// MARK: - Type Aliases for Block Builders
+public typealias MarkdownHeading = HeaderNode
+public typealias MarkdownThematicBreak = ThematicBreakNode
+public typealias MarkdownText = TextNode
+public typealias MarkdownParagraph = ParagraphNode

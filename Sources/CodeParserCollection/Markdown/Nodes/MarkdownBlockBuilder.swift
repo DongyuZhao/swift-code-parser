@@ -204,7 +204,9 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
     for builder in blockBuilders {
       // Use block type comparison instead of canContinue for closing
       if (block.blockType == "paragraph" && builder is MarkdownParagraphBuilder) ||
-         (block.blockType == "code_block" && builder is MarkdownIndentedCodeBlockBuilder) {
+         (block.blockType == "code_block" && builder is MarkdownIndentedCodeBlockBuilder) ||
+         (block.blockType == "heading" && builder is MarkdownATXHeadingBuilder) ||
+         (block.blockType == "thematic_break" && builder is MarkdownThematicBreakBuilder) {
         builder.closeBlock(block: block)
         break
       }
@@ -248,8 +250,10 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
   public static func createDefaultBuilders() -> [MarkdownBlockBuilderProtocol] {
     return [
       // Order matters: more specific builders should come first
+      MarkdownATXHeadingBuilder(),
+      MarkdownThematicBreakBuilder(),
       MarkdownIndentedCodeBlockBuilder(),
-      MarkdownParagraphBuilder()
+      MarkdownParagraphBuilder() // Paragraph should be last as it's the fallback
     ]
   }
 }
