@@ -23,8 +23,7 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
     let rules: [BlockRule] = [
       // Open containers first (strip markers, reprocess line)
       .init(builder: MarkdownBlockQuoteBuilder(), phase: .openContainer, priority: 10),
-      .init(builder: MarkdownListBuilder(), phase: .openContainer, priority: 20),
-      .init(builder: MarkdownListItemBuilder(), phase: .openContainer, priority: 30),
+      .init(builder: MarkdownUnifiedListBuilder(), phase: .openContainer, priority: 20),
 
       // Leaf on line
       .init(builder: MarkdownEOFBuilder(), phase: .leafOnLine, priority: 0),
