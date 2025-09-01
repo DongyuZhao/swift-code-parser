@@ -1,8 +1,26 @@
 import CodeParserCore
 import Foundation
 
+/// Simple token implementation for inline processing
+private struct SimpleMarkdownToken: CodeToken {
+  let element: MarkdownTokenElement
+  let text: String
+  let range: Range<String.Index>
+  
+  init(element: MarkdownTokenElement, text: String) {
+    self.element = element
+    self.text = text
+    // Use a dummy range for now
+    let startIndex = text.startIndex
+    let endIndex = text.endIndex
+    self.range = startIndex..<endIndex
+  }
+}
+
 /// Paragraph block builder - handles regular text content
 public class MarkdownParagraphBuilder: MarkdownBlockBuilderProtocol {
+  
+  private let inlineProcessor = MarkdownInlineProcessor()
   
   public init() {}
   
@@ -82,8 +100,56 @@ public class MarkdownParagraphBuilder: MarkdownBlockBuilderProtocol {
   }
   
   public func closeBlock(block: any MarkdownBlockNode) {
-    // Paragraph closing - could perform inline processing here
-    // For now, this is where we'd call inline processors
+    // Process inline content when closing paragraph
+    guard let paragraph = block as? ParagraphNode else { return }
+    
+    // Extract all text content from the paragraph
+    var allTokens: [any CodeToken<MarkdownTokenElement>] = []
+    var allText = ""
+    
+    // Collect text content and build a token list for inline processing
+    for child in paragraph.children {
+      if let textNode = child as? TextNode {
+        allText += textNode.content
+        
+        // Create character tokens for the text content
+        // This is a simple approach - in a real implementation,
+        // we'd want to preserve original tokens
+        for char in textNode.content {
+          if char == "*" || char == "_" {
+            // Create punctuation token for emphasis markers
+            let token = createSimpleToken(.punctuation, String(char))
+            allTokens.append(token)
+          } else if char.isWhitespace {
+            // Create whitespace token
+            let token = createSimpleToken(.whitespaces, String(char))
+            allTokens.append(token)
+          } else {
+            // Create character token
+            let token = createSimpleToken(.characters, String(char))
+            allTokens.append(token)
+          }
+        }
+      } else if let lineBreak = child as? LineBreakNode {
+        allText += lineBreak.variant == .hard ? "  \n" : "\n"
+      }
+    }
+    
+    // Clear existing children
+    paragraph.children.removeAll()
+    
+    // Process inline content and add back to paragraph
+    if !allTokens.isEmpty {
+      let inlineNodes = inlineProcessor.processInlineTokens(allTokens)
+      for node in inlineNodes {
+        paragraph.children.append(node)
+      }
+    }
+  }
+  
+  /// Helper to create simple tokens for inline processing
+  private func createSimpleToken(_ element: MarkdownTokenElement, _ text: String) -> any CodeToken<MarkdownTokenElement> {
+    return SimpleMarkdownToken(element: element, text: text)
   }
   
   /// Check if line starts with a block marker that would interrupt a paragraph
