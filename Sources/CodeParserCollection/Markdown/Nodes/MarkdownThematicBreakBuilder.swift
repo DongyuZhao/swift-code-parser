@@ -1,10 +1,10 @@
 import CodeParserCore
 import Foundation
 
-/// CommonMark-compliant thematic break builder
+/// Markdown-compliant thematic break builder
 /// Handles thematic breaks (horizontal rules) made with ***, ---, or ___
 /// CommonMark Spec: https://spec.commonmark.org/0.31.2/#thematic-breaks
-public class CommonMarkThematicBreakBuilder: CommonMarkBlockBuilder {
+public class MarkdownThematicBreakBuilder: MarkdownBlockBuilderProtocol {
   
   public var priority: Int { return 30 }
   public var blockType: MarkdownNodeElement { return .thematicBreak }

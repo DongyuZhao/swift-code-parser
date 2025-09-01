@@ -1,9 +1,9 @@
 import CodeParserCore
 import Foundation
 
-/// Protocol for CommonMark block builders following the CommonMark parsing strategy
+/// Protocol for Markdown block builders following the CommonMark parsing strategy
 /// Each builder focuses only on its specific block type without grammar specification
-public protocol CommonMarkBlockBuilder {
+public protocol MarkdownBlockBuilderProtocol {
   
   /// Check if this builder can continue processing an existing open block with the current line
   /// - Parameters:
@@ -73,7 +73,7 @@ public protocol CommonMarkBlockBuilder {
 }
 
 /// Default implementations for optional behavior
-public extension CommonMarkBlockBuilder {
+public extension MarkdownBlockBuilderProtocol {
   func shouldClose(
     block: MarkdownNodeBase, 
     line: [any CodeToken<MarkdownTokenElement>], 

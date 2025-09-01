@@ -1,10 +1,10 @@
 import CodeParserCore
 import Foundation
 
-/// CommonMark-compliant blockquote builder
+/// Markdown-compliant blockquote builder
 /// Handles blockquote blocks which are container blocks that can contain other blocks
 /// CommonMark Spec: https://spec.commonmark.org/0.31.2/#block-quotes
-public class CommonMarkBlockquoteBuilder: CommonMarkBlockBuilder {
+public class MarkdownBlockquoteBuilder: MarkdownBlockBuilderProtocol {
   
   public var priority: Int { return 10 }
   public var blockType: MarkdownNodeElement { return .blockquote }

@@ -16,10 +16,10 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
   public typealias Node = MarkdownNodeElement
   public typealias Token = MarkdownTokenElement
   
-  private let builders: [CommonMarkBlockBuilder]
+  private let builders: [MarkdownBlockBuilderProtocol]
   
   /// Initialize with a custom set of builders
-  public init(builders: [CommonMarkBlockBuilder]) {
+  public init(builders: [MarkdownBlockBuilderProtocol]) {
     // Sort builders by priority (lower number = higher priority)
     self.builders = builders.sorted { $0.priority < $1.priority }
   }
@@ -106,7 +106,7 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
   }
   
   /// Find the builder responsible for a specific block type
-  private func findBuilder(for block: MarkdownNodeBase) -> CommonMarkBlockBuilder? {
+  private func findBuilder(for block: MarkdownNodeBase) -> MarkdownBlockBuilderProtocol? {
     return builders.first { builder in
       builder.blockType == block.element
     }
@@ -222,18 +222,18 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
     return result
   }
   
-  /// Create the standard set of CommonMark block builders
+  /// Create the standard set of Markdown block builders
   /// This replaces the hardcoded rules from the old implementation
-  private static func createStandardBuilders() -> [CommonMarkBlockBuilder] {
+  private static func createStandardBuilders() -> [MarkdownBlockBuilderProtocol] {
     return [
       // Container blocks (processed first, higher priority = lower number)
-      CommonMarkBlockquoteBuilder(),
+      MarkdownBlockquoteBuilder(),
       
       // Leaf blocks (in rough priority order)
-      CommonMarkThematicBreakBuilder(),
+      MarkdownThematicBreakBuilder(),
       
       // Fallback paragraph builder (lowest priority)
-      CommonMarkParagraphBuilder()
+      MarkdownParagraphBuilder()
     ]
   }
 }

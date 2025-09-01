@@ -1,10 +1,10 @@
 import CodeParserCore
 import Foundation
 
-/// CommonMark-compliant paragraph builder
+/// Markdown-compliant paragraph builder
 /// Handles paragraph blocks which are the default container for text content
 /// CommonMark Spec: https://spec.commonmark.org/0.31.2/#paragraphs
-public class CommonMarkParagraphBuilder: CommonMarkBlockBuilder {
+public class MarkdownParagraphBuilder: MarkdownBlockBuilderProtocol {
   
   public var priority: Int { return 1000 } // Lowest priority - fallback
   public var blockType: MarkdownNodeElement { return .paragraph }
@@ -58,9 +58,9 @@ public class CommonMarkParagraphBuilder: CommonMarkBlockBuilder {
   ) -> Bool {
     guard let paragraph = block as? ParagraphNode else { return false }
     
-    // Add the line content to the paragraph
-    // In a complete implementation, this would delegate to inline processing
-    addLineContentToParagraph(paragraph, line: line, state: state)
+    // Process inline content using the inline processor
+    let inlineProcessor = MarkdownInlineProcessor()
+    inlineProcessor.processInlineContent(tokens: line, in: paragraph, context: &context)
     
     // Mark the entire line as consumed
     state.position = line.count
@@ -89,43 +89,6 @@ public class CommonMarkParagraphBuilder: CommonMarkBlockBuilder {
       }
     }
     return true
-  }
-  
-  /// Add line content to a paragraph node
-  /// This is a simplified implementation - in practice, this would delegate to inline processing
-  private func addLineContentToParagraph(
-    _ paragraph: ParagraphNode,
-    line: [any CodeToken<MarkdownTokenElement>],
-    state: MarkdownConstructState
-  ) {
-    // Create a text node from the line content (simplified)
-    var textContent = ""
-    var hasNewline = false
-    
-    for token in line {
-      switch token.element {
-      case .newline:
-        hasNewline = true
-      case .whitespaces:
-        textContent += token.text
-      default:
-        textContent += token.text
-      }
-    }
-    
-    // If we have content, add it to the paragraph
-    if !textContent.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-      // In a real implementation, this would create proper inline nodes
-      // For now, just add a simple text node
-      let textNode = TextNode(content: textContent)
-      paragraph.append(textNode)
-      
-      // If there was a newline and more content might follow, add a line break
-      if hasNewline && !isLastLine(line) {
-        let lineBreak = LineBreakNode(variant: .soft) // Soft line break
-        paragraph.append(lineBreak)
-      }
-    }
   }
   
   /// Check if this is the last line (contains EOF or is empty)
