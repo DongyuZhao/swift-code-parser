@@ -260,7 +260,7 @@ public struct HardLineBreakRebuildProcessor: MarkdownInlinePhaseProcessor {
         continue
       case .punctuation:
         // Backslash must be immediately before newline (no trailing spaces)
-        if tok.text == "\\" {
+        if tok.text == "\\" && trailingSpaces == 0 {
           context.add(LineBreakNode(variant: .hard))
           return true
         }
@@ -641,7 +641,7 @@ public struct LinkImagePairProcessor: MarkdownInlinePhaseProcessor {
     // If contains a quoted title at the end
     if let quoteStart = s.lastIndex(where: { $0 == "\"" || $0 == "'" }) {
       let quote = s[quoteStart]
-      if quoteStart > s.startIndex, s[quoteStart...] .first == quote, s.last == quote {
+      if quoteStart > s.startIndex, s[quoteStart...] .first == quote, s.last == quote, quoteStart < s.index(before: s.endIndex) {
         // Title in quotes; split at the preceding space
         let before = s[..<quoteStart]
         if let sp = before.lastIndex(where: { $0.isWhitespace }) {
