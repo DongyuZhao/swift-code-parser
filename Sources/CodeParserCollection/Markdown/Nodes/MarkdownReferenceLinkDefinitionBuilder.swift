@@ -39,8 +39,8 @@ public class MarkdownReferenceLinkDefinitionBuilder: CodeNodeBuilder {
     // Try to parse destination and title from remaining tokens on this line
     let parsed = parseDestinationAndTitle(tokens: remainingTokens)
     
-    if parsed.found && !parsed.url.isEmpty {
-      // Complete definition found on this line
+    if parsed.found {
+      // Valid destination found (URL can be empty for <>)
       referenceNode.url = parsed.url
       referenceNode.title = parsed.title
       context.current.append(referenceNode)

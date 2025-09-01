@@ -170,11 +170,9 @@ public class MarkdownEOFBuilder: CodeNodeBuilder {
       return false
     }
     
-    // Must have a destination (URL can be empty but must be present)
-    // If URL is empty and there's no actual destination content, it's invalid
-    if reference.url.isEmpty {
-      return false
-    }
+    // Empty URL is valid if it was explicitly provided as <> 
+    // We can't distinguish between missing destination and explicit <> here,
+    // so we need to be more permissive and let the parsing logic handle this
     
     // Check for invalid URL patterns
     let url = reference.url.trimmingCharacters(in: .whitespacesAndNewlines)
