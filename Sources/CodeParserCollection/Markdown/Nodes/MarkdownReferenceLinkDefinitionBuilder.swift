@@ -48,9 +48,15 @@ public class MarkdownReferenceLinkDefinitionBuilder: CodeNodeBuilder {
       let remainingText = remainingTokens.map { $0.text }.joined().trimmingCharacters(in: .whitespacesAndNewlines)
       if remainingText.isEmpty {
         // This might be a multi-line reference definition
-        // TODO: Look ahead to next line to see if it has a valid destination
-        // For now, be conservative and only handle single-line definitions
-        return false
+        // Be optimistic and set up pending reference, but track original tokens for fallback
+        let referenceNode = ReferenceNode(identifier: id, url: "", title: "")
+        let pending = PendingReferenceDefinition(
+          identifier: id, 
+          referenceNode: referenceNode,
+          originalLineTokens: Array(context.tokens)
+        )
+        state.pendingReference = pending
+        return true
       } else {
         // Has content but not a valid destination - this is not a valid reference definition
         return false
@@ -126,6 +132,8 @@ public class MarkdownReferenceLinkDefinitionBuilder: CodeNodeBuilder {
     let startIndex = 0
     guard startIndex < context.tokens.count else { 
       // Empty line - this invalidates the reference definition since we don't have a destination yet
+      // Create a paragraph with the original tokens
+      createParagraphFromTokens(pending.originalLineTokens, context: &context)
       state.pendingReference = nil
       return false
     }
@@ -155,8 +163,10 @@ public class MarkdownReferenceLinkDefinitionBuilder: CodeNodeBuilder {
         let content = tokens.map { $0.text }.joined().trimmingCharacters(in: .whitespacesAndNewlines)
         if !content.isEmpty {
           // Non-whitespace content that's not a valid destination - invalidate the reference
+          // Create paragraphs from both the original line and this line
+          createParagraphFromTokens(mutablePending.originalLineTokens, context: &context)
           state.pendingReference = nil
-          return false
+          return false // Let the paragraph builder handle this line
         }
         // Keep waiting for destination (empty line)
         state.pendingReference = mutablePending
@@ -176,6 +186,30 @@ public class MarkdownReferenceLinkDefinitionBuilder: CodeNodeBuilder {
         state.pendingReference = nil
         return false
       }
+    }
+  }
+  
+  private func createParagraphFromTokens(
+    _ tokens: [any CodeToken<MarkdownTokenElement>],
+    context: inout CodeConstructContext<Node, Token>
+  ) {
+    // Create a paragraph node and add content from the stored tokens
+    // Use the range from the first token, or create a synthetic range
+    let range = tokens.first?.range ?? "".startIndex..<"".endIndex
+    let paragraph = ParagraphNode(range: range)
+    context.current.append(paragraph)
+    
+    // Convert tokens to content nodes
+    var contentTokens: [any CodeToken<MarkdownTokenElement>] = []
+    for token in tokens {
+      if token.element != .newline {
+        contentTokens.append(token)
+      }
+    }
+    
+    if !contentTokens.isEmpty {
+      let contentNode = ContentNode(tokens: contentTokens)
+      paragraph.append(contentNode)
     }
   }
   

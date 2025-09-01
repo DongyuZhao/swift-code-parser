@@ -76,12 +76,14 @@ public struct PendingReferenceDefinition {
   public let referenceNode: ReferenceNode
   public var hasDestination: Bool
   public var hasTitle: Bool
+  public let originalLineTokens: [any CodeToken<MarkdownTokenElement>] // For fallback to paragraph
   
-  public init(identifier: String, referenceNode: ReferenceNode) {
+  public init(identifier: String, referenceNode: ReferenceNode, originalLineTokens: [any CodeToken<MarkdownTokenElement>]) {
     self.identifier = identifier
     self.referenceNode = referenceNode
     self.hasDestination = false
     self.hasTitle = false
+    self.originalLineTokens = originalLineTokens
   }
 }
 
