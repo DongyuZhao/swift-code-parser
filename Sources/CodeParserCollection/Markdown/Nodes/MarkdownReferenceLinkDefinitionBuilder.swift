@@ -140,8 +140,9 @@ public class MarkdownReferenceLinkDefinitionBuilder: CodeNodeBuilder {
       return false
     }
 
-    let tokens = Array(context.tokens[startIndex...])
-    let parsed = parseDestinationAndTitle(tokens: tokens)
+    // Skip indentation (up to 3 spaces for reference definitions)
+    let (processedTokens, _) = stripReferenceIndentation(Array(context.tokens[startIndex...]))
+    let parsed = parseDestinationAndTitle(tokens: processedTokens)
     
     var mutablePending = pending
     
@@ -153,14 +154,19 @@ public class MarkdownReferenceLinkDefinitionBuilder: CodeNodeBuilder {
         mutablePending.referenceNode.title = parsed.title
         mutablePending.hasDestination = true
         
-        // Add the reference node to the AST
-        context.current.append(mutablePending.referenceNode)
-        state.pendingReference = nil
+        if parsed.foundTitle {
+          // Complete definition with both destination and title
+          context.current.append(mutablePending.referenceNode)
+          state.pendingReference = nil
+        } else {
+          // Continue looking for title
+          state.pendingReference = mutablePending
+        }
         context.consuming = context.tokens.count
         return true
       } else {
         // Still no destination - check if we have content that would end the reference
-        let content = tokens.map { $0.text }.joined().trimmingCharacters(in: .whitespacesAndNewlines)
+        let content = processedTokens.map { $0.text }.joined().trimmingCharacters(in: .whitespacesAndNewlines)
         if !content.isEmpty {
           // Non-whitespace content - end the pending reference and let this line be handled normally
           context.current.append(mutablePending.referenceNode)
@@ -177,11 +183,28 @@ public class MarkdownReferenceLinkDefinitionBuilder: CodeNodeBuilder {
       if parsed.foundTitle {
         mutablePending.referenceNode.title = parsed.title
         mutablePending.hasTitle = true
+        context.current.append(mutablePending.referenceNode)
         state.pendingReference = nil
         context.consuming = context.tokens.count
         return true
       } else {
-        // No title found, complete with current title
+        // Check if this might be title content without quotes
+        let content = processedTokens.map { $0.text }.joined().trimmingCharacters(in: .whitespacesAndNewlines)
+        if !content.isEmpty && !content.hasPrefix("[") {
+          // Try to parse as a title (might be unquoted or just check for quoted)
+          let titleResult = parseTitle(content)
+          if !titleResult.isEmpty {
+            mutablePending.referenceNode.title = titleResult
+            mutablePending.hasTitle = true
+            context.current.append(mutablePending.referenceNode)
+            state.pendingReference = nil
+            context.consuming = context.tokens.count
+            return true
+          }
+        }
+        
+        // No title found or empty line - complete with current title
+        context.current.append(mutablePending.referenceNode)
         state.pendingReference = nil
         return false
       }
@@ -275,6 +298,22 @@ public class MarkdownReferenceLinkDefinitionBuilder: CodeNodeBuilder {
     
     // No title found - the entire content is the URL
     return (trimmed, "")
+  }
+  
+  /// Strip leading indentation from tokens for reference definition continuation lines
+  /// Reference definitions can have indentation, but we need to process the content
+  private func stripReferenceIndentation(_ tokens: [any CodeToken<MarkdownTokenElement>]) -> ([any CodeToken<MarkdownTokenElement>], Int) {
+    guard !tokens.isEmpty else { return (tokens, 0) }
+    
+    // Check if first token is whitespace (indentation)
+    if let firstToken = tokens.first as? MarkdownToken,
+       firstToken.element == .whitespaces {
+      // For reference definitions, we can strip any amount of leading whitespace
+      // since CommonMark allows flexible indentation for continuation lines
+      return (Array(tokens.dropFirst()), firstToken.text.count)
+    }
+    
+    return (tokens, 0)
   }
   
   private func parseTitle(_ content: String) -> String {

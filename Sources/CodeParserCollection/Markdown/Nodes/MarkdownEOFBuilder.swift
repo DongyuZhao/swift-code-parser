@@ -46,6 +46,7 @@ public class MarkdownEOFBuilder: CodeNodeBuilder {
     }
     
     // Process all ContentNodes in the AST using the ContentBuilder
+    // This must happen after all block parsing is complete
     var contentContext = CodeConstructContext<Node, Token>(
       root: context.root,
       current: context.root,
