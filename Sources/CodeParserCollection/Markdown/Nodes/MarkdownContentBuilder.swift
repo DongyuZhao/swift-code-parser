@@ -25,9 +25,9 @@ public class MarkdownContentBuilder: CodeNodeBuilder {
       ReferenceLinkPairProcessor(priority: 3),
       AutolinkPairProcessor(priority: 4),
       LinkImagePairProcessor(priority: 5),
+      CodeSpanPairProcessor(priority: 8), // Higher precedence than emphasis/strong
       EmphasisStrongPairProcessor(priority: 10),
       StrikethroughPairProcessor(priority: 10),
-      CodeSpanPairProcessor(priority: 10),
     ]
     self.scanPhaseProcessors = inlineProcessors.filter { $0.phase == .scan }.sorted { $0.priority < $1.priority }
     self.rebuildPhaseProcessors = inlineProcessors.filter { $0.phase == .rebuild }.sorted { $0.priority < $1.priority }

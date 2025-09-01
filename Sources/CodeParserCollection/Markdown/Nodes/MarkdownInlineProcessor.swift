@@ -683,8 +683,19 @@ public struct CodeSpanPairProcessor: MarkdownInlinePhaseProcessor {
   ) -> (node: MarkdownNodeBase, closerEndOverride: Int)? {
     // Code span content is literal; join token text
     let raw = contentTokens.map { $0.text }.joined()
-    let code = raw.trimmingCharacters(in: .whitespaces)
-    return (CodeSpanNode(code: code), closerRun.index + closerRun.length)
+    
+    // Convert line endings to spaces (CommonMark spec)
+    let withSpaces = raw.replacingOccurrences(of: #"\r?\n"#, with: " ", options: .regularExpression)
+    
+    // Strip exactly one space from each side if both sides have spaces (CommonMark spec)
+    let processed: String
+    if withSpaces.hasPrefix(" ") && withSpaces.hasSuffix(" ") && withSpaces.count >= 2 {
+      processed = String(withSpaces.dropFirst().dropLast())
+    } else {
+      processed = withSpaces
+    }
+    
+    return (CodeSpanNode(code: processed), closerRun.index + closerRun.length)
   }
 }
 
