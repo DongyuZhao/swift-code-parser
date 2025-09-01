@@ -1,248 +1,235 @@
 import CodeParserCore
 import Foundation
 
-/// Simple inline processor for CommonMark inline elements
-/// Handles basic emphasis, strong emphasis, and escaped characters
+/// Extension to help with character classification
+extension Character {
+  var isPunctuation: Bool {
+    return unicodeScalars.allSatisfy { scalar in
+      CharacterSet.punctuationCharacters.contains(scalar)
+    }
+  }
+}
+
+/// Delimiter for CommonMark emphasis processing
+private struct EmphasisDelimiter {
+  let tokenIndex: Int
+  let character: Character
+  let originalLength: Int
+  let remainingLength: Int
+  let canOpen: Bool
+  let canClose: Bool
+  
+  init(tokenIndex: Int, character: Character, originalLength: Int, remainingLength: Int, canOpen: Bool, canClose: Bool) {
+    self.tokenIndex = tokenIndex
+    self.character = character
+    self.originalLength = originalLength
+    self.remainingLength = remainingLength
+    self.canOpen = canOpen
+    self.canClose = canClose
+  }
+  
+  func withRemainingLength(_ length: Int) -> EmphasisDelimiter {
+    return EmphasisDelimiter(tokenIndex: tokenIndex, character: character, originalLength: originalLength, remainingLength: length, canOpen: canOpen, canClose: canClose)
+  }
+}
+
+/// CommonMark-compliant inline processor using delimiter stack algorithm
+/// Works directly with tokens without string conversion
 public class MarkdownInlineProcessor {
   
   public init() {}
   
-  /// Process inline content from tokens and return array of inline nodes
-  public func processInlineContent(_ content: String) -> [MarkdownNodeBase] {
-    if content.isEmpty {
+  /// Process inline content from tokens using CommonMark delimiter stack algorithm
+  public func processInlineTokens(_ tokens: [any CodeToken<MarkdownTokenElement>]) -> [MarkdownNodeBase] {
+    if tokens.isEmpty {
       return []
     }
     
-    // For now, use simple string-based processing
-    // TODO: Update to work with tokens to respect escaped content
-    return parseEmphasisSimple(content)
+    // Build delimiter stack from punctuation tokens only
+    let delimiterStack = buildDelimiterStack(from: tokens)
+    
+    // Process emphasis using delimiter stack
+    let processedRanges = processEmphasisWithDelimiterStack(tokens: tokens, delimiters: delimiterStack)
+    
+    // Build final node tree
+    return buildNodeTree(from: tokens, processedRanges: processedRanges)
   }
   
-  /// Process inline content from tokens (respects escaped content)
-  public func processInlineTokens(_ tokens: [any CodeToken<MarkdownTokenElement>]) -> [MarkdownNodeBase] {
+  /// Build delimiter stack from punctuation tokens
+  private func buildDelimiterStack(from tokens: [any CodeToken<MarkdownTokenElement>]) -> [EmphasisDelimiter] {
+    var delimiters: [EmphasisDelimiter] = []
+    
+    for (index, token) in tokens.enumerated() {
+      // Only consider punctuation tokens - escaped content is in .characters tokens
+      guard token.element == .punctuation else { continue }
+      guard token.text == "*" || token.text == "_" else { continue }
+      
+      let character = Character(token.text)
+      
+      // Determine if this delimiter can open or close emphasis
+      let (canOpen, canClose) = determineFlankingRules(at: index, in: tokens)
+      
+      if canOpen || canClose {
+        let delimiter = EmphasisDelimiter(
+          tokenIndex: index,
+          character: character,
+          originalLength: 1, // Each punctuation token is length 1
+          remainingLength: 1,
+          canOpen: canOpen,
+          canClose: canClose
+        )
+        delimiters.append(delimiter)
+      }
+    }
+    
+    return delimiters
+  }
+  
+  /// Determine flanking rules for emphasis delimiters
+  private func determineFlankingRules(at index: Int, in tokens: [any CodeToken<MarkdownTokenElement>]) -> (canOpen: Bool, canClose: Bool) {
+    let char = tokens[index].text.first!
+    
+    // Get preceding and following characters
+    let precedingChar = getPrecedingCharacter(at: index, in: tokens)
+    let followingChar = getFollowingCharacter(at: index, in: tokens)
+    
+    // Determine if left-flanking and right-flanking
+    let leftFlanking = !followingChar.isWhitespace && 
+                      (!followingChar.isPunctuation || precedingChar.isWhitespace || precedingChar.isPunctuation)
+                      
+    let rightFlanking = !precedingChar.isWhitespace && 
+                       (!precedingChar.isPunctuation || followingChar.isWhitespace || followingChar.isPunctuation)
+    
+    // Rules for * and _
+    if char == "*" {
+      return (canOpen: leftFlanking, canClose: rightFlanking)
+    } else { // char == "_"
+      let canOpen = leftFlanking && (!rightFlanking || precedingChar.isPunctuation)
+      let canClose = rightFlanking && (!leftFlanking || followingChar.isPunctuation)
+      return (canOpen: canOpen, canClose: canClose)
+    }
+  }
+  
+  /// Get character preceding the token at index
+  private func getPrecedingCharacter(at index: Int, in tokens: [any CodeToken<MarkdownTokenElement>]) -> Character {
+    if index == 0 { return "\n" } // Beginning of line
+    
+    let prevToken = tokens[index - 1]
+    if let lastChar = prevToken.text.last {
+      return lastChar
+    }
+    return "\n"
+  }
+  
+  /// Get character following the token at index  
+  private func getFollowingCharacter(at index: Int, in tokens: [any CodeToken<MarkdownTokenElement>]) -> Character {
+    if index >= tokens.count - 1 { return "\n" } // End of line
+    
+    let nextToken = tokens[index + 1]
+    if let firstChar = nextToken.text.first {
+      return firstChar
+    }
+    return "\n"
+  }
+  
+  /// Process emphasis using CommonMark delimiter stack algorithm
+  private func processEmphasisWithDelimiterStack(tokens: [any CodeToken<MarkdownTokenElement>], delimiters: [EmphasisDelimiter]) -> [ClosedRange<Int>] {
+    var processedRanges: [ClosedRange<Int>] = []
+    var delimiterStack = delimiters
+    
+    // Process delimiters from left to right
+    var stackIndex = 0
+    while stackIndex < delimiterStack.count {
+      let currentDelimiter = delimiterStack[stackIndex]
+      
+      // Only process closing delimiters
+      guard currentDelimiter.canClose else {
+        stackIndex += 1
+        continue
+      }
+      
+      // Look backwards for matching opening delimiter
+      var openingIndex: Int? = nil
+      for i in (0..<stackIndex).reversed() {
+        let openingDelimiter = delimiterStack[i]
+        
+        // Must be able to open and same character
+        guard openingDelimiter.canOpen && openingDelimiter.character == currentDelimiter.character else {
+          continue
+        }
+        
+        openingIndex = i
+        break
+      }
+      
+      if let openingIndex = openingIndex {
+        // Found matching pair - create emphasis
+        let openingDelimiter = delimiterStack[openingIndex]
+        let tokenRange = openingDelimiter.tokenIndex...currentDelimiter.tokenIndex
+        processedRanges.append(tokenRange)
+        
+        // Remove processed delimiters from stack
+        delimiterStack.removeSubrange(openingIndex...stackIndex)
+        stackIndex = openingIndex
+      } else {
+        stackIndex += 1
+      }
+    }
+    
+    return processedRanges
+  }
+  
+  /// Build node tree from tokens and processed emphasis ranges
+  private func buildNodeTree(from tokens: [any CodeToken<MarkdownTokenElement>], processedRanges: [ClosedRange<Int>]) -> [MarkdownNodeBase] {
     var nodes: [MarkdownNodeBase] = []
-    var currentText = ""
     var index = 0
     
     while index < tokens.count {
-      let token = tokens[index]
+      // Check if this token is part of an emphasis range
+      let emphasisRange = processedRanges.first { $0.contains(index) }
       
-      // Handle potential emphasis markers
-      if token.element == .punctuation && (token.text == "*" || token.text == "_") {
-        let marker = Character(token.text)
+      if let range = emphasisRange {
+        // Create emphasis node
+        let openingToken = tokens[range.lowerBound]
+        let closingToken = tokens[range.upperBound]
         
-        // Look for closing marker
-        let (emphasisTokens, endIndex) = findEmphasisTokens(in: tokens, startingAt: index, marker: marker)
+        // Skip opening delimiter
+        let contentStart = range.lowerBound + 1
+        let contentEnd = range.upperBound - 1
         
-        if let emphasisTokens = emphasisTokens, let endIndex = endIndex {
-          // Add any accumulated text first
-          if !currentText.isEmpty {
-            nodes.append(MarkdownText(content: currentText))
-            currentText = ""
+        if contentStart <= contentEnd {
+          let contentTokens = Array(tokens[contentStart...contentEnd])
+          
+          // Recursively process content
+          let contentNodes = processInlineTokens(contentTokens)
+          
+          // Create appropriate emphasis node
+          let emphasisNode = EmphasisNode(content: "")
+          for child in contentNodes {
+            emphasisNode.append(child)
           }
           
-          // Create emphasis node
-          let emphasis = EmphasisNode(content: "")
-          
-          // Process emphasis content tokens recursively
-          let emphasisContent = processInlineTokens(emphasisTokens)
-          for child in emphasisContent {
-            emphasis.append(child)
-          }
-          
-          nodes.append(emphasis)
-          index = endIndex
-        } else {
-          // No matching marker, treat as literal
-          currentText += token.text
-          index += 1
+          nodes.append(emphasisNode)
         }
+        
+        // Skip to after this range
+        index = range.upperBound + 1
       } else {
-        // Regular token - add to current text
-        currentText += token.text
+        // Regular token - convert to text
+        let token = tokens[index]
+        if token.element != .eof && token.element != .newline {
+          if let lastNode = nodes.last as? MarkdownText {
+            // Combine with previous text node
+            lastNode.content += token.text
+          } else {
+            // Create new text node
+            nodes.append(MarkdownText(content: token.text))
+          }
+        }
         index += 1
       }
     }
     
-    // Add any remaining text
-    if !currentText.isEmpty {
-      nodes.append(MarkdownText(content: currentText))
-    }
-    
     return nodes
-  }
-  
-  /// Find matching emphasis tokens
-  private func findEmphasisTokens(in tokens: [any CodeToken<MarkdownTokenElement>], startingAt start: Int, marker: Character) -> ([any CodeToken<MarkdownTokenElement>]?, Int?) {
-    let markerText = String(marker)
-    var searchIndex = start + 1
-    
-    // Look for closing marker
-    while searchIndex < tokens.count {
-      let token = tokens[searchIndex]
-      
-      if token.element == .punctuation && token.text == markerText {
-        // Found closing marker
-        let contentTokens = Array(tokens[(start + 1)..<searchIndex])
-        return (contentTokens, searchIndex + 1)
-      }
-      
-      searchIndex += 1
-    }
-    
-    return (nil, nil)
-  }
-  
-  /// Parse emphasis in content with proper flanking rules
-  private func parseEmphasisSimple(_ content: String) -> [MarkdownNodeBase] {
-    var nodes: [MarkdownNodeBase] = []
-    var currentText = ""
-    var index = content.startIndex
-    
-    while index < content.endIndex {
-      let char = content[index]
-      
-      // Handle emphasis markers with flanking rules
-      if char == "*" || char == "_" {
-        // Check if this can be a valid opening marker
-        if canOpenEmphasis(in: content, at: index) {
-          // Find matching closing marker
-          let (emphasisContent, endIndex) = findEmphasisContent(in: content, startingAt: index, marker: char)
-          
-          if let emphasisContent = emphasisContent, let endIndex = endIndex {
-            // Add any accumulated text first
-            if !currentText.isEmpty {
-              nodes.append(MarkdownText(content: currentText))
-              currentText = ""
-            }
-            
-            // Determine if it's strong or regular emphasis
-            let markerCount = countMarkers(in: content, at: index, marker: char)
-            let actualMarkerCount = min(markerCount, 2) // Limit to 2 for strong emphasis
-            
-            if actualMarkerCount >= 2 {
-              // Strong emphasis
-              let strong = StrongNode(content: emphasisContent)
-              // Process content recursively for nested emphasis
-              let inlineContent = parseEmphasisSimple(emphasisContent)
-              for child in inlineContent {
-                strong.append(child)
-              }
-              nodes.append(strong)
-            } else {
-              // Regular emphasis
-              let emphasis = EmphasisNode(content: emphasisContent)
-              // Process content recursively for nested emphasis
-              let inlineContent = parseEmphasisSimple(emphasisContent)
-              for child in inlineContent {
-                emphasis.append(child)
-              }
-              nodes.append(emphasis)
-            }
-            
-            index = endIndex
-          } else {
-            // No matching marker, treat as literal
-            currentText.append(char)
-            index = content.index(after: index)
-          }
-        } else {
-          // Not a valid opening marker, treat as literal
-          currentText.append(char)
-          index = content.index(after: index)
-        }
-      } else {
-        // Regular character
-        currentText.append(char)
-        index = content.index(after: index)
-      }
-    }
-    
-    // Add any remaining text
-    if !currentText.isEmpty {
-      nodes.append(MarkdownText(content: currentText))
-    }
-    
-    return nodes
-  }
-  
-  /// Check if a character at the given position can open emphasis (simplified flanking rules)
-  private func canOpenEmphasis(in text: String, at index: String.Index) -> Bool {
-    // Simplified rule: can open if not preceded by alphanumeric or if followed by non-whitespace
-    let char = text[index]
-    
-    // Check what comes after
-    if let nextIndex = text.index(index, offsetBy: 1, limitedBy: text.endIndex),
-       nextIndex < text.endIndex {
-      let nextChar = text[nextIndex]
-      if nextChar.isWhitespace {
-        return false // Can't open if followed by whitespace
-      }
-    }
-    
-    // For now, allow opening - real CommonMark has more complex flanking rules
-    return true
-  }
-  
-  /// Find emphasis content and return content + end index
-  private func findEmphasisContent(in text: String, startingAt start: String.Index, marker: Character) -> (String?, String.Index?) {
-    let markerCount = countMarkers(in: text, at: start, marker: marker)
-    let contentStart = text.index(start, offsetBy: markerCount)
-    
-    if contentStart >= text.endIndex {
-      return (nil, nil)
-    }
-    
-    // Find closing markers
-    var searchIndex = contentStart
-    while searchIndex < text.endIndex {
-      let char = text[searchIndex]
-      
-      if char == marker {
-        let closingMarkerCount = countMarkers(in: text, at: searchIndex, marker: marker)
-        
-        // Check if we have enough closing markers and it can close
-        if closingMarkerCount >= markerCount && canCloseEmphasis(in: text, at: searchIndex) {
-          let contentEnd = searchIndex
-          let actualEnd = text.index(searchIndex, offsetBy: min(markerCount, closingMarkerCount))
-          let content = String(text[contentStart..<contentEnd])
-          return (content, actualEnd)
-        }
-        
-        // Skip past these markers
-        searchIndex = text.index(searchIndex, offsetBy: closingMarkerCount)
-      } else {
-        searchIndex = text.index(after: searchIndex)
-      }
-    }
-    
-    return (nil, nil)
-  }
-  
-  /// Check if a character at the given position can close emphasis (simplified flanking rules)
-  private func canCloseEmphasis(in text: String, at index: String.Index) -> Bool {
-    // Simplified rule: can close if not following whitespace
-    if index > text.startIndex {
-      let prevIndex = text.index(before: index)
-      let prevChar = text[prevIndex]
-      if prevChar.isWhitespace {
-        return false
-      }
-    }
-    
-    return true
-  }
-  
-  /// Count consecutive markers at given position
-  private func countMarkers(in text: String, at index: String.Index, marker: Character) -> Int {
-    var count = 0
-    var currentIndex = index
-    
-    while currentIndex < text.endIndex && text[currentIndex] == marker {
-      count += 1
-      currentIndex = text.index(after: currentIndex)
-    }
-    
-    return count
   }
 }

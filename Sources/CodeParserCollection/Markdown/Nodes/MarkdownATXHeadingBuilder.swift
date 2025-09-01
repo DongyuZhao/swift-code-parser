@@ -99,7 +99,7 @@ public class MarkdownATXHeadingBuilder: MarkdownBlockBuilderProtocol {
     // Extract content tokens after the hashes and whitespace  
     let contentTokens = extractContentTokens(from: line.tokens, level: level)
     
-    // Process content with inline elements if not empty
+    // Process content with inline elements if not empty using token-based processing
     if !contentTokens.isEmpty {
       let inlineNodes = inlineProcessor.processInlineTokens(contentTokens)
       for node in inlineNodes {
@@ -192,73 +192,5 @@ public class MarkdownATXHeadingBuilder: MarkdownBlockBuilderProtocol {
   public func processLine(block: any MarkdownBlockNode, line: MarkdownLine) -> Bool {
     // ATX headings are single-line blocks, no processing needed
     return false
-  }
-  
-  /// Remove optional closing sequence of # characters from the end
-  /// Handles escaped # characters properly per CommonMark spec
-  private func removeClosingSequence(from content: String) -> String {
-    var result = content
-    
-    // Remove trailing whitespace first, but keep track of it
-    let trimmedResult = result.trimmingCharacters(in: CharacterSet(charactersIn: " \t"))
-    
-    if trimmedResult.isEmpty {
-      return ""
-    }
-    
-    // Check if it ends with # characters, but handle escapes
-    var endIndex = trimmedResult.endIndex
-    var hasClosingSequence = false
-    var hashCount = 0
-    
-    // Find the last non-# character, but skip escaped hashes
-    while endIndex > trimmedResult.startIndex {
-      let prevIndex = trimmedResult.index(before: endIndex)
-      let char = trimmedResult[prevIndex]
-      
-      if char == "#" {
-        // Check if this hash is escaped
-        var isEscaped = false
-        if prevIndex > trimmedResult.startIndex {
-          let beforePrevIndex = trimmedResult.index(before: prevIndex)
-          if trimmedResult[beforePrevIndex] == "\\" {
-            isEscaped = true
-          }
-        }
-        
-        if isEscaped {
-          // Escaped hash - not part of closing sequence
-          break
-        } else {
-          hasClosingSequence = true
-          hashCount += 1
-          endIndex = prevIndex
-        }
-      } else {
-        break
-      }
-    }
-    
-    if hasClosingSequence && endIndex > trimmedResult.startIndex {
-      // If we found closing #s and there's content before them
-      let beforeClosing = String(trimmedResult[..<endIndex])
-      
-      // Check if the content before closing hashes ends with space/tab
-      if beforeClosing.last == " " || beforeClosing.last == "\t" {
-        // Valid closing sequence - remove it and any trailing spaces
-        result = beforeClosing.trimmingCharacters(in: CharacterSet(charactersIn: " \t"))
-      } else {
-        // No space before closing hashes - they're part of content
-        result = trimmedResult
-      }
-    } else if hasClosingSequence && endIndex == trimmedResult.startIndex {
-      // Only # characters, return empty
-      result = ""
-    } else {
-      // No closing sequence
-      result = trimmedResult
-    }
-    
-    return result
   }
 }

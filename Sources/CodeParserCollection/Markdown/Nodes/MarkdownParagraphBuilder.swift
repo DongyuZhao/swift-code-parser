@@ -52,104 +52,57 @@ public class MarkdownParagraphBuilder: MarkdownBlockBuilderProtocol {
   public func processLine(block: any MarkdownBlockNode, line: MarkdownLine) -> Bool {
     guard let paragraph = block as? ParagraphNode else { return false }
     
-    // If paragraph already has content, add a line break first
-    if !paragraph.children.isEmpty {
-      // Check if previous line ended with two spaces (hard line break)
-      let isHardBreak = paragraph.lastLineEndedWithTwoSpaces
-      let lineBreak = LineBreakNode(variant: isHardBreak ? .hard : .soft)
-      paragraph.append(lineBreak)
+    // Get content tokens (exclude EOF and newline)
+    var contentTokens = line.tokens.filter { token in
+      token.element != .eof && token.element != .newline
     }
     
-    // Extract text content from the line, combining all tokens
-    var textContent = ""
+    // Check for hard line break (two trailing spaces)
     var endsWithTwoSpaces = false
-    
-    for (index, token) in line.tokens.enumerated() {
-      if token.element == .characters || token.element == .punctuation {
-        textContent += token.text
-      } else if token.element == .whitespaces {
-        // Check if this is trailing whitespace (followed only by newline/eof)
-        let isTrailing = line.tokens.suffix(from: index + 1).allSatisfy { 
-          $0.element == .newline || $0.element == .eof 
-        }
-        
-        if isTrailing && token.text.count >= 2 {
-          // Two or more trailing spaces = hard line break
-          endsWithTwoSpaces = true
-          // Don't add the trailing spaces to content
-        } else {
-          // Normalize other whitespace to single spaces
-          textContent += " "
-        }
-      }
-      // Skip newlines and EOF for now - inline processing will handle them later
+    if let lastToken = contentTokens.last,
+       lastToken.element == .whitespaces && lastToken.text.count >= 2 {
+      endsWithTwoSpaces = true
+      // Remove the trailing whitespace token
+      contentTokens.removeLast()
     }
+    
+    // If paragraph already has tokens, add a space between lines
+    if !paragraph.accumulatedTokens.isEmpty {
+      // Add appropriate line break token
+      let lineBreakToken = createLineBreakToken(isHard: paragraph.lastLineEndedWithTwoSpaces)
+      paragraph.accumulatedTokens.append(lineBreakToken)
+    }
+    
+    // Add content tokens directly - no conversion to string!
+    paragraph.accumulatedTokens.append(contentsOf: contentTokens)
     
     // Store whether this line ended with two spaces for next line's line break
     paragraph.lastLineEndedWithTwoSpaces = endsWithTwoSpaces
-    
-    // Add text content if not empty (normalize whitespace)
-    let trimmedContent = textContent.trimmingCharacters(in: .whitespaces)
-    if !trimmedContent.isEmpty {
-      // Simply create a new text node - don't try to combine with existing ones for now
-      let textNode = TextNode(content: trimmedContent)
-      paragraph.append(textNode)
-    }
     
     return true
   }
   
   public func closeBlock(block: any MarkdownBlockNode) {
-    // Process inline content when closing paragraph
+    // Process inline content when closing paragraph using original tokens
     guard let paragraph = block as? ParagraphNode else { return }
-    
-    // Extract all text content from the paragraph
-    var allTokens: [any CodeToken<MarkdownTokenElement>] = []
-    var allText = ""
-    
-    // Collect text content and build a token list for inline processing
-    for child in paragraph.children {
-      if let textNode = child as? TextNode {
-        allText += textNode.content
-        
-        // Create character tokens for the text content
-        // This is a simple approach - in a real implementation,
-        // we'd want to preserve original tokens
-        for char in textNode.content {
-          if char == "*" || char == "_" {
-            // Create punctuation token for emphasis markers
-            let token = createSimpleToken(.punctuation, String(char))
-            allTokens.append(token)
-          } else if char.isWhitespace {
-            // Create whitespace token
-            let token = createSimpleToken(.whitespaces, String(char))
-            allTokens.append(token)
-          } else {
-            // Create character token
-            let token = createSimpleToken(.characters, String(char))
-            allTokens.append(token)
-          }
-        }
-      } else if let lineBreak = child as? LineBreakNode {
-        allText += lineBreak.variant == .hard ? "  \n" : "\n"
-      }
-    }
     
     // Clear existing children
     paragraph.children.removeAll()
     
-    // Process inline content and add back to paragraph
-    if !allTokens.isEmpty {
-      let inlineNodes = inlineProcessor.processInlineTokens(allTokens)
+    // Process accumulated tokens directly with inline processor
+    if !paragraph.accumulatedTokens.isEmpty {
+      let inlineNodes = inlineProcessor.processInlineTokens(paragraph.accumulatedTokens)
       for node in inlineNodes {
         paragraph.children.append(node)
       }
     }
   }
   
-  /// Helper to create simple tokens for inline processing
-  private func createSimpleToken(_ element: MarkdownTokenElement, _ text: String) -> any CodeToken<MarkdownTokenElement> {
-    return SimpleMarkdownToken(element: element, text: text)
+  /// Create a line break token for separating lines
+  private func createLineBreakToken(isHard: Bool) -> any CodeToken<MarkdownTokenElement> {
+    // Create a synthetic whitespace token to represent the line break
+    let text = isHard ? "  \n" : " "
+    return SimpleMarkdownToken(element: .whitespaces, text: text)
   }
   
   /// Check if line starts with a block marker that would interrupt a paragraph

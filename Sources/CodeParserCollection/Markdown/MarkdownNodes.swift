@@ -113,6 +113,7 @@ public class DocumentNode: MarkdownNodeBase {
 public class ParagraphNode: MarkdownNodeBase, MarkdownBlockNode {
   public var blockType: String { "paragraph" }
   internal var lastLineEndedWithTwoSpaces: Bool = false
+  internal var accumulatedTokens: [any CodeToken<MarkdownTokenElement>] = []
   
   public init(range: Range<String.Index>) {
     super.init(element: .paragraph)
