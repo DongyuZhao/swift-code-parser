@@ -68,8 +68,9 @@ public class MarkdownUnifiedListBuilder: CodeNodeBuilder {
   ) -> Bool {
     let tokens = context.tokens
     guard !tokens.isEmpty else {
-      // Blank line within list item: let leaf builders handle closing/opening paragraphs
-      return true
+      // Blank line within list item: allow proper blank line handling
+      // Don't force continuation - let other builders handle paragraph closing/opening
+      return false
     }
 
     // If this line begins with a new list marker or blockquote marker, do not treat as continuation
@@ -86,20 +87,16 @@ public class MarkdownUnifiedListBuilder: CodeNodeBuilder {
       }
     }
 
-    // Continuation requires sufficient indentation relative to marker width
-    if leadingSpaces >= listItem.contentIndent || (leadingSpaces > 0 && hasNonWhitespaceAfterFirst(tokens)) {
-      // Ensure we are at the paragraph under this list item for paragraph continuation
-      if let lastParagraph = listItem.children.last as? ParagraphNode {
-        context.current = lastParagraph
-      } else {
-        let p = ParagraphNode(range: "".startIndex..<"".endIndex)
-        listItem.append(p)
-        context.current = p
-      }
-      // Do not set refreshed; allow leafOnLine ParagraphBuilder to consume this line
+    // Continuation requires sufficient indentation relative to content indent
+    if leadingSpaces >= listItem.contentIndent {
+      // Sufficient indentation - this content belongs to the list item
+      // But let the paragraph builder decide whether to continue existing paragraph
+      // or create a new one based on blank line context
+      context.current = listItem
       return true
     }
 
+    // Insufficient indentation - content doesn't belong to this list item
     return false
   }
 
