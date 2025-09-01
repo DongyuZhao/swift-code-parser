@@ -14,49 +14,33 @@ public class MarkdownSetextHeadingBuilder: CodeNodeBuilder {
       return false
     }
 
-    // Setext headings require checking if the current line is an underline
-    // and if there's a previous paragraph to convert
-
+    // In the postParagraph phase, we need to check if the current line is a setext underline
+    // and if there's a previous paragraph (now a completed child) to convert
+    
     // Check if this line is a setext underline
-  // Builders in phased pipeline receive the suffix tokens; always start at local 0
-  guard let underlineInfo = checkSetextUnderline(tokens: context.tokens, startIndex: 0) else {
+    guard let underlineInfo = checkSetextUnderline(tokens: context.tokens, startIndex: 0) else {
       return false
     }
 
     // Look for a preceding paragraph to convert
-    // In the postParagraph phase, we need to look at the parent context to find the last child
-    // which should be a paragraph if there was no blank line before this underline
-    
-    let parentContext: CodeNode<MarkdownNodeElement>
-    if context.current.element == .paragraph {
-      // We're still in paragraph context
-      guard let parent = context.current.parent else { 
-        return false 
-      }
-      parentContext = parent
-    } else {
-      // We're at a higher level, check if the last child is a paragraph
-      parentContext = context.current
-    }
-    
-    // Find the last paragraph child
-    guard let lastChild = parentContext.children.last,
+    // In the postParagraph phase, the preceding paragraph should be the last child of the current context
+    guard let lastChild = context.current.children.last,
           lastChild.element == .paragraph else {
-      // No preceding paragraph found, let thematic break handle this
+      // No preceding paragraph found
       return false
     }
 
-    // Check if we're inside a blockquote
-    // According to CommonMark spec, setext heading underlines cannot be lazy continuation lines in blockquotes
-    if isInsideBlockquote(context: context) {
-      // We're inside a blockquote - the underline should be treated as lazy continuation text
+    // Check if we're inside a container where setext headings cannot be formed
+    // According to CommonMark spec, setext heading underlines cannot be lazy continuation lines in blockquotes or list items
+    if isInsideContainer(context: context, checkingNode: lastChild) {
+      // We're inside a container - the underline should be treated as lazy continuation text
       // or as a thematic break, not as a setext heading underline
       return false
     }
 
     // Convert the paragraph to a heading
     let heading = HeaderNode(level: underlineInfo.level)
-    
+
     // Move all children from paragraph to heading
     while let child = lastChild.children.first {
       child.remove()
@@ -64,24 +48,21 @@ public class MarkdownSetextHeadingBuilder: CodeNodeBuilder {
     }
 
     // Replace paragraph with heading
-    let insertIndex = parentContext.children.firstIndex { $0 === lastChild } ?? (parentContext.children.count - 1)
+    let insertIndex = context.current.children.firstIndex { $0 === lastChild } ?? (context.current.children.count - 1)
     lastChild.remove()
-    parentContext.insert(heading, at: insertIndex)
-
-    // Update context current to be at parent level
-    context.current = parentContext
+    context.current.insert(heading, at: insertIndex)
 
     return true
   }
 
-  private func isInsideBlockquote(context: CodeConstructContext<Node, Token>) -> Bool {
-    // Walk up the context hierarchy to see if we're inside a blockquote
-    var current: MarkdownNodeBase? = context.current as? MarkdownNodeBase
+  private func isInsideContainer(context: CodeConstructContext<Node, Token>, checkingNode: CodeNode<MarkdownNodeElement>) -> Bool {
+    // Walk up the hierarchy from the node being checked to see if it's inside a container
+    var current: MarkdownNodeBase? = checkingNode.parent as? MarkdownNodeBase
     while let node = current {
-      if node is BlockquoteNode {
+      if node is BlockquoteNode || node is ListItemNode {
         return true
       }
-      current = node.parent()
+      current = node.parent as? MarkdownNodeBase
     }
     return false
   }

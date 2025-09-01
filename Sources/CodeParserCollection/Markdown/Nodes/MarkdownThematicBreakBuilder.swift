@@ -20,34 +20,6 @@ public class MarkdownThematicBreakBuilder: CodeNodeBuilder {
       return false
     }
 
-    // Before processing as thematic break, check if this could be a setext heading underline
-    if let setextInfo = checkSetextUnderline(tokens: context.tokens, startIndex: startIndex) {
-      // Check if we're currently in a paragraph context
-      if context.current.element == .paragraph, let parent = context.current.parent {
-        // The preceding paragraph is the current paragraph context
-        let paragraphToConvert = context.current
-        
-        // Convert the paragraph to a heading
-        let heading = HeaderNode(level: setextInfo.level)
-        
-        // Move all children from paragraph to heading
-        while let child = paragraphToConvert.children.first {
-          child.remove()
-          heading.append(child)
-        }
-
-        // Replace paragraph with heading in parent
-        let insertIndex = parent.children.firstIndex { $0 === paragraphToConvert } ?? (parent.children.count - 1)
-        paragraphToConvert.remove()
-        parent.insert(heading, at: insertIndex)
-
-        // Update context to point to parent since we replaced the current paragraph
-        context.current = parent
-
-        return true
-      }
-    }
-
     var index = startIndex
 
     // Skip leading whitespace (up to 3 spaces allowed)
@@ -63,9 +35,7 @@ public class MarkdownThematicBreakBuilder: CodeNodeBuilder {
     }
 
     // Must start with a valid thematic break character
-    guard index < context.tokens.count else { 
-      return false 
-    }
+    guard index < context.tokens.count else { return false }
 
     let thematicChar: String
     if context.tokens[index].element == .punctuation {
@@ -127,75 +97,6 @@ public class MarkdownThematicBreakBuilder: CodeNodeBuilder {
     context.current.append(thematicBreak)
 
     return true
-  }
-
-  private func checkSetextUnderline(
-    tokens: [any CodeToken<MarkdownTokenElement>],
-    startIndex: Int
-  ) -> (level: Int, endIndex: Int)? {
-    var index = startIndex
-
-    // Skip leading whitespace (up to 3 spaces allowed)
-    var leadingSpaces = 0
-    while index < tokens.count,
-          tokens[index].element == .whitespaces {
-      let spaceCount = tokens[index].text.count
-      if leadingSpaces + spaceCount > 3 {
-        return nil
-      }
-      leadingSpaces += spaceCount
-      index += 1
-    }
-
-    // Must have at least one underline character
-    guard index < tokens.count else {
-      return nil
-    }
-
-    // Determine underline character and level
-    let underlineChar: String
-    let level: Int
-
-    if tokens[index].element == .punctuation {
-      switch tokens[index].text {
-      case "=":
-        underlineChar = "="
-        level = 1
-      case "-":
-        underlineChar = "-"
-        level = 2
-      default:
-        return nil
-      }
-    } else {
-      return nil
-    }
-
-    // Count consecutive underline characters (must be at least 1)
-    var underlineCount = 0
-    while index < tokens.count,
-          tokens[index].element == .punctuation,
-          tokens[index].text == underlineChar {
-      underlineCount += 1
-      index += 1
-    }
-
-    guard underlineCount >= 1 else { return nil }
-
-    // Skip trailing whitespace
-    while index < tokens.count,
-          tokens[index].element == .whitespaces {
-      index += 1
-    }
-
-    // Must be at end of line (or have newline)
-    if index < tokens.count {
-      if tokens[index].element != .newline {
-        return nil
-      }
-    }
-
-    return (level: level, endIndex: index)
   }
 
   private func isInsideContainer(context: CodeConstructContext<Node, Token>) -> Bool {
