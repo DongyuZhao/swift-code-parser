@@ -26,18 +26,14 @@ public class MarkdownListItemBuilder: CodeNodeBuilder {
     }
 
     // Check for list item markers
-  if let markerInfo = detectListMarker(tokens: context.tokens, startIndex: startIndex) {
-      // Respect paragraph-interruption rules:
-      // - Unordered bullets may interrupt a paragraph
-      // - Ordered lists may interrupt only when starting number is 1, BUT
-      //   this rule doesn't apply to paragraphs inside list items (they can continue with any number)
+    if let markerInfo = detectListMarker(tokens: context.tokens, startIndex: startIndex) {
+      // Handle paragraph interruption rules
       if context.current.element == .paragraph {
-        // Check if this paragraph is inside a list item
         let isInsideListItem = context.current.parent is ListItemNode
         
         switch markerInfo.type {
         case .unordered:
-          // Allowed: close the paragraph before starting the list
+          // Unordered bullets may interrupt a paragraph
           if let parent = context.current.parent {
             context.current = parent
           }
@@ -52,18 +48,9 @@ public class MarkdownListItemBuilder: CodeNodeBuilder {
         }
       }
 
-      // If we're currently inside a paragraph under a list item, determine whether
-      // this marker should create a sibling item (same level) or a nested sublist.
-      if context.current.element == .paragraph,
-         let li = context.current.parent as? ListItemNode,
-         let parentList = li.parent as? ListNode {
-        if markerInfo.indentation >= 2 {
-          // Nested sublist: keep current within the list item so a new sublist can be created
-        } else {
-          // Sibling at same level: move current to the parent list container
-          context.current = parentList
-        }
-      }
+      // Determine proper nesting based on indentation and current context
+      let targetContext = determineListContext(markerInfo: markerInfo, context: &context, state: state)
+      context.current = targetContext
 
       return createListItem(markerInfo: markerInfo, context: &context, state: state)
     }
@@ -162,48 +149,158 @@ public class MarkdownListItemBuilder: CodeNodeBuilder {
     return nil
   }
 
+  /// Determines the proper context for creating a list item based on indentation and current AST position
+  private func determineListContext(
+    markerInfo: ListMarkerInfo,
+    context: inout CodeConstructContext<Node, Token>,
+    state: MarkdownConstructState
+  ) -> CodeNode<MarkdownNodeElement> {
+    // Start from current context
+    var currentNode = context.current
+    
+    // First check if current context itself can accommodate nesting
+    if let listItem = currentNode as? ListItemNode {
+      let contentIndent = listItem.contentIndent
+      
+      if markerInfo.indentation >= contentIndent {
+        // This marker is indented enough to be nested under this list item
+        return listItem
+      }
+      // If not nested, continue to check parent contexts
+    }
+    
+    // Walk up the ancestry to find list-related contexts
+    while let parentNode = currentNode.parent {
+      if let listItem = parentNode as? ListItemNode {
+        // Found a parent list item - check if current marker should be nested under it
+        let parentContentIndent = listItem.contentIndent
+        
+        if markerInfo.indentation >= parentContentIndent {
+          // This marker is indented enough to be nested under this list item
+          return listItem
+        } else {
+          // Not indented enough for this level - continue looking for higher levels
+          if let parentList = listItem.parent {
+            currentNode = parentList
+            continue
+          }
+        }
+      } else if let list = parentNode as? ListNode {
+        // Found a parent list - check if this should be a sibling item
+        if markerInfo.indentation == 0 || // At document level
+           !isCompatibleForSiblingContinuation(markerInfo.type, with: list) {
+          // Either at document level or incompatible marker - look for higher level
+          currentNode = parentNode
+          continue
+        } else {
+          // Compatible marker at appropriate level - add as sibling
+          return list
+        }
+      }
+      currentNode = parentNode
+    }
+    
+    // Fallback: return document or top-level context
+    return findDocumentOrTopLevelContext(from: context.current)
+  }
+  
+  /// Check if the new marker type is compatible for continuing as a sibling in the existing list
+  private func isCompatibleForSiblingContinuation(_ newMarkerType: ListMarkerType, with existingList: ListNode) -> Bool {
+    switch (existingList, newMarkerType) {
+    case (let ul as UnorderedListNode, .unordered(let marker)):
+      return ul.marker == marker
+    case (let ol as OrderedListNode, .ordered(_, let delimiter)):
+      return ol.delimiter == delimiter
+    default:
+      return false
+    }
+  }
+  
+  /// Find the document or top-level context for creating new lists
+  private func findDocumentOrTopLevelContext(from current: CodeNode<MarkdownNodeElement>) -> CodeNode<MarkdownNodeElement> {
+    var node = current
+    
+    // Walk up to find document or another suitable top-level container
+    while let parent = node.parent {
+      if parent.element == .document {
+        return parent
+      }
+      // Also handle other potential top-level containers like blockquotes
+      if parent.element == .blockquote {
+        return parent
+      }
+      node = parent
+    }
+    
+    // Fallback to current if we can't find a better context
+    return current
+  }
+
   private func createListItem(
     markerInfo: ListMarkerInfo,
     context: inout CodeConstructContext<Node, Token>,
     state: MarkdownConstructState
   ) -> Bool {
     // Create appropriate list container if needed
-  let list = getOrCreateList(for: markerInfo.type, in: &context)
+    let list = getOrCreateList(for: markerInfo.type, in: &context, state: state)
 
     // Create list item
     let markerText = markerInfo.type.markerText
-  let listItem = ListItemNode(marker: markerText)
-  listItem.markerIndent = markerInfo.indentation
-  // Minimal content indent = indentation + marker width + 1 space
-  listItem.contentIndent = markerInfo.contentIndent
+    let listItem = ListItemNode(marker: markerText)
+    listItem.markerIndent = markerInfo.indentation
+    listItem.contentIndent = markerInfo.contentIndent
     list.append(listItem)
+
+    // Update list stack for nesting tracking
+    updateListStack(list: list, state: state)
 
     // Set current context to the list item for nested content
     context.current = listItem
 
     // Find content after marker (skip whitespace after marker)
-  var contentStartIndex = markerInfo.markerEndIndex
+    var contentStartIndex = markerInfo.markerEndIndex
     if contentStartIndex < context.tokens.count,
        context.tokens[contentStartIndex].element == .whitespaces {
       contentStartIndex += 1
     }
 
     // Update state to process remaining tokens as nested content in the list item
-    // Advance global position relative to local slice and re-run builders on same line
     state.position += contentStartIndex
     state.refreshed = true
 
     return true
   }
 
+  private func updateListStack(list: ListNode, state: MarkdownConstructState) {
+    // Maintain list stack for proper nesting tracking
+    // Remove any lists that are no longer active (based on current position in AST)
+    state.listStack = state.listStack.filter { stackList in
+      // Keep lists that are ancestors of the current list
+      var current: CodeNode<MarkdownNodeElement>? = list
+      while let node = current {
+        if node === stackList {
+          return true
+        }
+        current = node.parent
+      }
+      return false
+    }
+    
+    // Add current list to stack if not already present
+    if !state.listStack.contains(where: { $0 === list }) {
+      state.listStack.append(list)
+    }
+  }
+
   private func getOrCreateList(
     for markerType: ListMarkerType,
-    in context: inout CodeConstructContext<Node, Token>
-  ) -> MarkdownNodeBase {
-    // First, find the appropriate container context (usually document or parent list)
-    var containerContext = findListContainer(from: context.current)
+    in context: inout CodeConstructContext<Node, Token>,
+    state: MarkdownConstructState
+  ) -> ListNode {
+    // Use the current context (which was determined by determineListContext)
+    let containerContext = context.current
     
-    // Check if the container context is already a compatible list
+    // If the current context is already a compatible list, use it
     if let currentList = containerContext as? ListNode,
        currentList.isCompatible(with: markerType) {
       return currentList
@@ -215,8 +312,8 @@ public class MarkdownListItemBuilder: CodeNodeBuilder {
       return lastChild
     }
 
-    // Determine the appropriate level for a new list
-    let inferredLevel = inferListLevel(from: containerContext, for: markerType)
+    // Determine the appropriate level for a new list based on nesting context
+    let inferredLevel = inferListLevel(from: containerContext, state: state)
 
     // Create new list with inferred level
     let newList: ListNode
@@ -229,51 +326,30 @@ public class MarkdownListItemBuilder: CodeNodeBuilder {
 
     containerContext.append(newList)
     
-    // Update context to point to the container where we added the list
-    context.current = containerContext
-    
     return newList
   }
-  
-  private func findListContainer(from current: CodeNode<MarkdownNodeElement>) -> CodeNode<MarkdownNodeElement> {
-    // Walk up the tree to find an appropriate container for lists
-    var node = current
-    
-    // If we're in a list item, go to its parent list, then to that list's parent
-    if node.element == .listItem, let parent = node.parent {
-      node = parent // Now at the list level
-      if let grandParent = node.parent {
-        node = grandParent // Now at the list's container (usually document)
-      }
-    }
-    // If we're already at a list, go to its parent container
-    else if node.element == .orderedList || node.element == .unorderedList {
-      if let parent = node.parent {
-        node = parent
-      }
-    }
-    // For other contexts like paragraph, go to parent
-    else if node.element == .paragraph, let parent = node.parent {
-      node = parent
+
+  private func inferListLevel(from container: CodeNode<MarkdownNodeElement>, state: MarkdownConstructState) -> Int {
+    // Use the list stack to determine proper nesting level
+    if container is ListItemNode {
+      // Creating sublist within a list item - level should be parent + 1
+      return state.listStack.count + 1
     }
     
-    return node
-  }
-  
-  private func inferListLevel(from container: CodeNode<MarkdownNodeElement>, for markerType: ListMarkerType) -> Int {
     // Look at existing lists to determine appropriate level
     if let lastList = container.children.last as? ListNode {
       // Same level as the last list in this container
       return lastList.level
     }
     
-    // Default level based on container
+    // Default level based on container and stack depth
     if container.element == .document {
       return 1
     } else if let parentList = container as? ListNode {
       return parentList.level + 1
     } else {
-      return 1
+      // Use stack depth as fallback
+      return max(1, state.listStack.count)
     }
   }
 }

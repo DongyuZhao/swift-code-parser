@@ -9,12 +9,21 @@ import CodeParserCollection
 let language = MarkdownLanguage()
 let parser = CodeParser(language: language)
 
-print("Testing input: \"--\\n**\\n__\"")
-let input = "--\n**\n__"
+// Test simple nested list case
+let input = """
+- a
+  - b
+"""
 
-do {
-    let result = parser.parse(input, language: language)
-    print("Parse succeeded")
-} catch {
-    print("Parse failed with error: \(error)")
+let result = parser.parse(input, language: language)
+
+func sig(_ node: CodeNode<MarkdownNodeElement>) -> String {
+  return node.signature()
 }
+
+print("Input:")
+print(input)
+print("\nActual output:")
+print(sig(result.root))
+print("\nExpected:")
+print("document[unordered_list(level:1)[list_item[paragraph[text(\"a\")],unordered_list(level:2)[list_item[paragraph[text(\"b\")]]]]]]")
