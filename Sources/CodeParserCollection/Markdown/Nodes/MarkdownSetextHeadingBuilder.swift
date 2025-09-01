@@ -24,48 +24,54 @@ public class MarkdownSetextHeadingBuilder: CodeNodeBuilder {
     }
 
     // Look for a preceding paragraph to convert
-    // Setext headings can only be formed when the underline immediately follows a paragraph
-    // If there was a blank line before the underline, the paragraph context would have been closed
-    // and we should treat this as a thematic break instead
-
-    // Check if we're currently in a paragraph context (no blank line before)
+    // In the postParagraph phase, we need to look at the parent context to find the last child
+    // which should be a paragraph if there was no blank line before this underline
+    
+    let parentContext: CodeNode<MarkdownNodeElement>
     if context.current.element == .paragraph {
-      // Check if we're inside a blockquote
-      // According to CommonMark spec, setext heading underlines cannot be lazy continuation lines in blockquotes
-      if isInsideBlockquote(context: context) {
-        // We're inside a blockquote - the underline should be treated as lazy continuation text
-        // or as a thematic break, not as a setext heading underline
-        return false
+      // We're still in paragraph context
+      guard let parent = context.current.parent else { 
+        return false 
       }
-
-      // We're in a paragraph, use the parent (document level) to replace the paragraph
-      guard let parent = context.current.parent else { return false }
-      let documentLevel = parent
-      let lastChild = context.current // The current paragraph
-
-      // Convert the paragraph to a heading
-      let heading = HeaderNode(level: underlineInfo.level)
-
-      // Move all children from paragraph to heading
-      while let child = lastChild.children.first {
-        child.remove()
-        heading.append(child)
-      }
-
-      // Replace paragraph with heading
-      let insertIndex = documentLevel.children.firstIndex { $0 === lastChild } ?? 0
-      lastChild.remove()
-      documentLevel.insert(heading, at: insertIndex)
-
-      // Update context current to be at document level
-      context.current = documentLevel
-
-      return true
+      parentContext = parent
     } else {
-      // We're not in a paragraph context, which means there was a blank line before
-      // Don't treat this as a setext heading underline - let thematic break handle it
+      // We're at a higher level, check if the last child is a paragraph
+      parentContext = context.current
+    }
+    
+    // Find the last paragraph child
+    guard let lastChild = parentContext.children.last,
+          lastChild.element == .paragraph else {
+      // No preceding paragraph found, let thematic break handle this
       return false
     }
+
+    // Check if we're inside a blockquote
+    // According to CommonMark spec, setext heading underlines cannot be lazy continuation lines in blockquotes
+    if isInsideBlockquote(context: context) {
+      // We're inside a blockquote - the underline should be treated as lazy continuation text
+      // or as a thematic break, not as a setext heading underline
+      return false
+    }
+
+    // Convert the paragraph to a heading
+    let heading = HeaderNode(level: underlineInfo.level)
+    
+    // Move all children from paragraph to heading
+    while let child = lastChild.children.first {
+      child.remove()
+      heading.append(child)
+    }
+
+    // Replace paragraph with heading
+    let insertIndex = parentContext.children.firstIndex { $0 === lastChild } ?? (parentContext.children.count - 1)
+    lastChild.remove()
+    parentContext.insert(heading, at: insertIndex)
+
+    // Update context current to be at parent level
+    context.current = parentContext
+
+    return true
   }
 
   private func isInsideBlockquote(context: CodeConstructContext<Node, Token>) -> Bool {
