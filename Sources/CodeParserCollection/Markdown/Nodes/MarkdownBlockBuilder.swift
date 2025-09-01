@@ -68,13 +68,21 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
       // Phase 2: Close blocks that cannot continue (handled in checkBlockContinuation)
       closeUnmatchedBlocks()
       
-      // Phase 3: Try to open new blocks with current line
-      if openBlocks.isEmpty || !canCurrentBlockContinue(line: line) {
+      // Phase 3: Try to open new blocks with current line  
+      // Check if any new block can interrupt the current block
+      var newBlockStarted = false
+      if canNewBlockInterrupt(line: line) {
+        // Close current blocks that can be interrupted
+        closeInterruptedBlocks(line: line)
         openNewBlocks(line: line)
+        newBlockStarted = !openBlocks.isEmpty
+      } else if openBlocks.isEmpty || !canCurrentBlockContinue(line: line) {
+        openNewBlocks(line: line)
+        newBlockStarted = !openBlocks.isEmpty
       }
       
-      // Phase 4: Process line content for current block
-      if let currentBlock = openBlocks.last {
+      // Phase 4: Process line content for current block (only if no new block started)
+      if !newBlockStarted, let currentBlock = openBlocks.last {
         processLineForBlock(block: currentBlock, line: line)
       }
       
@@ -89,6 +97,48 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
     context.consuming = context.tokens.count
     
     return true
+  }
+  
+  /// Check if a new block can interrupt the current open blocks
+  private func canNewBlockInterrupt(line: MarkdownLine) -> Bool {
+    // ATX headings and thematic breaks can interrupt paragraphs
+    if !openBlocks.isEmpty {
+      // Check if any block builder can start a new block with this line
+      for builder in blockBuilders {
+        if builder.canStart(line: line) {
+          // Some block types can interrupt others
+          if (builder is MarkdownATXHeadingBuilder) ||
+             (builder is MarkdownThematicBreakBuilder) ||
+             (builder is MarkdownFencedCodeBlockBuilder) ||
+             (builder is MarkdownBlockquoteBuilder) ||
+             (builder is MarkdownListItemBuilder) {
+            return true
+          }
+        }
+      }
+    }
+    
+    return false
+  }
+  
+  /// Close blocks that can be interrupted by new blocks
+  private func closeInterruptedBlocks(line: MarkdownLine) {
+    // For now, only paragraphs can be interrupted
+    var blocksToClose: [any MarkdownBlockNode] = []
+    
+    for block in openBlocks {
+      if block.blockType == "paragraph" {
+        blocksToClose.append(block)
+      }
+    }
+    
+    for block in blocksToClose {
+      closeBlock(block: block)
+      addBlockToContext(block: block)
+      if let index = openBlocks.firstIndex(where: { $0 === block }) {
+        openBlocks.remove(at: index)
+      }
+    }
   }
   
   /// Check if the current block can continue with the given line
