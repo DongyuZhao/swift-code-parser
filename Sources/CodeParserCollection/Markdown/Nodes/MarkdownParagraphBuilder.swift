@@ -100,8 +100,9 @@ public class MarkdownParagraphBuilder: MarkdownBlockBuilderProtocol {
   
   /// Create a line break token for separating lines
   private func createLineBreakToken(isHard: Bool) -> any CodeToken<MarkdownTokenElement> {
-    // Create a synthetic whitespace token to represent the line break
-    let text = isHard ? "  \n" : " "
+    // Create a synthetic whitespace token to represent the line break  
+    // Use special markers to distinguish from regular spaces
+    let text = isHard ? "__HARD_LINE_BREAK__" : "__SOFT_LINE_BREAK__"
     return SimpleMarkdownToken(element: .whitespaces, text: text)
   }
   

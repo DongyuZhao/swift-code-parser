@@ -394,15 +394,35 @@ public class MarkdownInlineProcessor {
         continue
       }
       
-      // Regular token - convert to text
+      // Regular token - handle different types appropriately
       let token = tokens[index]
       if token.element != .eof && token.element != .newline {
-        if let lastNode = nodes.last as? MarkdownText {
-          // Combine with previous text node
-          lastNode.content += token.text
+        
+        // Handle line breaks (created by paragraph builder)
+        if token.element == .whitespaces {
+          if token.text == "__HARD_LINE_BREAK__" {
+            // Hard line break (two trailing spaces + newline)
+            nodes.append(LineBreakNode(variant: .hard))
+          } else if token.text == "__SOFT_LINE_BREAK__" {
+            // Soft line break (between lines in paragraph) 
+            nodes.append(LineBreakNode(variant: .soft))
+          } else {
+            // Regular whitespace - add to text
+            if let lastNode = nodes.last as? MarkdownText {
+              lastNode.content += token.text
+            } else {
+              nodes.append(MarkdownText(content: token.text))
+            }
+          }
         } else {
-          // Create new text node
-          nodes.append(MarkdownText(content: token.text))
+          // Regular content token
+          if let lastNode = nodes.last as? MarkdownText {
+            // Combine with previous text node
+            lastNode.content += token.text
+          } else {
+            // Create new text node
+            nodes.append(MarkdownText(content: token.text))
+          }
         }
       }
       index += 1
