@@ -14,43 +14,64 @@ public class MarkdownCodeSpanBuilder {
     while index < tokens.count {
       let token = tokens[index]
       
-      // Look for opening backticks
-      guard token.element == .punctuation && token.text.hasPrefix("`") else {
+      // Look for opening backticks - must be punctuation backtick
+      guard token.element == .punctuation && token.text == "`" else {
         index += 1
         continue
       }
       
-      let openingBackticks = token.text.count
-      let openingIndex = index
+      // Count consecutive backticks for opening delimiter
+      var openingBackticks = 0
+      var openingStart = index
+      while index < tokens.count && 
+            tokens[index].element == .punctuation && 
+            tokens[index].text == "`" {
+        openingBackticks += 1
+        index += 1
+      }
+      let openingEnd = index - 1
       
-      // Look for matching closing backticks
-      var closingIndex: Int? = nil
-      var searchIndex = index + 1
+      // Look for matching closing backticks (same count)
+      var closingStart: Int? = nil
+      var searchIndex = index
       
       while searchIndex < tokens.count {
-        let searchToken = tokens[searchIndex]
-        
-        if searchToken.element == .punctuation && 
-           searchToken.text.hasPrefix("`") && 
-           searchToken.text.count == openingBackticks {
-          closingIndex = searchIndex
-          break
+        // Look for start of a backtick run
+        if tokens[searchIndex].element == .punctuation && tokens[searchIndex].text == "`" {
+          let runStart = searchIndex
+          var runLength = 0
+          
+          // Count consecutive backticks in this run
+          while searchIndex < tokens.count && 
+                tokens[searchIndex].element == .punctuation && 
+                tokens[searchIndex].text == "`" {
+            runLength += 1
+            searchIndex += 1
+          }
+          
+          // If this run matches our opening length, we found the closing
+          if runLength == openingBackticks {
+            closingStart = runStart
+            break
+          }
+        } else {
+          searchIndex += 1
         }
-        
-        searchIndex += 1
       }
       
-      if let closingIndex = closingIndex {
+      if let closingStart = closingStart {
         // Found matching closing backticks
-        let range = openingIndex...closingIndex
+        let closingEnd = closingStart + openingBackticks - 1
+        let range = openingStart...closingEnd
         let codeSpan = ProcessedCodeSpan(range: range, backtickCount: openingBackticks)
         codeSpans.append(codeSpan)
         
-        // Skip past the closing backticks
-        index = closingIndex + 1
+        // Continue from after the closing backticks
+        index = closingEnd + 1
       } else {
-        // No matching closing backticks found
-        index += 1
+        // No matching closing backticks found, continue from next character
+        // Reset index to just after the opening backticks we couldn't match
+        index = openingEnd + 1
       }
     }
     
@@ -58,9 +79,10 @@ public class MarkdownCodeSpanBuilder {
   }
   
   /// Extract content from code span, handling whitespace normalization
-  public func extractCodeContent(from tokens: [any CodeToken<MarkdownTokenElement>], in range: ClosedRange<Int>) -> String {
-    let contentStart = range.lowerBound + 1
-    let contentEnd = range.upperBound - 1
+  public func extractCodeContent(from tokens: [any CodeToken<MarkdownTokenElement>], in range: ClosedRange<Int>, backtickCount: Int) -> String {
+    // Skip backtick tokens at the beginning and end
+    let contentStart = range.lowerBound + backtickCount
+    let contentEnd = range.upperBound - backtickCount
     
     guard contentStart <= contentEnd else {
       return ""
@@ -71,14 +93,18 @@ public class MarkdownCodeSpanBuilder {
     
     // Normalize whitespace according to CommonMark spec:
     // - Single spaces at beginning and end are stripped if there are non-space characters
-    // - All other whitespace is collapsed to single spaces
+    // - Line endings are converted to spaces
+    
+    // Convert line endings to spaces first
+    content = content.replacingOccurrences(of: "\n", with: " ")
+    content = content.replacingOccurrences(of: "\r\n", with: " ")
+    content = content.replacingOccurrences(of: "\r", with: " ")
+    
+    // Strip single leading and trailing spaces if there are non-space characters
     if content.count > 2 && content.hasPrefix(" ") && content.hasSuffix(" ") && 
        content.dropFirst().dropLast().contains(where: { $0 != " " }) {
       content = String(content.dropFirst().dropLast())
     }
-    
-    // Collapse multiple spaces to single spaces (but preserve single spaces)
-    content = content.replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
     
     return content
   }

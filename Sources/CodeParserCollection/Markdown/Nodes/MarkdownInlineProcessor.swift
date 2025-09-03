@@ -52,19 +52,16 @@ public class MarkdownInlineProcessor {
     // 1. Process code spans first (highest precedence)
     let codeSpans = codeSpanBuilder.processCodeSpans(in: tokens)
     
-    // 2. Filter tokens for emphasis processing (exclude those in code spans)
-    let emphasisTokens = filterTokensExcluding(tokens, ranges: codeSpans.map { $0.range })
-    
-    // 3. Process emphasis/strong emphasis
-    let delimiterStack = buildDelimiterStack(from: emphasisTokens, originalTokens: tokens)
+    // 2. Build delimiter stack for emphasis, excluding code span ranges
+    let delimiterStack = buildDelimiterStack(from: tokens, excludingRanges: codeSpans.map { $0.range })
     let processedEmphasis = processEmphasisWithDelimiterStack(tokens: tokens, delimiters: delimiterStack)
     
-    // 4. Process strikethrough (lower precedence than emphasis)
+    // 3. Process strikethrough (lower precedence than emphasis)
     let allUsedRanges = codeSpans.map { $0.range } + processedEmphasis.map { $0.range }
     let strikethroughTokens = filterTokensExcluding(tokens, ranges: allUsedRanges)
     let processedStrikethrough = strikethroughBuilder.processStrikethrough(in: strikethroughTokens)
     
-    // 5. Build final node tree
+    // 4. Build final node tree
     return buildNodeTree(from: tokens, 
                         codeSpans: codeSpans,
                         processedEmphasis: processedEmphasis,
@@ -85,13 +82,20 @@ public class MarkdownInlineProcessor {
     return filteredTokens
   }
   
-  /// Build delimiter stack from punctuation tokens
-  private func buildDelimiterStack(from tokens: [any CodeToken<MarkdownTokenElement>], originalTokens: [any CodeToken<MarkdownTokenElement>]) -> [EmphasisDelimiter] {
+  /// Build delimiter stack from punctuation tokens, excluding specified ranges
+  private func buildDelimiterStack(from tokens: [any CodeToken<MarkdownTokenElement>], excludingRanges ranges: [ClosedRange<Int>]) -> [EmphasisDelimiter] {
     var delimiters: [EmphasisDelimiter] = []
     var index = 0
     
-    while index < originalTokens.count {
-      let token = originalTokens[index]
+    while index < tokens.count {
+      // Skip if this token is in an excluded range (e.g., code span)
+      let isInExcludedRange = ranges.contains { range in range.contains(index) }
+      if isInExcludedRange {
+        index += 1
+        continue
+      }
+      
+      let token = tokens[index]
       
       // Only consider punctuation tokens - escaped content is in .characters tokens
       guard token.element == .punctuation else {
@@ -109,8 +113,14 @@ public class MarkdownInlineProcessor {
       // Count consecutive delimiters of the same type
       var delimiterLength = 0
       var currentIndex = index
-      while currentIndex < originalTokens.count {
-        let currentToken = originalTokens[currentIndex]
+      while currentIndex < tokens.count {
+        // Skip if this token is in an excluded range
+        let isInExcludedRange = ranges.contains { range in range.contains(currentIndex) }
+        if isInExcludedRange {
+          break
+        }
+        
+        let currentToken = tokens[currentIndex]
         if currentToken.element == .punctuation && currentToken.text == token.text {
           delimiterLength += 1
           currentIndex += 1
@@ -120,7 +130,7 @@ public class MarkdownInlineProcessor {
       }
       
       // Determine if this delimiter run can open or close emphasis
-      let (canOpen, canClose) = determineFlankingRules(at: index, delimiterLength: delimiterLength, in: originalTokens)
+      let (canOpen, canClose) = determineFlankingRules(at: index, delimiterLength: delimiterLength, in: tokens)
       
       if canOpen || canClose {
         let delimiter = EmphasisDelimiter(
@@ -313,7 +323,7 @@ public class MarkdownInlineProcessor {
     while index < tokens.count {
       // Check if this token is part of a code span (highest precedence)
       if let codeSpan = codeSpans.first(where: { $0.range.contains(index) }) {
-        let content = codeSpanBuilder.extractCodeContent(from: tokens, in: codeSpan.range)
+        let content = codeSpanBuilder.extractCodeContent(from: tokens, in: codeSpan.range, backtickCount: codeSpan.backtickCount)
         let codeNode = CodeSpanNode(code: content)
         nodes.append(codeNode)
         index = codeSpan.range.upperBound + 1
