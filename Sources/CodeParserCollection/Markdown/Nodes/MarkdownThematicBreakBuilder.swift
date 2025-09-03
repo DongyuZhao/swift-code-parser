@@ -14,34 +14,56 @@ public class MarkdownThematicBreakBuilder: MarkdownBlockBuilderProtocol {
       return false
     }
     
-    let content = line.content.trimmingCharacters(in: .whitespaces)
+    // Find the first non-whitespace token
+    var firstNonWhitespaceIndex = 0
+    while firstNonWhitespaceIndex < line.tokens.count {
+      let token = line.tokens[firstNonWhitespaceIndex]
+      if token.element != .whitespaces {
+        break
+      }
+      firstNonWhitespaceIndex += 1
+    }
     
-    // Must contain only one type of character: -, *, or _
-    // Must have at least 3 of that character
-    // Can have spaces between characters
-    
-    if content.isEmpty {
+    // Must have content after leading whitespace
+    if firstNonWhitespaceIndex >= line.tokens.count {
       return false
     }
     
-    // Determine the character type
-    let firstChar = content.first!
-    guard firstChar == "-" || firstChar == "*" || firstChar == "_" else {
+    let firstToken = line.tokens[firstNonWhitespaceIndex]
+    
+    // Must start with punctuation
+    guard firstToken.element == .punctuation else {
       return false
     }
     
-    // Count occurrences of the character and verify no other characters
+    // Determine the character type (must be -, *, or _)
+    let thematicChar = firstToken.text
+    guard thematicChar == "-" || thematicChar == "*" || thematicChar == "_" else {
+      return false
+    }
+    
+    // Count occurrences of the thematic character and verify no other characters
     var charCount = 0
-    for char in content {
-      if char == firstChar {
+    var index = firstNonWhitespaceIndex
+    
+    while index < line.tokens.count {
+      let token = line.tokens[index]
+      
+      if token.element == .newline || token.element == .eof {
+        // End of line
+        break
+      } else if token.element == .punctuation && token.text == thematicChar {
+        // Matching thematic character
         charCount += 1
-      } else if char == " " || char == "\t" {
-        // Spaces/tabs are allowed
-        continue
+      } else if token.element == .whitespaces {
+        // Spaces/tabs are allowed between characters
+        // Continue
       } else {
         // Other characters not allowed
         return false
       }
+      
+      index += 1
     }
     
     // Must have at least 3 of the thematic break character

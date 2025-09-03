@@ -140,10 +140,31 @@ public class MarkdownParagraphBuilder: MarkdownBlockBuilderProtocol {
     // This prevents conflicts with lines like "#5 bolt" when they're part of a paragraph
     
     // Check for thematic break (these DO interrupt paragraphs)
+    // Thematic breaks are tokenized as individual punctuation characters
     if firstToken.element == .punctuation {
-      let text = firstToken.text
-      if text.hasPrefix("---") || text.hasPrefix("***") || text.hasPrefix("___") {
-        return true
+      let char = firstToken.text
+      if char == "-" || char == "*" || char == "_" {
+        // Count consecutive thematic break characters
+        var count = 0
+        for token in line.tokens {
+          if token.element == .punctuation && token.text == char {
+            count += 1
+          } else if token.element == .whitespaces {
+            // Whitespace is allowed between thematic break characters
+            continue
+          } else if token.element == .newline || token.element == .eof {
+            // End of line
+            break
+          } else {
+            // Other characters break the pattern
+            break
+          }
+        }
+        
+        // Must have at least 3 thematic break characters
+        if count >= 3 {
+          return true
+        }
       }
     }
     
