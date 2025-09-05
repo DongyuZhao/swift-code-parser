@@ -217,7 +217,7 @@ struct MarkdownBlockQuotesTests {
       """
     let result = parser.parse(input, language: language)
 
-    let expectedSig = "document[blockquote[paragraph[text(\"foo\"),text(\"bar\")]]]"
+    let expectedSig = "document[blockquote[paragraph[text(\"foo\"),line_break(soft),text(\"bar\")]]]"
     #expect(sig(result.root) == expectedSig)
   }
 

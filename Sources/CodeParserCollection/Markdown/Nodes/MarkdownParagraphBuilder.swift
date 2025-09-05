@@ -81,13 +81,22 @@ public class MarkdownParagraphBuilder: MarkdownBlockBuilderProtocol {
       }
     }
     
-    // Only add separators if there's actual content and this line has content  
-    if !paragraph.children.isEmpty && !contentTokens.isEmpty && endsWithHardBreak {
-      // Only add hard line breaks - soft line breaks are implicit in AST
-      let lineBreakToken = createLineBreakToken("__HARD_LINE_BREAK__")
-      let lineBreakNodes = inlineProcessor.processInlineTokens([lineBreakToken])
-      for node in lineBreakNodes {
-        paragraph.children.append(node)
+    // Add line breaks for continuation lines if there's existing content and this line has content  
+    if !paragraph.children.isEmpty && !contentTokens.isEmpty {
+      if endsWithHardBreak {
+        // Add hard line break for lines ending with two spaces or backslash
+        let lineBreakToken = createLineBreakToken("__HARD_LINE_BREAK__")
+        let lineBreakNodes = inlineProcessor.processInlineTokens([lineBreakToken])
+        for node in lineBreakNodes {
+          paragraph.children.append(node)
+        }
+      } else {
+        // Add soft line break for regular continuation lines
+        let lineBreakToken = createLineBreakToken("__SOFT_LINE_BREAK__")
+        let lineBreakNodes = inlineProcessor.processInlineTokens([lineBreakToken])
+        for node in lineBreakNodes {
+          paragraph.children.append(node)
+        }
       }
     }
     
