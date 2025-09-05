@@ -35,6 +35,27 @@ public class MarkdownCodeSpanBuilder {
       var closingStart: Int? = nil
       var searchIndex = index
       
+      // Special case: if we're at the end after reading opening backticks, 
+      // check if we can split them into opening and closing for empty code span
+      if index >= tokens.count && openingBackticks % 2 == 0 && openingBackticks >= 2 {
+        let delimiterLength = openingBackticks / 2
+        // Split the backticks: first half is opening, second half is closing
+        let realOpeningEnd = openingStart + delimiterLength - 1
+        let closingStart = realOpeningEnd + 1
+        let closingEnd = openingEnd
+        
+        let range = openingStart...closingEnd
+        let codeSpan = ProcessedCodeSpan(range: range, backtickCount: delimiterLength)
+        codeSpans.append(codeSpan)
+        break
+      }
+      
+      if index >= tokens.count {
+        // No content, no closing - not a valid code span
+        index = openingEnd + 1
+        continue
+      }
+      
       while searchIndex < tokens.count {
         // Look for start of a backtick run
         if tokens[searchIndex].element == .punctuation && tokens[searchIndex].text == "`" {
