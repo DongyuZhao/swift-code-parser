@@ -101,32 +101,40 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
       // Store tokens count to detect infinite loops
       let tokensBeforeProcessing = state.tokens.count
       
-      // Check if any existing block can continue with current tokens
-      if let continuingBlock = findBlockThatCanContinue(currentLine, in: context.current) {
-        // Check if continuation is valid before processing
-        if canContinueBlock(continuingBlock, with: currentLine) {
-          processLineWithBuilder(currentLine, for: continuingBlock, state: &state)
-          
-          // If this is a container block and tokens were yielded back, process them in the container's context
-          if !state.currentLineProcessed && isContainerBlock(continuingBlock) {
-            processYieldedTokensInContainer(continuingBlock, state: &state, lineNumber: line.lineNumber)
-          }
-        } else {
-          // Block cannot continue, close it and try new block
-          closeBlock(continuingBlock, context: &context)
-          _ = tryCreateNewBlockWithLine(currentLine, context: &context, state: &state)
-        }
-      } else {
-        // No continuing block, check for interruption and try new block
-        if canLineInterruptExistingBlocks(currentLine) {
-          closeInterruptibleBlocks(context: &context)
-        }
-        
+      // FIRST: Check if this line can start an interrupting block type
+      // If so, create it immediately (this handles thematic breaks, headings, etc.)
+      if canLineInterruptExistingBlocks(currentLine) {
+        closeInterruptibleBlocks(context: &context)
         let newBlockCreated = tryCreateNewBlockWithLine(currentLine, context: &context, state: &state)
         
         // If a container block was created and tokens were yielded back, process them in the container's context
         if !state.currentLineProcessed && newBlockCreated != nil && isContainerBlock(newBlockCreated!) {
           processYieldedTokensInContainer(newBlockCreated!, state: &state, lineNumber: line.lineNumber)
+        }
+      } else {
+        // SECOND: Check if any existing block can continue with current tokens
+        if let continuingBlock = findBlockThatCanContinue(currentLine, in: context.current) {
+          // Check if continuation is valid before processing
+          if canContinueBlock(continuingBlock, with: currentLine) {
+            processLineWithBuilder(currentLine, for: continuingBlock, state: &state)
+            
+            // If this is a container block and tokens were yielded back, process them in the container's context
+            if !state.currentLineProcessed && isContainerBlock(continuingBlock) {
+              processYieldedTokensInContainer(continuingBlock, state: &state, lineNumber: line.lineNumber)
+            }
+          } else {
+            // Block cannot continue, close it and try new block
+            closeBlock(continuingBlock, context: &context)
+            _ = tryCreateNewBlockWithLine(currentLine, context: &context, state: &state)
+          }
+        } else {
+          // No continuing block, try new block
+          let newBlockCreated = tryCreateNewBlockWithLine(currentLine, context: &context, state: &state)
+          
+          // If a container block was created and tokens were yielded back, process them in the container's context
+          if !state.currentLineProcessed && newBlockCreated != nil && isContainerBlock(newBlockCreated!) {
+            processYieldedTokensInContainer(newBlockCreated!, state: &state, lineNumber: line.lineNumber)
+          }
         }
       }
       
