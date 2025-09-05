@@ -81,13 +81,10 @@ public class MarkdownParagraphBuilder: MarkdownBlockBuilderProtocol {
       }
     }
     
-    // Only add line breaks if there's actual content and this line has content
-    if !paragraph.children.isEmpty && !contentTokens.isEmpty {
-      // Add appropriate line break token to AST
-      let lineBreakText = endsWithHardBreak ? "__HARD_LINE_BREAK__" : "__SOFT_LINE_BREAK__"
-      let lineBreakToken = createLineBreakToken(lineBreakText)
-      
-      // Process line break as inline content and add to AST
+    // Only add separators if there's actual content and this line has content  
+    if !paragraph.children.isEmpty && !contentTokens.isEmpty && endsWithHardBreak {
+      // Only add hard line breaks - soft line breaks are implicit in AST
+      let lineBreakToken = createLineBreakToken("__HARD_LINE_BREAK__")
       let lineBreakNodes = inlineProcessor.processInlineTokens([lineBreakToken])
       for node in lineBreakNodes {
         paragraph.children.append(node)
@@ -116,6 +113,16 @@ public class MarkdownParagraphBuilder: MarkdownBlockBuilderProtocol {
   /// Create a line break token for separating lines
   private func createLineBreakToken(_ text: String) -> any CodeToken<MarkdownTokenElement> {
     return SimpleMarkdownToken(element: .whitespaces, text: text)
+  }
+  
+  /// Create a space token for soft line breaks
+  private func createSpaceToken() -> any CodeToken<MarkdownTokenElement> {
+    return SimpleMarkdownToken(element: .whitespaces, text: " ")
+  }
+  
+  /// Create a token with a prefix added to its text
+  private func createTokenWithPrefix(_ token: any CodeToken<MarkdownTokenElement>, prefix: String) -> any CodeToken<MarkdownTokenElement> {
+    return SimpleMarkdownToken(element: token.element, text: prefix + token.text)
   }
   
   /// Check if line starts with a block marker that would interrupt a paragraph

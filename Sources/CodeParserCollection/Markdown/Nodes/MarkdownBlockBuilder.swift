@@ -86,45 +86,59 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
     }
     
     // Store the current line in state for builders to process
-    if var state = context.state as? MarkdownConstructState {
-      state.tokens = line.tokens
-      state.currentLineProcessed = false
+    guard var state = context.state as? MarkdownConstructState else { return }
+    state.tokens = line.tokens
+    state.currentLineProcessed = false
+    
+    // Process with yield-back pattern: keep processing until line is fully consumed
+    var iterations = 0
+    let maxIterations = 10
+    while !state.currentLineProcessed && !state.tokens.isEmpty && iterations < maxIterations {
+      iterations += 1
+      let currentLine = MarkdownLine(tokens: state.tokens, lineNumber: line.lineNumber)
+      state.currentLineProcessed = true // Will be set to false if a builder yields back
       
-      // Keep processing until the line is fully processed
-      var iterations = 0
-      while !state.currentLineProcessed && !state.tokens.isEmpty && iterations < 10 {
-        iterations += 1
-        state.currentLineProcessed = true // Will be set to false if a builder yields back
-        
-        // Check if any existing block can continue with current tokens
-        let currentLine = MarkdownLine(tokens: state.tokens, lineNumber: line.lineNumber)
-        if let continuingBlock = findBlockThatCanContinue(currentLine, in: context.current) {
-          // Let the appropriate builder process tokens and potentially modify state
-          processContinuationLine(currentLine, for: continuingBlock, state: &state)
-        } else {
-          // Check if this line should interrupt any existing blocks
-          if canLineInterruptExistingBlocks(MarkdownLine(tokens: state.tokens, lineNumber: line.lineNumber)) {
-            closeInterruptibleBlocks(context: &context)
-          }
+      // Store tokens count to detect infinite loops
+      let tokensBeforeProcessing = state.tokens.count
+      
+      // Check if any existing block can continue with current tokens
+      if let continuingBlock = findBlockThatCanContinue(currentLine, in: context.current) {
+        // Check if continuation is valid before processing
+        if canContinueBlock(continuingBlock, with: currentLine) {
+          processLineWithBuilder(currentLine, for: continuingBlock, state: &state)
           
-          // Try to start a new block with current tokens
-          let currentLine = MarkdownLine(tokens: state.tokens, lineNumber: line.lineNumber)
-          if let newBlock = tryCreateNewBlock(for: currentLine) {
-            // Add the new block to the AST
-            context.current.append(newBlock as! MarkdownNodeBase)
-            // Process the opening line and potentially modify state
-            processOpeningLine(currentLine, for: newBlock, state: &state)
-          } else {
-            // Fallback to paragraph
-            createAndProcessParagraph(for: currentLine, context: &context, state: &state)
-            break // Paragraph consumes everything
+          // If this is a container block and tokens were yielded back, process them in the container's context
+          if !state.currentLineProcessed && isContainerBlock(continuingBlock) {
+            processYieldedTokensInContainer(continuingBlock, state: &state, lineNumber: line.lineNumber)
           }
+        } else {
+          // Block cannot continue, close it and try new block
+          closeBlock(continuingBlock, context: &context)
+          _ = tryCreateNewBlockWithLine(currentLine, context: &context, state: &state)
+        }
+      } else {
+        // No continuing block, check for interruption and try new block
+        if canLineInterruptExistingBlocks(currentLine) {
+          closeInterruptibleBlocks(context: &context)
+        }
+        
+        let newBlockCreated = tryCreateNewBlockWithLine(currentLine, context: &context, state: &state)
+        
+        // If a container block was created and tokens were yielded back, process them in the container's context
+        if !state.currentLineProcessed && newBlockCreated != nil && isContainerBlock(newBlockCreated!) {
+          processYieldedTokensInContainer(newBlockCreated!, state: &state, lineNumber: line.lineNumber)
         }
       }
       
-      // Update context state
-      context.state = state
+      // Safety check: if tokens weren't consumed and line isn't processed, break to prevent infinite loop
+      if state.tokens.count == tokensBeforeProcessing && !state.currentLineProcessed {
+        state.currentLineProcessed = true // Force completion to avoid infinite loop
+        break
+      }
     }
+    
+    // Update context state
+    context.state = state
   }
   
   /// Find an existing block in the AST that can continue with this line
@@ -210,9 +224,18 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
     return nil
   }
   
-  /// Process a line that continues an existing block
-  private func processContinuationLine(_ line: MarkdownLine, for block: any MarkdownBlockNode, state: inout MarkdownConstructState) {
-    // Find the builder for this block and let it process the line
+  /// Check if a block can continue with the given line
+  private func canContinueBlock(_ block: any MarkdownBlockNode, with line: MarkdownLine) -> Bool {
+    for builder in blockBuilders {
+      if builder.canContinue(block: block, line: line) {
+        return true
+      }
+    }
+    return false
+  }
+  
+  /// Process a line with the appropriate builder for the given block
+  private func processLineWithBuilder(_ line: MarkdownLine, for block: any MarkdownBlockNode, state: inout MarkdownConstructState) {
     for builder in blockBuilders {
       if builder.canContinue(block: block, line: line) {
         _ = builder.processLine(block: block, line: line, state: &state)
@@ -221,22 +244,117 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
     }
   }
   
-  /// Process a line that opens a new block
-  private func processOpeningLine(_ line: MarkdownLine, for block: any MarkdownBlockNode, state: inout MarkdownConstructState) {
-    // Find the builder for this block and let it process the opening line
+  /// Try to create a new block with the current line
+  private func tryCreateNewBlockWithLine(_ line: MarkdownLine, context: inout CodeConstructContext<Node, Token>, state: inout MarkdownConstructState) -> (any MarkdownBlockNode)? {
+    // Try each plugged builder to see if it can start a new block
+    for builder in blockBuilders {
+      if builder.canStart(line: line) {
+        if let newBlock = builder.createBlock(from: line) {
+          // Determine where to add the new block based on current context
+          let targetNode = findTargetNodeForNewBlock(in: context.current)
+          targetNode.append(newBlock as! MarkdownNodeBase)
+          
+          // Process the opening line with the builder
+          _ = builder.processLine(block: newBlock, line: line, state: &state)
+          return newBlock
+        }
+      }
+    }
+    
+    // Fallback to paragraph if no builder can handle the line
+    createAndProcessParagraph(for: line, context: &context, state: &state)
+    return nil
+  }
+  
+  /// Close a specific block
+  private func closeBlock(_ block: any MarkdownBlockNode, context: inout CodeConstructContext<Node, Token>) {
     for builder in blockBuilders {
       if canBuilderHandle(builder, blockType: block.blockType) {
-        _ = builder.processLine(block: block, line: line, state: &state)
+        builder.closeBlock(block: block)
         return
       }
     }
+  }
+  
+  /// Process yielded-back tokens within a container block's context
+  private func processYieldedTokensInContainer(_ containerBlock: any MarkdownBlockNode, state: inout MarkdownConstructState, lineNumber: Int) {
+    guard !state.tokens.isEmpty else { 
+      state.currentLineProcessed = true
+      return 
+    }
+    
+    // Create a sub-context where context.current points to the container block
+    let containerNode = containerBlock as! MarkdownNodeBase
+    
+    // Process the remaining tokens as a new line within the container
+    let containerLine = MarkdownLine(tokens: state.tokens, lineNumber: lineNumber)
+    
+    // First, check if any existing block within the container can continue
+    if let continuingBlock = findBlockThatCanContinue(containerLine, in: containerNode) {
+      if canContinueBlock(continuingBlock, with: containerLine) {
+        processLineWithBuilder(containerLine, for: continuingBlock, state: &state)
+        state.currentLineProcessed = true
+        return
+      }
+    }
+    
+    // Try each plugged builder to see if it can start a new block within the container
+    for builder in blockBuilders {
+      if builder.canStart(line: containerLine) {
+        if let newBlock = builder.createBlock(from: containerLine) {
+          // Add the new block to the container
+          containerNode.append(newBlock as! MarkdownNodeBase)
+          
+          // Process the opening line with the builder
+          _ = builder.processLine(block: newBlock, line: containerLine, state: &state)
+          
+          // Mark as processed since we handled the yielded tokens
+          state.currentLineProcessed = true
+          return
+        }
+      }
+    }
+    
+    // Fallback to paragraph within the container
+    let paragraph = createParagraphBlock()
+    containerNode.append(paragraph as! MarkdownNodeBase)
+    
+    // Process the line into the paragraph
+    for builder in blockBuilders {
+      if builder is MarkdownParagraphBuilder {
+        _ = builder.processLine(block: paragraph, line: containerLine, state: &state)
+        state.currentLineProcessed = true
+        return
+      }
+    }
+    
+    // Ensure we mark as processed
+    state.currentLineProcessed = true
+  }
+  /// This ensures blocks are added in the correct container context
+  private func findTargetNodeForNewBlock(in node: CodeNode<MarkdownNodeElement>) -> CodeNode<MarkdownNodeElement> {
+    // For now, find the deepest open container block or return the root
+    if let lastChild = node.children.last as? MarkdownNodeBase {
+      if let blockNode = lastChild as? any MarkdownBlockNode {
+        if isContainerBlock(blockNode) {
+          // This is a container block, add content to it
+          return lastChild
+        }
+      }
+    }
+    
+    // Default to the current node
+    return node
   }
   
   /// Create and process a paragraph for this line
   private func createAndProcessParagraph(for line: MarkdownLine, context: inout CodeConstructContext<Node, Token>, state: inout MarkdownConstructState) {
     // Create a new paragraph
     let paragraph = createParagraphBlock()
-    context.current.append(paragraph as! MarkdownNodeBase)
+    
+    // Add paragraph to the appropriate target node
+    let targetNode = findTargetNodeForNewBlock(in: context.current)
+    targetNode.append(paragraph as! MarkdownNodeBase)
     
     // Process the line into the paragraph
     for builder in blockBuilders {
