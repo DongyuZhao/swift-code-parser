@@ -81,43 +81,37 @@ public class MarkdownParagraphBuilder: MarkdownBlockBuilderProtocol {
       }
     }
     
-    // If paragraph already has tokens, add a line break between lines
-    if !paragraph.accumulatedTokens.isEmpty {
-      // Add appropriate line break token
-      let lineBreakToken = createLineBreakToken(isHard: paragraph.lastLineEndedWithHardBreak)
-      paragraph.accumulatedTokens.append(lineBreakToken)
+    // Only add line breaks if there's actual content and this line has content
+    if !paragraph.children.isEmpty && !contentTokens.isEmpty {
+      // Add appropriate line break token to AST
+      let lineBreakText = endsWithHardBreak ? "__HARD_LINE_BREAK__" : "__SOFT_LINE_BREAK__"
+      let lineBreakToken = createLineBreakToken(lineBreakText)
+      
+      // Process line break as inline content and add to AST
+      let lineBreakNodes = inlineProcessor.processInlineTokens([lineBreakToken])
+      for node in lineBreakNodes {
+        paragraph.children.append(node)
+      }
     }
     
-    // Add content tokens directly - no conversion to string!
-    paragraph.accumulatedTokens.append(contentsOf: contentTokens)
-    
-    // Store whether this line ended with hard break for next line's line break
-    paragraph.lastLineEndedWithHardBreak = endsWithHardBreak
+    // Process content tokens directly into AST via inline processor
+    if !contentTokens.isEmpty {
+      let inlineNodes = inlineProcessor.processInlineTokens(contentTokens)
+      for node in inlineNodes {
+        paragraph.children.append(node)
+      }
+    }
     
     return true
   }
   
   public func closeBlock(block: any MarkdownBlockNode) {
-    // Process inline content when closing paragraph using original tokens
-    guard let paragraph = block as? ParagraphNode else { return }
-    
-    // Clear existing children
-    paragraph.children.removeAll()
-    
-    // Process accumulated tokens directly with inline processor
-    if !paragraph.accumulatedTokens.isEmpty {
-      let inlineNodes = inlineProcessor.processInlineTokens(paragraph.accumulatedTokens)
-      for node in inlineNodes {
-        paragraph.children.append(node)
-      }
-    }
+    // No additional processing needed when closing - everything already in AST
+    // The inline processor has already processed all content during processLine
   }
   
   /// Create a line break token for separating lines
-  private func createLineBreakToken(isHard: Bool) -> any CodeToken<MarkdownTokenElement> {
-    // Create a synthetic whitespace token to represent the line break  
-    // Use special markers to distinguish from regular spaces
-    let text = isHard ? "__HARD_LINE_BREAK__" : "__SOFT_LINE_BREAK__"
+  private func createLineBreakToken(_ text: String) -> any CodeToken<MarkdownTokenElement> {
     return SimpleMarkdownToken(element: .whitespaces, text: text)
   }
   
