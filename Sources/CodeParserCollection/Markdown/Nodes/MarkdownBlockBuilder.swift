@@ -3,13 +3,10 @@ import Foundation
 
 /// MarkdownBlockBuilder - The main CodeNodeBuilder implementation for Markdown
 /// 
-/// This class implements the CommonMark parsing algorithm using context.current (AST) as the single source of truth:
-/// 1. Line scanning: Process input line by line
-/// 2. Block structure parsing: Use pluggable builders to recognize and create blocks
-/// 3. Continuation/closing: Follow CommonMark rules for block continuation
+/// This class processes Markdown tokens line by line using the AST (context.current) as the editable single source of truth.
+/// For each line, it determines what block the line belongs to and directly edits the AST to reflect this.
 /// 
-/// Individual block builders are pluggable through MarkdownBlockBuilderProtocol
-/// and contain no grammar-related logic - they only handle their specific block types.
+/// Individual block builders are pluggable through MarkdownBlockBuilderProtocol and contain no grammar-related logic.
 public class MarkdownBlockBuilder: CodeNodeBuilder {
   public typealias Node = MarkdownNodeElement
   public typealias Token = MarkdownTokenElement
@@ -26,7 +23,7 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
     self.init(blockBuilders: Self.createDefaultBuilders())
   }
   
-  /// Main CodeNodeBuilder implementation - processes tokens using CommonMark algorithm
+  /// Main CodeNodeBuilder implementation - processes tokens line by line, editing AST directly
   public func build(from context: inout CodeConstructContext<Node, Token>) -> Bool {
     guard context.consuming < context.tokens.count else { return false }
     
@@ -37,52 +34,13 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
     let lines = extractLines(from: remainingTokens)
     guard !lines.isEmpty else { return false }
     
-    // Process each line using CommonMark algorithm with setext heading support
-    var lineIndex = 0
-    while lineIndex < lines.count {
-      let line = lines[lineIndex]
-      
-      // Check for setext headings (requires looking ahead)
-      if lineIndex + 1 < lines.count {
-        let nextLine = lines[lineIndex + 1]
-        let (isUnderline, level) = MarkdownSetextHeadingBuilder.isSetextUnderline(nextLine, for: line)
-        
-        if isUnderline {
-          // Create setext heading and skip the underline
-          if let setextHeading = MarkdownSetextHeadingBuilder.createSetextHeading(from: line, level: level) {
-            context.current.append(setextHeading)
-            lineIndex += 2 // Skip both the text line and underline
-            continue
-          }
-        }
-      }
-      
-      // Normal CommonMark processing
-      // Phase 1: Check continuation of open blocks (from innermost to outermost)
-      let lineConsumed = checkBlockContinuation(line: line, context: &context)
-      
-      // If the line was consumed by an existing block (including closing), don't try to start new blocks
-      if lineConsumed {
-        lineIndex += 1
-        continue
-      }
-      
-      // Phase 2: Close blocks that cannot continue (handled in checkBlockContinuation)
-      // Phase 3: Try to open new blocks with current line  
-      // Check if any new block can interrupt the current block
-      if canNewBlockInterrupt(line: line, context: context) {
-        // Close current blocks that can be interrupted
-        closeInterruptedBlocks(line: line, context: &context)
-        openNewBlocks(line: line, context: &context)
-      } else if !hasOpenBlocks(context: context) || !canCurrentBlockContinue(line: line, context: context) {
-        openNewBlocks(line: line, context: &context)
-      }
-      
-      lineIndex += 1
+    // Process each line, directly editing the AST to reflect the line content
+    for line in lines {
+      processLine(line, context: &context)
     }
     
-    // Close all remaining open blocks 
-    closeAllBlocks(context: &context)
+    // Finalize any incomplete blocks
+    finalizeIncompleteBlocks(context: &context)
     
     // Consume all processed tokens
     context.consuming = context.tokens.count
@@ -90,78 +48,170 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
     return true
   }
   
-  /// Get the current open block from AST (last incomplete block)
-  private func getCurrentOpenBlock(context: CodeConstructContext<Node, Token>) -> (any MarkdownBlockNode)? {
-    // Walk the AST to find the deepest incomplete block
-    var current = context.current
-    while let lastChild = current.children.last as? MarkdownNodeBase {
-      // Check if this child is a block that can continue (incomplete)
+  /// Process a single line by determining what block it belongs to and editing the AST
+  private func processLine(_ line: MarkdownLine, context: inout CodeConstructContext<Node, Token>) {
+    // 1. Check if this line continues an existing block in the AST
+    if let continueingBlock = findContinuingBlock(for: line, in: context.current) {
+      // Add this line to the existing block
+      addLineToBlock(line, block: continueingBlock)
+      return
+    }
+    
+    // 2. Check if this line can interrupt an existing block
+    if let blockToInterrupt = findInterruptibleBlock(for: line, in: context.current) {
+      // Finalize the interrupted block and start a new one
+      finalizeBlock(blockToInterrupt)
+    }
+    
+    // 3. Try to start a new block with this line
+    if let newBlock = createNewBlock(for: line) {
+      // Add the new block to the AST
+      addBlockToAST(newBlock, context: &context)
+      // Add this line to the new block
+      addLineToBlock(line, block: newBlock)
+    } else {
+      // 4. Fallback: treat as paragraph if nothing else matches
+      let paragraph = createParagraphBlock()
+      addBlockToAST(paragraph, context: &context)
+      addLineToBlock(line, block: paragraph)
+    }
+  }
+  
+  /// Find a block in the AST that this line can continue
+  private func findContinuingBlock(for line: MarkdownLine, in node: CodeNode<MarkdownNodeElement>) -> (any MarkdownBlockNode)? {
+    // Look for the last block that can continue with this line
+    // Walk the AST to find blocks that can accept this line
+    if let lastChild = node.children.last as? MarkdownNodeBase {
       if let blockNode = lastChild as? any MarkdownBlockNode {
-        // Check if this block is still open/incomplete
-        if canBlockContinue(blockNode) {
-          return blockNode
+        // Check if any builder can continue this block with this line
+        for builder in blockBuilders {
+          if builder.canContinue(block: blockNode, line: line) {
+            return blockNode
+          }
         }
       }
-      current = lastChild
+      
+      // Recursively check children
+      if let continueingBlock = findContinuingBlock(for: line, in: lastChild) {
+        return continueingBlock
+      }
+    }
+    
+    return nil
+  }
+  
+  /// Find a block that can be interrupted by this line
+  private func findInterruptibleBlock(for line: MarkdownLine, in node: CodeNode<MarkdownNodeElement>) -> (any MarkdownBlockNode)? {
+    // Check if any new block type can interrupt existing blocks
+    for builder in blockBuilders {
+      if builder.canStart(line: line) {
+        // Check if this builder type can interrupt existing blocks
+        if canInterrupt(builderType: type(of: builder)) {
+          // Find the block to interrupt (usually the last paragraph)
+          if let lastChild = node.children.last as? MarkdownNodeBase,
+             let blockNode = lastChild as? any MarkdownBlockNode,
+             canBeInterrupted(blockNode) {
+            return blockNode
+          }
+        }
+      }
     }
     return nil
   }
   
-  /// Check if there are open blocks in the AST
-  private func hasOpenBlocks(context: CodeConstructContext<Node, Token>) -> Bool {
-    return getCurrentOpenBlock(context: context) != nil
+  /// Check if a builder type can interrupt other blocks
+  private func canInterrupt(builderType: MarkdownBlockBuilderProtocol.Type) -> Bool {
+    return builderType is MarkdownATXHeadingBuilder.Type ||
+           builderType is MarkdownThematicBreakBuilder.Type ||
+           builderType is MarkdownFencedCodeBlockBuilder.Type ||
+           builderType is MarkdownBlockquoteBuilder.Type ||
+           builderType is MarkdownListItemBuilder.Type
   }
   
-  /// Check if a block can still continue (is incomplete)
-  private func canBlockContinue(_ block: any MarkdownBlockNode) -> Bool {
-    // Most blocks can continue until explicitly closed
-    // Specific builders will handle their own closing logic
-    return true // Default assumption - builders handle closing
+  /// Check if a block can be interrupted
+  private func canBeInterrupted(_ block: any MarkdownBlockNode) -> Bool {
+    // Only paragraphs can typically be interrupted
+    return block.blockType == "paragraph"
   }
   
-  /// Check if a new block can interrupt the current open blocks
-  private func canNewBlockInterrupt(line: MarkdownLine, context: CodeConstructContext<Node, Token>) -> Bool {
-    // ATX headings and thematic breaks can interrupt paragraphs
-    guard hasOpenBlocks(context: context) else { return false }
-    
-    // Check if any block builder can start a new block with this line
+  /// Try to create a new block for this line
+  private func createNewBlock(for line: MarkdownLine) -> (any MarkdownBlockNode)? {
+    // Try each builder to see if it can create a block for this line
     for builder in blockBuilders {
       if builder.canStart(line: line) {
-        // Some block types can interrupt others
-        if (builder is MarkdownATXHeadingBuilder) ||
-           (builder is MarkdownThematicBreakBuilder) ||
-           (builder is MarkdownFencedCodeBlockBuilder) ||
-           (builder is MarkdownBlockquoteBuilder) ||
-           (builder is MarkdownListItemBuilder) {
-          return true
-        }
+        return builder.createBlock(from: line)
       }
     }
-    
-    return false
+    return nil
   }
   
-  /// Close blocks that can be interrupted by new blocks
-  private func closeInterruptedBlocks(line: MarkdownLine, context: inout CodeConstructContext<Node, Token>) {
-    // For now, only paragraphs can be interrupted
-    if let currentBlock = getCurrentOpenBlock(context: context) {
-      if currentBlock.blockType == "paragraph" {
-        closeBlock(block: currentBlock)
-      }
-    }
+  /// Create a default paragraph block
+  private func createParagraphBlock() -> any MarkdownBlockNode {
+    // Use a dummy range - the range will be updated when content is added
+    let dummyString = ""
+    let range = dummyString.startIndex..<dummyString.endIndex
+    return ParagraphNode(range: range)
   }
   
-  /// Check if the current block can continue with the given line
-  private func canCurrentBlockContinue(line: MarkdownLine, context: CodeConstructContext<Node, Token>) -> Bool {
-    guard let currentBlock = getCurrentOpenBlock(context: context) else { return false }
-    
-    // Find the builder for the current block
+  /// Add a block to the AST at the appropriate location
+  private func addBlockToAST(_ block: any MarkdownBlockNode, context: inout CodeConstructContext<Node, Token>) {
+    // Simply add to the current node - AST structure determines the hierarchy
+    context.current.append(block as! MarkdownNodeBase)
+  }
+  
+  /// Add a line to an existing block by delegating to the appropriate builder
+  private func addLineToBlock(_ line: MarkdownLine, block: any MarkdownBlockNode) {
+    // Find the builder that handles this block type and delegate
     for builder in blockBuilders {
-      if builder.canContinue(block: currentBlock, line: line) {
-        return true
+      if builder.canContinue(block: block, line: line) {
+        _ = builder.processLine(block: block, line: line)
+        return
       }
     }
-    return false
+  }
+  
+  /// Finalize a block by delegating to the appropriate builder
+  private func finalizeBlock(_ block: any MarkdownBlockNode) {
+    // Find the builder that handles this block type and finalize
+    for builder in blockBuilders {
+      if canBuilderHandle(builder, blockType: block.blockType) {
+        builder.closeBlock(block: block)
+        return
+      }
+    }
+  }
+  
+  /// Check if a builder can handle a specific block type
+  private func canBuilderHandle(_ builder: MarkdownBlockBuilderProtocol, blockType: String) -> Bool {
+    switch blockType {
+    case "paragraph": return builder is MarkdownParagraphBuilder
+    case "heading": return builder is MarkdownATXHeadingBuilder
+    case "thematic_break": return builder is MarkdownThematicBreakBuilder
+    case "code_block": return builder is MarkdownIndentedCodeBlockBuilder
+    case "fenced_code_block": return builder is MarkdownFencedCodeBlockBuilder
+    case "blockquote": return builder is MarkdownBlockquoteBuilder
+    case "list_item": return builder is MarkdownListItemBuilder
+    default: return false
+    }
+  }
+  
+  /// Finalize any incomplete blocks in the AST
+  private func finalizeIncompleteBlocks(context: inout CodeConstructContext<Node, Token>) {
+    // Walk the AST and finalize any blocks that need it
+    finalizeBlocksRecursively(node: context.current)
+  }
+  
+  /// Recursively finalize blocks in the AST
+  private func finalizeBlocksRecursively(node: CodeNode<MarkdownNodeElement>) {
+    for child in node.children {
+      if let markdownChild = child as? MarkdownNodeBase {
+        if let blockNode = markdownChild as? any MarkdownBlockNode {
+          finalizeBlock(blockNode)
+        }
+        // Recursively finalize children
+        finalizeBlocksRecursively(node: markdownChild)
+      }
+    }
   }
 
   /// Extract lines from token stream
@@ -197,125 +247,6 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
     }
     
     return lines
-  }
-  
-  /// Check continuation of open blocks and process line content
-  /// Returns true if the line was consumed by an existing block (including for closing)
-  private func checkBlockContinuation(line: MarkdownLine, context: inout CodeConstructContext<Node, Token>) -> Bool {
-    // For blank lines, most blocks (like paragraphs) cannot continue
-    if line.isBlank {
-      // Close all open blocks - blank lines close most block types
-      closeAllBlocks(context: &context)
-      return true // Blank lines are always consumed
-    }
-    
-    // Check the current open block
-    guard let currentBlock = getCurrentOpenBlock(context: context) else { return false }
-    
-    // Find the builder for this block type
-    if let builder = blockBuilders.first(where: { $0.canContinue(block: currentBlock, line: line) }) {
-      // This block can continue - process the line
-      _ = builder.processLine(block: currentBlock, line: line)
-      return true
-    } else {
-      // Check if this builder should close the block with this line
-      if let builder = blockBuilders.first(where: { builder in
-        // For fenced code blocks, check if this line closes it
-        if currentBlock.blockType == "fenced_code_block" && builder is MarkdownFencedCodeBlockBuilder {
-          let canCont = builder.canContinue(block: currentBlock, line: line)
-          if !canCont {
-            // Process the closing line
-            _ = builder.processLine(block: currentBlock, line: line)
-            closeBlock(block: currentBlock)
-            return true
-          }
-        }
-        return false
-      }) {
-        return true
-      }
-      
-      // Block cannot continue - close it
-      closeBlock(block: currentBlock)
-      return false
-    }
-  }
-  
-  /// Try to open new blocks with the current line
-  private func openNewBlocks(line: MarkdownLine, context: inout CodeConstructContext<Node, Token>) {
-    // Don't try to open new blocks on blank lines
-    if line.isBlank {
-      return
-    }
-    
-    // Try each builder to see if it can start a new block
-    for builder in blockBuilders {
-      if builder.canStart(line: line) {
-        if let newBlock = builder.createBlock(from: line) {
-          // Add the new block to the AST
-          context.current.append(newBlock as! MarkdownNodeBase)
-          
-          // Process the line that opened this block
-          _ = builder.processLine(block: newBlock, line: line)
-          return // Only open one new block per line
-        }
-      }
-    }
-  }
-  
-  /// Process line content for the current block
-  private func processLineForBlock(block: any MarkdownBlockNode, line: MarkdownLine) {
-    // Find the appropriate builder for this block
-    for builder in blockBuilders {
-      if builder.canContinue(block: block, line: line) {
-        _ = builder.processLine(block: block, line: line)
-        return
-      }
-    }
-  }
-  
-  /// Close and finalize a single block
-  private func closeBlock(block: any MarkdownBlockNode) {
-    // Find the appropriate builder and close the block
-    for builder in blockBuilders {
-      // Use block type comparison instead of canContinue for closing
-      if (block.blockType == "paragraph" && builder is MarkdownParagraphBuilder) ||
-         (block.blockType == "code_block" && builder is MarkdownIndentedCodeBlockBuilder) ||
-         (block.blockType == "heading" && builder is MarkdownATXHeadingBuilder) ||
-         (block.blockType == "thematic_break" && builder is MarkdownThematicBreakBuilder) ||
-         (block.blockType == "blockquote" && builder is MarkdownBlockquoteBuilder) ||
-         (block.blockType == "fenced_code_block" && builder is MarkdownFencedCodeBlockBuilder) ||
-         (block.blockType == "list_item" && builder is MarkdownListItemBuilder) {
-        builder.closeBlock(block: block)
-        break
-      }
-    }
-  }
-
-  /// Close all open blocks in the AST
-  private func closeAllBlocks(context: inout CodeConstructContext<Node, Token>) {
-    // Find all open blocks in the AST and close them
-    var blocksToClose: [any MarkdownBlockNode] = []
-    collectOpenBlocks(node: context.current, into: &blocksToClose)
-    
-    for block in blocksToClose {
-      closeBlock(block: block)
-    }
-  }
-  
-  /// Recursively collect all open blocks from the AST
-  private func collectOpenBlocks(node: CodeNode<MarkdownNodeElement>, into blocks: inout [any MarkdownBlockNode]) {
-    for child in node.children {
-      if let markdownChild = child as? MarkdownNodeBase {
-        if let blockNode = markdownChild as? any MarkdownBlockNode {
-          if canBlockContinue(blockNode) {
-            blocks.append(blockNode)
-          }
-        }
-        // Recursively check children
-        collectOpenBlocks(node: markdownChild, into: &blocks)
-      }
-    }
   }
   
   /// Create default set of block builders
