@@ -63,7 +63,13 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
       
       // Normal CommonMark processing
       // Phase 1: Check continuation of open blocks (from innermost to outermost)
-      checkBlockContinuation(line: line)
+      let lineConsumed = checkBlockContinuation(line: line)
+      
+      // If the line was consumed by an existing block (including closing), don't try to start new blocks
+      if lineConsumed {
+        lineIndex += 1
+        continue
+      }
       
       // Phase 2: Close blocks that cannot continue (handled in checkBlockContinuation)
       closeUnmatchedBlocks()
@@ -78,7 +84,7 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
         openNewBlocks(line: line)
       }
       
-      // Phase 4: Process line content for current block
+      // Phase 4: Process line content for current block (if we opened a new block)
       if let currentBlock = openBlocks.last {
         processLineForBlock(block: currentBlock, line: line)
       }
@@ -186,9 +192,11 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
     return lines
   }
   
-  /// Phase 1: Check which open blocks can continue with the current line
-  private func checkBlockContinuation(line: MarkdownLine) {
+  /// Check continuation of open blocks and process line content
+  /// Returns true if the line was consumed by an existing block (including for closing)
+  private func checkBlockContinuation(line: MarkdownLine) -> Bool {
     var continuableBlocks: [any MarkdownBlockNode] = []
+    var lineConsumed = false
     
     // For blank lines, most blocks (like paragraphs) cannot continue
     if line.isBlank {
@@ -199,15 +207,13 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
       }
       // Empty the open blocks - blank lines close most block types
       openBlocks = []
-      return
+      return true // Blank lines are always consumed
     }
     
     // Check from innermost to outermost
     for block in openBlocks.reversed() {
       // Find the builder for this block type
-      let builder = blockBuilders.first { $0.canContinue(block: block, line: line) }
-      
-      if builder != nil {
+      if let builder = blockBuilders.first(where: { $0.canContinue(block: block, line: line) }) {
         // This block and all its parents can continue
         continuableBlocks.insert(block, at: 0)
         // Find all parent blocks
@@ -215,7 +221,28 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
           if parentBlock === block { break }
           continuableBlocks.insert(parentBlock, at: 0)
         }
+        
+        // Process the line for this block
+        _ = builder.processLine(block: block, line: line)
+        lineConsumed = true
         break
+      } else {
+        // Check if this builder should close the block with this line
+        if let builder = blockBuilders.first(where: { builder in
+          // For fenced code blocks, check if this line closes it
+          if block.blockType == "fenced_code_block" && builder is MarkdownFencedCodeBlockBuilder {
+            let canCont = builder.canContinue(block: block, line: line)
+            if !canCont {
+              // Process the closing line
+              _ = builder.processLine(block: block, line: line)
+              lineConsumed = true
+              return true
+            }
+          }
+          return false
+        }) {
+          break
+        }
       }
     }
     
@@ -228,6 +255,7 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
     }
     
     openBlocks = continuableBlocks
+    return lineConsumed
   }
   
   /// Phase 2: Close blocks that cannot continue (already handled in checkBlockContinuation)

@@ -14,24 +14,34 @@ public class MarkdownFencedCodeBlockBuilder: MarkdownBlockBuilderProtocol {
       return false
     }
     
-    let content = line.content.trimmingCharacters(in: .whitespaces)
+    // Work directly with tokens - skip leading whitespace
+    var tokenIndex = 0
+    while tokenIndex < line.tokens.count && line.tokens[tokenIndex].element == .whitespaces {
+      tokenIndex += 1
+    }
     
-    // Must start with at least 3 backticks (`) or tildes (~)
-    if content.hasPrefix("```") || content.hasPrefix("~~~") {
-      let fenceChar = content.first!
-      let fenceLength = content.prefix { $0 == fenceChar }.count
-      
-      if fenceLength >= 3 {
-        // Check that the rest of the line only contains valid info string
-        let afterFence = content.dropFirst(fenceLength)
-        
-        // For backticks, info string cannot contain backticks
-        if fenceChar == "`" && afterFence.contains("`") {
-          return false
+    guard tokenIndex < line.tokens.count else { return false }
+    
+    // Check for fence start using tokens directly
+    let (isFence, _, fenceLength) = checkFencePattern(tokens: line.tokens, startIndex: tokenIndex)
+    
+    if isFence && fenceLength >= 3 {
+      // For backticks, check that info string doesn't contain backticks
+      if let firstFenceToken = line.tokens[tokenIndex].text.first,
+         firstFenceToken == "`" {
+        // Check remaining tokens for backticks in info string
+        for i in (tokenIndex + 1)..<line.tokens.count {
+          let token = line.tokens[i]
+          if token.element == .newline || token.element == .eof {
+            break
+          }
+          if token.element == .punctuation && token.text.contains("`") {
+            return false
+          }
         }
-        
-        return true
       }
+      
+      return true
     }
     
     return false
@@ -41,22 +51,45 @@ public class MarkdownFencedCodeBlockBuilder: MarkdownBlockBuilderProtocol {
     guard let codeBlock = block as? MarkdownFencedCodeBlock,
           block.blockType == "fenced_code_block" else { return false }
     
-    // Check if this line closes the fence
+    // If already closed, cannot continue
+    if codeBlock.isClosed {
+      return false
+    }
+    
+    // Check if this line closes the fence using tokens directly
     let leadingSpaces = line.leadingWhitespace
     if leadingSpaces <= 3 {
-      let content = line.content.trimmingCharacters(in: .whitespaces)
+      // Work directly with tokens - skip leading whitespace  
+      var tokenIndex = 0
+      while tokenIndex < line.tokens.count && line.tokens[tokenIndex].element == .whitespaces {
+        tokenIndex += 1
+      }
       
-      if content.hasPrefix(String(codeBlock.fenceChar)) {
-        let fenceLength = content.prefix { $0 == codeBlock.fenceChar }.count
+      guard tokenIndex < line.tokens.count else { return true }
+      
+      let (isFence, fenceChar, fenceLength) = checkFencePattern(tokens: line.tokens, startIndex: tokenIndex)
+      
+      if isFence && fenceChar == codeBlock.fenceChar && fenceLength >= codeBlock.fenceLength {
+        // Skip past fence tokens to check for trailing content
+        tokenIndex += fenceLength
         
-        // Closing fence must be at least as long as opening fence
-        if fenceLength >= codeBlock.fenceLength {
-          // Check that the rest of the line only contains spaces
-          let afterFence = content.dropFirst(fenceLength)
-          if afterFence.allSatisfy({ $0 == " " || $0 == "\t" }) {
-            // This closes the fence
-            return false
+        // Check that the rest of the line only contains whitespace
+        var isValidClosing = true
+        while tokenIndex < line.tokens.count {
+          let token = line.tokens[tokenIndex]
+          if token.element == .newline || token.element == .eof {
+            break
           }
+          if token.element != .whitespaces {
+            isValidClosing = false
+            break
+          }
+          tokenIndex += 1
+        }
+        
+        if isValidClosing {
+          // This closes the fence
+          return false
         }
       }
     }
@@ -68,13 +101,39 @@ public class MarkdownFencedCodeBlockBuilder: MarkdownBlockBuilderProtocol {
   public func createBlock(from line: MarkdownLine) -> (any MarkdownBlockNode)? {
     guard canStart(line: line) else { return nil }
     
-    let content = line.content.trimmingCharacters(in: .whitespaces)
-    let fenceChar = content.first!
-    let fenceLength = content.prefix { $0 == fenceChar }.count
+    // Work directly with tokens - skip leading whitespace
+    var tokenIndex = 0
+    while tokenIndex < line.tokens.count && line.tokens[tokenIndex].element == .whitespaces {
+      tokenIndex += 1
+    }
     
-    // Extract info string
-    let afterFence = String(content.dropFirst(fenceLength)).trimmingCharacters(in: .whitespaces)
-    let language = afterFence.isEmpty ? nil : String(afterFence.split(separator: " ").first ?? "")
+    guard tokenIndex < line.tokens.count else { return nil }
+    
+    let (isFence, fenceChar, fenceLength) = checkFencePattern(tokens: line.tokens, startIndex: tokenIndex)
+    guard isFence && fenceLength >= 3 else { return nil }
+    
+    // Skip past the fence tokens
+    tokenIndex += fenceLength
+    
+    // Extract info string from remaining tokens
+    var language: String? = nil
+    var infoStringParts: [String] = []
+    
+    while tokenIndex < line.tokens.count {
+      let token = line.tokens[tokenIndex]
+      if token.element == .newline || token.element == .eof {
+        break
+      }
+      if token.element != .whitespaces || !infoStringParts.isEmpty {
+        infoStringParts.append(token.text)
+      }
+      tokenIndex += 1
+    }
+    
+    if !infoStringParts.isEmpty {
+      let infoString = infoStringParts.joined().trimmingCharacters(in: .whitespaces)
+      language = infoString.split(separator: " ").first.map(String.init)
+    }
     
     let codeBlock = MarkdownFencedCodeBlock(
       fenceChar: fenceChar,
@@ -95,14 +154,51 @@ public class MarkdownFencedCodeBlockBuilder: MarkdownBlockBuilderProtocol {
       return true
     }
     
-    // Add line content to the code block
-    let content = line.content
+    // Add line content to the code block (convert tokens to content)
+    var contentParts: [String] = []
+    for token in line.tokens {
+      if token.element == .newline || token.element == .eof {
+        break
+      }
+      contentParts.append(token.text)
+    }
+    let content = contentParts.joined()
+    
     if !codeBlock.source.isEmpty {
       codeBlock.source += "\n"
     }
     codeBlock.source += content
     
     return true
+  }
+  
+  /// Check if tokens form a fence pattern starting at given index
+  /// Returns (isFence, fenceChar, fenceLength)
+  private func checkFencePattern(tokens: [any CodeToken<MarkdownTokenElement>], startIndex: Int) -> (Bool, Character, Int) {
+    guard startIndex < tokens.count else { return (false, " ", 0) }
+    
+    let firstToken = tokens[startIndex]
+    guard firstToken.element == .punctuation else { return (false, " ", 0) }
+    
+    // Check for backtick or tilde fence - each character is a separate token
+    let firstChar = firstToken.text.first
+    guard firstChar == "`" || firstChar == "~" else { return (false, " ", 0) }
+    
+    // Count consecutive fence characters
+    var fenceLength = 0
+    var index = startIndex
+    
+    while index < tokens.count {
+      let token = tokens[index]
+      if token.element == .punctuation && token.text.first == firstChar {
+        fenceLength += 1
+        index += 1
+      } else {
+        break
+      }
+    }
+    
+    return (fenceLength >= 3, firstChar!, fenceLength)
   }
 }
 
