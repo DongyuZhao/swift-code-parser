@@ -79,7 +79,13 @@ public class MarkdownBlockquoteBuilder: MarkdownBlockBuilderProtocol {
     
     // Update state with remaining content tokens for MarkdownBlockBuilder to process
     state.tokens = contentTokens
-    state.currentLineProcessed = false // Signal that remaining tokens need processing
+    
+    // Only signal for more processing if there are actually tokens to process
+    if !contentTokens.isEmpty {
+      state.currentLineProcessed = false // Signal that remaining tokens need processing
+    } else {
+      state.currentLineProcessed = true // No more tokens to process
+    }
     
     return true
   }

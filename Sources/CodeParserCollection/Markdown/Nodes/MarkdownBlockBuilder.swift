@@ -91,7 +91,9 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
       state.currentLineProcessed = false
       
       // Keep processing until the line is fully processed
-      while !state.currentLineProcessed && !state.tokens.isEmpty {
+      var iterations = 0
+      while !state.currentLineProcessed && !state.tokens.isEmpty && iterations < 10 {
+        iterations += 1
         state.currentLineProcessed = true // Will be set to false if a builder yields back
         
         // Check if any existing block can continue with current tokens
@@ -110,21 +112,8 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
           if let newBlock = tryCreateNewBlock(for: currentLine) {
             // Add the new block to the AST
             context.current.append(newBlock as! MarkdownNodeBase)
-            
-            // If this is a container block (like blockquote), update context to point to it
-            let wasContainer = isContainerBlock(newBlock)
-            if wasContainer {
-              context.current = newBlock as! MarkdownNodeBase
-            }
-            
             // Process the opening line and potentially modify state
             processOpeningLine(currentLine, for: newBlock, state: &state)
-            
-            // If we made current point to a container and processing isn't complete,
-            // continue processing within that container
-            if wasContainer && !state.currentLineProcessed {
-              continue
-            }
           } else {
             // Fallback to paragraph
             createAndProcessParagraph(for: currentLine, context: &context, state: &state)
@@ -140,20 +129,22 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
   
   /// Find an existing block in the AST that can continue with this line
   private func findBlockThatCanContinue(_ line: MarkdownLine, in node: CodeNode<MarkdownNodeElement>) -> (any MarkdownBlockNode)? {
-    // Look at the last child first (most recent block)
-    if let lastChild = node.children.last as? MarkdownNodeBase {
-      if let blockNode = lastChild as? any MarkdownBlockNode {
-        // Check if any builder can continue this block
-        for builder in blockBuilders {
-          if builder.canContinue(block: blockNode, line: line) {
-            return blockNode
+    // First, check if any immediate children can continue
+    for child in node.children.reversed() { // Check from last to first (most recent)
+      if let markdownChild = child as? MarkdownNodeBase {
+        if let blockNode = markdownChild as? any MarkdownBlockNode {
+          // Check if any builder can continue this block
+          for builder in blockBuilders {
+            if builder.canContinue(block: blockNode, line: line) {
+              return blockNode
+            }
           }
         }
-      }
-      
-      // Recursively check nested structures
-      if let nestedBlock = findBlockThatCanContinue(line, in: lastChild) {
-        return nestedBlock
+        
+        // Recursively check nested structures (for open container blocks)
+        if let nestedBlock = findBlockThatCanContinue(line, in: markdownChild) {
+          return nestedBlock
+        }
       }
     }
     
