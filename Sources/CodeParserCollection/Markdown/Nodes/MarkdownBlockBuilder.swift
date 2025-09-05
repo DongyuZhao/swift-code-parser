@@ -40,6 +40,9 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
       processLineIntoAST(line, context: &context)
     }
     
+    // Finalize all blocks (important for blocks like blockquotes that need recursive parsing)
+    finalizeBlocksInAST(node: context.current)
+    
     return true
   }
   

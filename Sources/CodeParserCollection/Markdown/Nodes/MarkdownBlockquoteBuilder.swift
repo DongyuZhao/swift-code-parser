@@ -9,15 +9,14 @@ public class MarkdownBlockquoteBuilder: MarkdownBlockBuilderProtocol {
   
   public func canStart(line: MarkdownLine) -> Bool {
     // Blockquotes can be indented 0-3 spaces
-    let leadingSpaces = line.leadingWhitespace
+    let (leadingSpaces, _, _) = MarkdownIndentation.calculateIndentation(from: line.tokens)
     if leadingSpaces > 3 {
       return false
     }
     
-    let content = line.content.trimmingCharacters(in: .whitespaces)
-    
-    // Must start with '>' character
-    return content.hasPrefix(">")
+    // Look for '>' marker after whitespace
+    let (found, _, _) = MarkdownIndentation.findMarkerPosition(tokens: line.tokens, marker: ">", afterWhitespace: true)
+    return found
   }
   
   public func canContinue(block: any MarkdownBlockNode, line: MarkdownLine) -> Bool {
@@ -25,15 +24,14 @@ public class MarkdownBlockquoteBuilder: MarkdownBlockBuilderProtocol {
     
     // Blockquotes can continue with lines that start with '>'
     // or with lazy continuation (lines without '>')
-    let leadingSpaces = line.leadingWhitespace
+    let (leadingSpaces, _, _) = MarkdownIndentation.calculateIndentation(from: line.tokens)
     if leadingSpaces > 3 {
       return false
     }
     
-    let content = line.content.trimmingCharacters(in: .whitespaces)
-    
     // Can continue with '>' lines
-    if content.hasPrefix(">") {
+    let (found, _, _) = MarkdownIndentation.findMarkerPosition(tokens: line.tokens, marker: ">", afterWhitespace: true)
+    if found {
       return true
     }
     
@@ -51,6 +49,16 @@ public class MarkdownBlockquoteBuilder: MarkdownBlockBuilderProtocol {
     
     let blockquote = MarkdownBlockquote(level: 1)
     
+    // Set package-level indentation properties
+    let (leadingSpaces, _, _) = MarkdownIndentation.calculateIndentation(from: line.tokens)
+    let (found, markerColumn, _) = MarkdownIndentation.findMarkerPosition(tokens: line.tokens, marker: ">", afterWhitespace: true)
+    
+    if found {
+      blockquote.indent = leadingSpaces
+      blockquote.markerColumn = markerColumn
+      blockquote.contentColumn = MarkdownIndentation.findContentColumn(tokens: line.tokens, afterMarkerAt: markerColumn)
+    }
+    
     // Process the initial line
     _ = processLine(block: blockquote, line: line)
     
@@ -60,43 +68,71 @@ public class MarkdownBlockquoteBuilder: MarkdownBlockBuilderProtocol {
   public func processLine(block: any MarkdownBlockNode, line: MarkdownLine) -> Bool {
     guard let blockquote = block as? MarkdownBlockquote else { return false }
     
-    // Extract content after the '>' marker
-    let content = line.content.trimmingCharacters(in: .whitespaces)
-    var blockquoteContent = ""
+    // Find content tokens after the '>' marker using package-level properties
+    var contentTokens: [any CodeToken<MarkdownTokenElement>] = []
     
-    if content.hasPrefix(">") {
-      // Remove the '>' marker
-      blockquoteContent = String(content.dropFirst())
-      
-      // Remove optional space after '>'
-      if blockquoteContent.hasPrefix(" ") || blockquoteContent.hasPrefix("\t") {
-        blockquoteContent = String(blockquoteContent.dropFirst())
+    let (found, _, _) = MarkdownIndentation.findMarkerPosition(tokens: line.tokens, marker: ">", afterWhitespace: true)
+    if found {
+      // Remove content up to the content column (after '> ')
+      contentTokens = MarkdownIndentation.removeIndentation(from: line.tokens, upToColumn: blockquote.contentColumn)
+    } else {
+      // Lazy continuation - use tokens after the blockquote's indent
+      contentTokens = MarkdownIndentation.removeIndentation(from: line.tokens, upToColumn: blockquote.indent)
+    }
+    
+    // Add content tokens to a temporary buffer for recursive parsing
+    // We'll accumulate all blockquote content and then parse it recursively
+    if !blockquote.children.isEmpty && blockquote.children.last?.element == .content {
+      // Continue accumulating content
+      if let contentNode = blockquote.children.last as? ContentNode {
+        // Add a newline between lines for proper parsing
+        if !contentNode.tokens.isEmpty {
+          let syntheticNewline = MarkdownToken(element: .newline, text: "\n", range: "".startIndex..<"".endIndex)
+          contentNode.tokens.append(syntheticNewline)
+        }
+        contentNode.tokens.append(contentsOf: contentTokens)
       }
     } else {
-      // Lazy continuation - use the entire line
-      blockquoteContent = content
-    }
-    
-    // Create a paragraph to hold the content
-    // In a proper implementation, we'd need to recursively parse blockquote content
-    // For now, create a simple paragraph structure
-    let currentParagraph: MarkdownParagraph
-    
-    if let lastChild = blockquote.children.last as? MarkdownParagraph {
-      // Continue existing paragraph
-      currentParagraph = lastChild
-    } else {
-      // Create new paragraph
-      currentParagraph = MarkdownParagraph(range: blockquoteContent.startIndex..<blockquoteContent.endIndex)
-      blockquote.children.append(currentParagraph)
-    }
-    
-    // Add content to the paragraph
-    if !blockquoteContent.isEmpty {
-      let textNode = MarkdownText(content: blockquoteContent)
-      currentParagraph.children.append(textNode)
+      // Create new content accumulator
+      let contentNode = ContentNode(tokens: contentTokens)
+      blockquote.children.append(contentNode)
     }
     
     return true
+  }
+  
+  /// Close the block and parse accumulated content recursively
+  public func closeBlock(block: any MarkdownBlockNode) {
+    guard let blockquote = block as? MarkdownBlockquote else { return }
+    
+    // Find all accumulated content
+    var allContentTokens: [any CodeToken<MarkdownTokenElement>] = []
+    for child in blockquote.children {
+      if let contentNode = child as? ContentNode {
+        allContentTokens.append(contentsOf: contentNode.tokens)
+      }
+    }
+    
+    // Clear the temporary content nodes
+    blockquote.children.removeAll()
+    
+    // Create a new parsing context for the blockquote content
+    if !allContentTokens.isEmpty {
+      let language = MarkdownLanguage()
+      let subBuilder = MarkdownBlockBuilder()
+      
+      // Create parsing context for the content
+      var state = MarkdownConstructState()
+      var contentContext = CodeConstructContext<MarkdownNodeElement, MarkdownTokenElement>(
+        root: blockquote,
+        current: blockquote,
+        tokens: allContentTokens,
+        consuming: 0,
+        state: state
+      )
+      
+      // Parse the content recursively
+      _ = subBuilder.build(from: &contentContext)
+    }
   }
 }

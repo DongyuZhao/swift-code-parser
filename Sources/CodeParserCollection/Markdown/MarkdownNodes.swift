@@ -151,6 +151,11 @@ public class ThematicBreakNode: MarkdownNodeBase, MarkdownBlockNode {
 public class BlockquoteNode: MarkdownNodeBase, MarkdownBlockNode {
   public var blockType: String { "blockquote" }
   public var level: Int
+  
+  // Package-level indentation properties for nested block parsing
+  package var indent: Int = 0  // Number of spaces before the '>' marker
+  package var markerColumn: Int = 0  // Column position of the '>' marker
+  package var contentColumn: Int = 0  // Column position where content starts after '> '
 
   public init(level: Int = 1) {
     self.level = level
@@ -209,6 +214,11 @@ public class ListItemNode: MarkdownNodeBase, MarkdownBlockNode {
   // indentation before marker and content indent column for continuation
   public var markerIndent: Int = 0
   public var contentIndent: Int = 0
+  
+  // Package-level properties for enhanced nested block parsing
+  package var markerColumn: Int = 0  // Exact column position of the marker
+  package var contentColumn: Int = 0  // Exact column position where content starts
+  package var markerLength: Int = 0  // Length of the marker (e.g., "1." = 2, "-" = 1)
 
   public init(marker: String) {
     self.marker = marker
@@ -225,6 +235,9 @@ public class CodeBlockNode: MarkdownNodeBase, MarkdownBlockNode {
   public var blockType: String { "code_block" }
   public var language: String?
   public var source: String
+  
+  // Package-level indentation properties for nested block parsing
+  package var indent: Int = 0  // Number of spaces before the code block
 
   public init(source: String, language: String? = nil) {
     self.language = language

@@ -9,7 +9,7 @@ public class MarkdownFencedCodeBlockBuilder: MarkdownBlockBuilderProtocol {
   
   public func canStart(line: MarkdownLine) -> Bool {
     // Fenced code blocks can be indented 0-3 spaces
-    let leadingSpaces = line.leadingWhitespace
+    let (leadingSpaces, _, _) = MarkdownIndentation.calculateIndentation(from: line.tokens)
     if leadingSpaces > 3 {
       return false
     }
@@ -60,7 +60,7 @@ public class MarkdownFencedCodeBlockBuilder: MarkdownBlockBuilderProtocol {
     }
     
     // Check if this line closes the fence using tokens directly
-    let leadingSpaces = line.leadingWhitespace
+    let (leadingSpaces, _, _) = MarkdownIndentation.calculateIndentation(from: line.tokens)
     if leadingSpaces <= 3 {
       // Work directly with tokens - skip leading whitespace  
       var tokenIndex = 0
@@ -115,6 +115,10 @@ public class MarkdownFencedCodeBlockBuilder: MarkdownBlockBuilderProtocol {
     let (isFence, fenceChar, fenceLength) = checkFencePattern(tokens: line.tokens, startIndex: tokenIndex)
     guard isFence && fenceLength >= 3 else { return nil }
     
+    // Calculate indentation properties
+    let (leadingSpaces, _, _) = MarkdownIndentation.calculateIndentation(from: line.tokens)
+    let fenceColumn = leadingSpaces  // For now, assume fence starts after leading whitespace
+    
     // Skip past the fence tokens
     tokenIndex += fenceLength
     
@@ -144,6 +148,11 @@ public class MarkdownFencedCodeBlockBuilder: MarkdownBlockBuilderProtocol {
       language: language
     )
     
+    // Set package-level indentation properties
+    codeBlock.indent = leadingSpaces
+    codeBlock.fenceIndent = leadingSpaces
+    codeBlock.fenceColumn = fenceColumn
+    
     return codeBlock
   }
   
@@ -157,9 +166,12 @@ public class MarkdownFencedCodeBlockBuilder: MarkdownBlockBuilderProtocol {
       return true
     }
     
-    // Add line content to the code block (convert tokens to content)
+    // Remove up to the fence indentation from the content line
+    let contentTokens = MarkdownIndentation.removeIndentation(from: line.tokens, upToColumn: codeBlock.fenceIndent)
+    
+    // Convert tokens to content
     var contentParts: [String] = []
-    for token in line.tokens {
+    for token in contentTokens {
       if token.element == .newline || token.element == .eof {
         break
       }
@@ -211,6 +223,10 @@ public class MarkdownFencedCodeBlock: CodeBlockNode {
   public var fenceChar: Character
   public var fenceLength: Int
   public var isClosed: Bool = false
+  
+  // Package-level properties for enhanced nested block parsing
+  package var fenceIndent: Int = 0  // Number of spaces before the opening fence
+  package var fenceColumn: Int = 0  // Column position of the opening fence
   
   public init(fenceChar: Character, fenceLength: Int, language: String? = nil) {
     self.fenceChar = fenceChar

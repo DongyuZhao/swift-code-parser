@@ -9,28 +9,58 @@ public class MarkdownListItemBuilder: MarkdownBlockBuilderProtocol {
   
   public func canStart(line: MarkdownLine) -> Bool {
     // List items can be indented 0-3 spaces
-    let leadingSpaces = line.leadingWhitespace
+    let (leadingSpaces, _, _) = MarkdownIndentation.calculateIndentation(from: line.tokens)
     if leadingSpaces > 3 {
       return false
     }
     
-    let content = line.content.trimmingCharacters(in: .whitespaces)
+    // Work with tokens to find list markers
+    var tokenIndex = 0
+    
+    // Skip leading whitespace
+    while tokenIndex < line.tokens.count && line.tokens[tokenIndex].element == .whitespaces {
+      tokenIndex += 1
+    }
+    
+    guard tokenIndex < line.tokens.count else { return false }
+    
+    let token = line.tokens[tokenIndex]
     
     // Check for unordered list markers (-, *, +)
-    if content.hasPrefix("-") || content.hasPrefix("*") || content.hasPrefix("+") {
-      let afterMarker = content.dropFirst()
-      // Must be followed by space, tab, or end of line
-      if afterMarker.isEmpty || afterMarker.first == " " || afterMarker.first == "\t" {
-        return true
+    if token.element == .punctuation && (token.text == "-" || token.text == "*" || token.text == "+") {
+      // Check what follows the marker
+      let nextIndex = tokenIndex + 1
+      if nextIndex >= line.tokens.count {
+        return true // End of line after marker
       }
+      
+      let nextToken = line.tokens[nextIndex]
+      // Must be followed by whitespace or end of line
+      return nextToken.element == .whitespaces || nextToken.element == .newline || nextToken.element == .eof
     }
     
     // Check for ordered list markers (1., 2., etc.)
-    if let match = content.range(of: #"^\d{1,9}[.)]"#, options: .regularExpression) {
-      let afterMarker = content[match.upperBound...]
-      // Must be followed by space, tab, or end of line
-      if afterMarker.isEmpty || afterMarker.first == " " || afterMarker.first == "\t" {
-        return true
+    if token.element == .characters {
+      // Look for digit(s) followed by . or )
+      let text = token.text
+      if text.count <= 9 && text.allSatisfy(\.isNumber) {
+        // Check next token for . or )
+        let nextIndex = tokenIndex + 1
+        if nextIndex < line.tokens.count {
+          let nextToken = line.tokens[nextIndex]
+          if nextToken.element == .punctuation && (nextToken.text == "." || nextToken.text == ")") {
+            // Check what follows the delimiter
+            let afterDelimiterIndex = nextIndex + 1
+            if afterDelimiterIndex >= line.tokens.count {
+              return true // End of line after delimiter
+            }
+            
+            let afterDelimiterToken = line.tokens[afterDelimiterIndex]
+            return afterDelimiterToken.element == .whitespaces || 
+                   afterDelimiterToken.element == .newline || 
+                   afterDelimiterToken.element == .eof
+          }
+        }
       }
     }
     
@@ -38,39 +68,91 @@ public class MarkdownListItemBuilder: MarkdownBlockBuilderProtocol {
   }
   
   public func canContinue(block: any MarkdownBlockNode, line: MarkdownLine) -> Bool {
-    guard block.blockType == "list_item" else { return false }
+    guard let listItem = block as? MarkdownListItem, 
+          block.blockType == "list_item" else { return false }
     
     // List items can continue with indented lines or blank lines
-    // This is complex and depends on the list item's content indent
+    // Use package-level properties for precise indentation checking
     
-    // For now, simple continuation logic
     if line.isBlank {
       return true // Blank lines can be part of list items
     }
     
-    // Non-blank lines can continue if properly indented
-    // For simplicity, allow any non-blank line that doesn't start a new list item
-    return !canStart(line: line)
+    // Non-blank lines can continue if properly indented to the content column
+    let meetsIndent = MarkdownIndentation.meetsIndentationRequirement(
+      tokens: line.tokens, 
+      requiredColumn: listItem.contentColumn
+    )
+    
+    // Also check that it doesn't start a new list item
+    return meetsIndent && !canStart(line: line)
   }
   
   public func createBlock(from line: MarkdownLine) -> (any MarkdownBlockNode)? {
     guard canStart(line: line) else { return nil }
     
-    let content = line.content.trimmingCharacters(in: .whitespaces)
+    // Extract marker information using token-based approach
+    var tokenIndex = 0
     
-    // Extract marker
+    // Skip leading whitespace and calculate positions
+    let (leadingSpaces, afterWhitespaceColumn, _) = MarkdownIndentation.calculateIndentation(from: line.tokens)
+    while tokenIndex < line.tokens.count && line.tokens[tokenIndex].element == .whitespaces {
+      tokenIndex += 1
+    }
+    
+    guard tokenIndex < line.tokens.count else { return nil }
+    
     var marker = ""
-    var contentAfterMarker = ""
+    let markerColumn = afterWhitespaceColumn
+    var markerLength = 0
+    var contentColumn = afterWhitespaceColumn
     
-    if content.hasPrefix("-") || content.hasPrefix("*") || content.hasPrefix("+") {
-      marker = String(content.first!)
-      contentAfterMarker = String(content.dropFirst())
-    } else if let match = content.range(of: #"^\d{1,9}[.)]"#, options: .regularExpression) {
-      marker = String(content[match])
-      contentAfterMarker = String(content[match.upperBound...])
+    let token = line.tokens[tokenIndex]
+    
+    if token.element == .punctuation && (token.text == "-" || token.text == "*" || token.text == "+") {
+      marker = token.text
+      markerLength = 1
+      tokenIndex += 1
+      
+      // Check for optional whitespace after marker
+      if tokenIndex < line.tokens.count && line.tokens[tokenIndex].element == .whitespaces {
+        let whitespaceToken = line.tokens[tokenIndex]
+        contentColumn = markerColumn + markerLength + whitespaceToken.text.count
+      } else {
+        contentColumn = markerColumn + markerLength
+      }
+    } else if token.element == .characters && token.text.allSatisfy(\.isNumber) {
+      marker = token.text
+      markerLength = token.text.count
+      tokenIndex += 1
+      
+      // Get the delimiter (. or ))
+      if tokenIndex < line.tokens.count {
+        let delimiterToken = line.tokens[tokenIndex]
+        marker += delimiterToken.text
+        markerLength += delimiterToken.text.count
+        tokenIndex += 1
+        
+        // Check for optional whitespace after delimiter
+        if tokenIndex < line.tokens.count && line.tokens[tokenIndex].element == .whitespaces {
+          let whitespaceToken = line.tokens[tokenIndex]
+          contentColumn = markerColumn + markerLength + whitespaceToken.text.count
+        } else {
+          contentColumn = markerColumn + markerLength
+        }
+      }
     }
     
     let listItem = MarkdownListItem(marker: marker)
+    
+    // Set package-level indentation properties
+    listItem.markerIndent = leadingSpaces
+    listItem.markerColumn = markerColumn
+    listItem.contentColumn = contentColumn
+    listItem.markerLength = markerLength
+    
+    // Set the old properties for backward compatibility
+    listItem.contentIndent = contentColumn
     
     // Process the content after marker
     _ = processLine(block: listItem, line: line)
@@ -81,21 +163,25 @@ public class MarkdownListItemBuilder: MarkdownBlockBuilderProtocol {
   public func processLine(block: any MarkdownBlockNode, line: MarkdownLine) -> Bool {
     guard let listItem = block as? MarkdownListItem else { return false }
     
-    let content = line.content.trimmingCharacters(in: .whitespaces)
+    var contentTokens: [any CodeToken<MarkdownTokenElement>] = []
     
-    // For the first line, extract content after marker
-    var itemContent = ""
     if listItem.children.isEmpty {
-      // First line - extract content after marker
-      if content.hasPrefix("-") || content.hasPrefix("*") || content.hasPrefix("+") {
-        itemContent = String(content.dropFirst()).trimmingCharacters(in: CharacterSet(charactersIn: " \t"))
-      } else if let match = content.range(of: #"^\d{1,9}[.)]"#, options: .regularExpression) {
-        itemContent = String(content[match.upperBound...]).trimmingCharacters(in: CharacterSet(charactersIn: " \t"))
-      }
+      // First line - extract content after marker using package-level properties
+      contentTokens = MarkdownIndentation.removeIndentation(from: line.tokens, upToColumn: listItem.contentColumn)
     } else {
-      // Continuation line
-      itemContent = content
+      // Continuation line - remove indentation up to content column
+      contentTokens = MarkdownIndentation.removeIndentation(from: line.tokens, upToColumn: listItem.contentColumn)
     }
+    
+    // Convert content tokens to text
+    var contentParts: [String] = []
+    for token in contentTokens {
+      if token.element == .newline || token.element == .eof {
+        break
+      }
+      contentParts.append(token.text)
+    }
+    let itemContent = contentParts.joined().trimmingCharacters(in: .whitespaces)
     
     // Add content to list item
     if !itemContent.isEmpty {
