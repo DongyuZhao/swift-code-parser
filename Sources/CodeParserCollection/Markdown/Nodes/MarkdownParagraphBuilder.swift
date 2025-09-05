@@ -57,6 +57,9 @@ public class MarkdownParagraphBuilder: MarkdownBlockBuilderProtocol {
       token.element != .eof && token.element != .newline
     }
     
+    // Strip leading whitespace (up to 3 spaces for paragraph indentation)
+    contentTokens = stripLeadingIndentation(contentTokens, maxSpaces: 3)
+    
     // Check for hard line break (two trailing spaces)
     var endsWithTwoSpaces = false
     if let lastToken = contentTokens.last,
@@ -171,5 +174,49 @@ public class MarkdownParagraphBuilder: MarkdownBlockBuilderProtocol {
     // NOTE: Indented code blocks (4+ spaces) do NOT interrupt paragraphs
     
     return false
+  }
+  
+  /// Strip leading whitespace tokens (up to maxSpaces spaces) from paragraph content
+  private func stripLeadingIndentation(_ tokens: [any CodeToken<MarkdownTokenElement>], maxSpaces: Int) -> [any CodeToken<MarkdownTokenElement>] {
+    guard !tokens.isEmpty else { return tokens }
+    
+    var result = tokens
+    var spacesRemoved = 0
+    
+    // Remove leading whitespace tokens up to maxSpaces
+    while !result.isEmpty && spacesRemoved < maxSpaces {
+      let firstToken = result[0]
+      
+      if firstToken.element == .whitespaces {
+        let spaces = firstToken.text
+        if spacesRemoved + spaces.count <= maxSpaces {
+          // Remove entire token
+          result.removeFirst()
+          spacesRemoved += spaces.count
+        } else {
+          // Remove partial token (trim the beginning)
+          let spacesToRemove = maxSpaces - spacesRemoved
+          let remainingSpaces = String(spaces.dropFirst(spacesToRemove))
+          if !remainingSpaces.isEmpty {
+            // Create a new token with remaining spaces
+            let newToken = createWhitespaceToken(remainingSpaces)
+            result[0] = newToken
+          } else {
+            result.removeFirst()
+          }
+          spacesRemoved = maxSpaces
+        }
+      } else {
+        // Hit non-whitespace, stop processing
+        break
+      }
+    }
+    
+    return result
+  }
+  
+  /// Create a whitespace token (helper for indentation stripping)
+  private func createWhitespaceToken(_ content: String) -> any CodeToken<MarkdownTokenElement> {
+    return SimpleMarkdownToken(element: .whitespaces, text: content)
   }
 }

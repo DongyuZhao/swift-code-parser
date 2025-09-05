@@ -22,7 +22,7 @@ public class MarkdownCodeSpanBuilder {
       
       // Count consecutive backticks for opening delimiter
       var openingBackticks = 0
-      var openingStart = index
+      let openingStart = index
       while index < tokens.count && 
             tokens[index].element == .punctuation && 
             tokens[index].text == "`" {
