@@ -5,7 +5,14 @@ import Foundation
 /// Implements CommonMark specification for thematic breaks (Spec 010)
 public class MarkdownThematicBreakBuilder: MarkdownBlockBuilderProtocol {
   
+  public let priority: Int = 30 // Lower priority than setext for precedence
+  
   public init() {}
+  
+  /// Thematic breaks can interrupt other blocks
+  public func canInterrupt() -> Bool {
+    return true
+  }
   
   public func canStart(line: MarkdownLine) -> Bool {
     // Thematic breaks can be indented 0-3 spaces

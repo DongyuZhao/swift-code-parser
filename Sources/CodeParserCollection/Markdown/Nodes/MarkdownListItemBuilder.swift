@@ -5,6 +5,8 @@ import Foundation
 /// Implements CommonMark specification for list items (Spec 025)
 public class MarkdownListItemBuilder: MarkdownBlockBuilderProtocol {
   
+  public let priority: Int = 60 // Medium-low priority
+  
   public init() {}
   
   public func canStart(line: MarkdownLine) -> Bool {

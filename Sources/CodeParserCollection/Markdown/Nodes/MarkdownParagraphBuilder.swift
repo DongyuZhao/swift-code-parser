@@ -21,6 +21,7 @@ private struct SimpleMarkdownToken: CodeToken {
 public class MarkdownParagraphBuilder: MarkdownBlockBuilderProtocol {
   
   private let inlineProcessor = MarkdownInlineProcessor()
+  public let priority: Int = 90 // Low priority - fallback
   
   public init() {}
   

@@ -6,6 +6,7 @@ import Foundation
 public class MarkdownSetextHeadingBuilder: MarkdownBlockBuilderProtocol {
   
   private var pendingLine: MarkdownLine?
+  public let priority: Int = 10 // High priority for transformation
   
   public init() {}
   
@@ -50,6 +51,65 @@ public class MarkdownSetextHeadingBuilder: MarkdownBlockBuilderProtocol {
   public func processLine(block: any MarkdownBlockNode, line: MarkdownLine, state: inout MarkdownConstructState) -> Bool {
     // Setext headings don't process additional lines
     return false
+  }
+  
+  /// Check if this builder can transform an existing block (implements pluggable transformation)
+  public func canTransform(block: any MarkdownBlockNode, with line: MarkdownLine) -> Bool {
+    // Can only transform paragraph blocks
+    guard block is ParagraphNode else { return false }
+    
+    // Must be a valid setext underline
+    if !canStart(line: line) {
+      return false
+    }
+    
+    // Paragraph must have content
+    let paragraph = block as! ParagraphNode
+    if paragraph.children.isEmpty {
+      return false
+    }
+    
+    return true
+  }
+  
+  /// Transform an existing paragraph node into a setext heading (implements AST editing)
+  public func transform(block: any MarkdownBlockNode, with line: MarkdownLine) -> Bool {
+    guard let paragraph = block as? ParagraphNode else { return false }
+    
+    // Verify this is a valid transformation
+    guard canTransform(block: paragraph, with: line) else {
+      return false
+    }
+    
+    // Get the parent node so we can replace the paragraph
+    guard let parent = paragraph.parent as? MarkdownNodeBase else { 
+      return false 
+    }
+    
+    // Find the index of the paragraph in its parent
+    guard let paragraphIndex = parent.children.firstIndex(where: { $0 === paragraph }) else { 
+      return false 
+    }
+    
+    // Determine heading level based on underline character
+    let level = line.content.trimmingCharacters(in: .whitespaces).first == "=" ? 1 : 2
+    
+    // Create a new heading node
+    let heading = HeaderNode(level: level)
+    
+    // Move all children from paragraph to heading (preserves inline markup like emphasis)
+    // This is the key: we don't re-parse the text, we move the existing AST nodes
+    let paragraphChildren = Array(paragraph.children)
+    paragraph.children.removeAll()
+    for child in paragraphChildren {
+      heading.append(child as! MarkdownNodeBase)
+    }
+    
+    // Replace the paragraph with the heading in the parent
+    parent.children.remove(at: paragraphIndex)
+    parent.children.insert(heading, at: paragraphIndex)
+    
+    return true
   }
   
   /// Check if a line could be a setext heading underline for the given text line
@@ -111,63 +171,5 @@ public class MarkdownSetextHeadingBuilder: MarkdownBlockBuilderProtocol {
     heading.children.append(textNode)
     
     return heading
-  }
-  
-  /// Check if this builder can transform an existing paragraph into a setext heading
-  /// This method implements the "AST is editable" principle
-  public func canTransformParagraph(_ paragraph: ParagraphNode, with line: MarkdownLine) -> Bool {
-    // Must be a valid setext underline
-    if !canStart(line: line) {
-      return false
-    }
-    
-    // Paragraph must have content
-    if paragraph.children.isEmpty {
-      return false
-    }
-    
-    // Paragraph cannot be in certain container contexts (like blockquotes or list items)
-    // This is handled by the caller checking the parent context
-    
-    return true
-  }
-  
-  /// Transform an existing paragraph node into a setext heading (AST editing)
-  /// This method implements the core "AST is editable" principle for setext headings
-  public func transformParagraphToHeading(_ paragraph: ParagraphNode, with line: MarkdownLine) -> Bool {
-    // Verify this is a valid transformation
-    guard canTransformParagraph(paragraph, with: line) else {
-      return false
-    }
-    
-    // Get the parent node so we can replace the paragraph
-    guard let parent = paragraph.parent as? MarkdownNodeBase else { 
-      return false 
-    }
-    
-    // Find the index of the paragraph in its parent
-    guard let paragraphIndex = parent.children.firstIndex(where: { $0 === paragraph }) else { 
-      return false 
-    }
-    
-    // Determine heading level based on underline character
-    let level = line.content.trimmingCharacters(in: .whitespaces).first == "=" ? 1 : 2
-    
-    // Create a new heading node
-    let heading = HeaderNode(level: level)
-    
-    // Move all children from paragraph to heading (preserves inline markup like emphasis)
-    // This is the key: we don't re-parse the text, we move the existing AST nodes
-    let paragraphChildren = Array(paragraph.children)
-    paragraph.children.removeAll()
-    for child in paragraphChildren {
-      heading.append(child as! MarkdownNodeBase)
-    }
-    
-    // Replace the paragraph with the heading in the parent
-    parent.children.remove(at: paragraphIndex)
-    parent.children.insert(heading, at: paragraphIndex)
-    
-    return true
   }
 }

@@ -101,49 +101,69 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
       // Store tokens count to detect infinite loops
       let tokensBeforeProcessing = state.tokens.count
       
-      // FIRST: Check if this line can create a setext heading by transforming the previous paragraph
-      if let lastParagraph = findLastParagraph(in: context.current) {
-        if tryCreateSetextHeadingWithBuilder(from: currentLine, transforming: lastParagraph) {
-          // Successfully transformed paragraph into heading
-          state.currentLineProcessed = true
+      // FIRST: Check if any builder can transform the last block (pluggable transformation)
+      if let lastBlock = findLastBlock(in: context.current) {
+        let sortedBuilders = blockBuilders.sorted { $0.priority < $1.priority }
+        for builder in sortedBuilders {
+          if builder.canTransform(block: lastBlock, with: currentLine) {
+            if builder.transform(block: lastBlock, with: currentLine) {
+              state.currentLineProcessed = true
+              break
+            }
+          }
+        }
+        
+        if state.currentLineProcessed {
           continue
         }
       }
       
-      // SECOND: Check if this line can start an interrupting block type
-      // If so, create it immediately (this handles thematic breaks, headings, etc.)
-      if canLineInterruptExistingBlocks(currentLine) {
-        closeInterruptibleBlocks(context: &context)
+      // SECOND: Check if any interrupting builder can start (pluggable interruption)
+      let sortedBuilders = blockBuilders.sorted { $0.priority < $1.priority }
+      var interruptingBlockCreated = false
+      for builder in sortedBuilders {
+        if builder.canInterrupt() && builder.canStart(line: currentLine) {
+          closeInterruptibleBlocks(context: &context)
+          if let newBlock = createNewBlockWithBuilder(builder, line: currentLine, context: &context, state: &state) {
+            print("DEBUG: Created interrupting block \(type(of: newBlock))")
+            interruptingBlockCreated = true
+            
+            // If a container block was created and tokens were yielded back, process them
+            if !state.currentLineProcessed && isContainerBlock(newBlock) {
+              processYieldedTokensInContainer(newBlock, state: &state, lineNumber: line.lineNumber)
+            }
+            break
+          }
+        }
+      }
+      
+      if interruptingBlockCreated {
+        continue
+      }
+      
+      // THIRD: Check if any existing block can continue with current tokens
+      if let continuingBlock = findBlockThatCanContinue(currentLine, in: context.current) {
+        print("DEBUG: Found continuing block \(type(of: continuingBlock))")
+        // Check if continuation is valid before processing
+        if canContinueBlock(continuingBlock, with: currentLine) {
+          processLineWithBuilder(currentLine, for: continuingBlock, state: &state)
+          
+          // If this is a container block and tokens were yielded back, process them in the container's context
+          if !state.currentLineProcessed && isContainerBlock(continuingBlock) {
+            processYieldedTokensInContainer(continuingBlock, state: &state, lineNumber: line.lineNumber)
+          }
+        } else {
+          // Block cannot continue, close it and try new block
+          closeBlock(continuingBlock, context: &context)
+          _ = tryCreateNewBlockWithLine(currentLine, context: &context, state: &state)
+        }
+      } else {
+        // No continuing block, try new block
         let newBlockCreated = tryCreateNewBlockWithLine(currentLine, context: &context, state: &state)
         
         // If a container block was created and tokens were yielded back, process them in the container's context
         if !state.currentLineProcessed && newBlockCreated != nil && isContainerBlock(newBlockCreated!) {
           processYieldedTokensInContainer(newBlockCreated!, state: &state, lineNumber: line.lineNumber)
-        }
-      } else {
-        // SECOND: Check if any existing block can continue with current tokens
-        if let continuingBlock = findBlockThatCanContinue(currentLine, in: context.current) {
-          // Check if continuation is valid before processing
-          if canContinueBlock(continuingBlock, with: currentLine) {
-            processLineWithBuilder(currentLine, for: continuingBlock, state: &state)
-            
-            // If this is a container block and tokens were yielded back, process them in the container's context
-            if !state.currentLineProcessed && isContainerBlock(continuingBlock) {
-              processYieldedTokensInContainer(continuingBlock, state: &state, lineNumber: line.lineNumber)
-            }
-          } else {
-            // Block cannot continue, close it and try new block
-            closeBlock(continuingBlock, context: &context)
-            _ = tryCreateNewBlockWithLine(currentLine, context: &context, state: &state)
-          }
-        } else {
-          // No continuing block, try new block
-          let newBlockCreated = tryCreateNewBlockWithLine(currentLine, context: &context, state: &state)
-          
-          // If a container block was created and tokens were yielded back, process them in the container's context
-          if !state.currentLineProcessed && newBlockCreated != nil && isContainerBlock(newBlockCreated!) {
-            processYieldedTokensInContainer(newBlockCreated!, state: &state, lineNumber: line.lineNumber)
-          }
         }
       }
       
@@ -181,21 +201,33 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
     return nil
   }
   
-  /// Check if this line can interrupt existing blocks
-  private func canLineInterruptExistingBlocks(_ line: MarkdownLine) -> Bool {
-    // Check if any builder can start an interrupting block type
-    for builder in blockBuilders {
-      if builder.canStart(line: line) {
-        let builderType = type(of: builder)
-        if builderType is MarkdownATXHeadingBuilder.Type ||
-           builderType is MarkdownSetextHeadingBuilder.Type ||
-           builderType is MarkdownThematicBreakBuilder.Type ||
-           builderType is MarkdownFencedCodeBlockBuilder.Type {
-          return true
-        }
+  /// Find the last block (of any type) in the AST for transformation checks
+  private func findLastBlock(in node: CodeNode<MarkdownNodeElement>) -> (any MarkdownBlockNode)? {
+    // Check the last child first
+    if let lastChild = node.children.last as? MarkdownNodeBase {
+      if let blockNode = lastChild as? any MarkdownBlockNode {
+        return blockNode
+      }
+      // Recursively check in container blocks
+      if let containerBlock = findLastBlock(in: lastChild) {
+        return containerBlock
       }
     }
-    return false
+    return nil
+  }
+  
+  /// Create a new block using a specific builder (pluggable block creation)
+  private func createNewBlockWithBuilder(_ builder: MarkdownBlockBuilderProtocol, line: MarkdownLine, context: inout CodeConstructContext<Node, Token>, state: inout MarkdownConstructState) -> (any MarkdownBlockNode)? {
+    if let newBlock = builder.createBlock(from: line) {
+      // Determine where to add the new block based on current context
+      let targetNode = findTargetNodeForNewBlock(in: context.current)
+      targetNode.append(newBlock as! MarkdownNodeBase)
+      
+      // Process the opening line with the builder
+      _ = builder.processLine(block: newBlock, line: line, state: &state)
+      return newBlock
+    }
+    return nil
   }
   
   /// Close blocks that can be interrupted
@@ -399,58 +431,34 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
     }
   }
   
-  /// Check if a builder can handle a specific block type
+  /// Check if a builder can handle a specific block type (for generic processing)
   private func canBuilderHandle(_ builder: MarkdownBlockBuilderProtocol, blockType: String) -> Bool {
+    let builderType = type(of: builder)
     switch blockType {
-    case "paragraph": return builder is MarkdownParagraphBuilder
-    case "heading": return builder is MarkdownATXHeadingBuilder || builder is MarkdownSetextHeadingBuilder
-    case "thematic_break": return builder is MarkdownThematicBreakBuilder
-    case "code_block": return builder is MarkdownIndentedCodeBlockBuilder
-    case "fenced_code_block": return builder is MarkdownFencedCodeBlockBuilder
-    case "blockquote": return builder is MarkdownBlockquoteBuilder
-    case "list_item": return builder is MarkdownListItemBuilder
+    case "paragraph": return builderType is MarkdownParagraphBuilder.Type
+    case "heading": return builderType is MarkdownATXHeadingBuilder.Type || builderType is MarkdownSetextHeadingBuilder.Type
+    case "thematic_break": return builderType is MarkdownThematicBreakBuilder.Type
+    case "code_block": return builderType is MarkdownIndentedCodeBlockBuilder.Type
+    case "fenced_code_block": return builderType is MarkdownFencedCodeBlockBuilder.Type
+    case "blockquote": return builderType is MarkdownBlockquoteBuilder.Type
+    case "list_item": return builderType is MarkdownListItemBuilder.Type
     default: return false
     }
   }
-  
-  /// Find the last paragraph in the AST (for setext heading transformation)
-  private func findLastParagraph(in node: CodeNode<MarkdownNodeElement>) -> ParagraphNode? {
-    // Check the last child first
-    if let lastChild = node.children.last as? MarkdownNodeBase {
-      if let paragraph = lastChild as? ParagraphNode {
-        return paragraph
-      }
-      // Recursively check in container blocks
-      if let containerParagraph = findLastParagraph(in: lastChild) {
-        return containerParagraph
-      }
-    }
-    return nil
-  }
-  
-  /// Try to create a setext heading by transforming an existing paragraph using the setext builder
-  private func tryCreateSetextHeadingWithBuilder(from line: MarkdownLine, transforming paragraph: ParagraphNode) -> Bool {
-    // Find the setext heading builder
-    for builder in blockBuilders {
-      if let setextBuilder = builder as? MarkdownSetextHeadingBuilder {
-        return setextBuilder.transformParagraphToHeading(paragraph, with: line)
-      }
-    }
-    return false
-  }
 
-  /// Create default set of block builders
+  /// Create default set of block builders with priority-based ordering
   public static func createDefaultBuilders() -> [MarkdownBlockBuilderProtocol] {
     return [
-      // Order matters: more specific builders should come first
-      MarkdownSetextHeadingBuilder(), // Must come before thematic break to handle "---" after text
+      // Builders are now auto-sorted by priority in the main processing loop
+      // This list just defines which builders are available
+      MarkdownSetextHeadingBuilder(),
       MarkdownATXHeadingBuilder(),
       MarkdownThematicBreakBuilder(),
       MarkdownFencedCodeBlockBuilder(),
       MarkdownListItemBuilder(),
       MarkdownBlockquoteBuilder(),
       MarkdownIndentedCodeBlockBuilder(),
-      MarkdownParagraphBuilder() // Paragraph should be last as it's the fallback
+      MarkdownParagraphBuilder() // Fallback
     ]
   }
 }

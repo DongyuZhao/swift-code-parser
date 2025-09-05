@@ -5,6 +5,8 @@ import Foundation
 /// Implements CommonMark specification for blockquotes (Spec 024)
 public class MarkdownBlockquoteBuilder: MarkdownBlockBuilderProtocol {
   
+  public let priority: Int = 50 // Medium priority
+  
   public init() {}
   
   public func canStart(line: MarkdownLine) -> Bool {

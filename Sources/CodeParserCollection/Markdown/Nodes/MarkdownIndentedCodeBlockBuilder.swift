@@ -4,6 +4,8 @@ import Foundation
 /// Indented code block builder - handles 4+ space indented code blocks
 public class MarkdownIndentedCodeBlockBuilder: MarkdownBlockBuilderProtocol {
   
+  public let priority: Int = 80 // Low priority
+  
   public init() {}
   
   public func canStart(line: MarkdownLine) -> Bool {
