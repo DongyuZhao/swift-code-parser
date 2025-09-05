@@ -25,7 +25,7 @@ struct MarkdownListItemsTests {
     """#
     let result = parser.parse(input, language: language)
 
-    let expectedSig = #"document[ordered_list(level:1)[list_item[paragraph[text("A paragraph"),text("with two lines.")],code_block("indented code"),blockquote[paragraph[text("A block quote.")]]]]]"#
+    let expectedSig = #"document[ordered_list(level:1)[list_item[paragraph[text("A paragraph"),line_break(soft),text("with two lines.")],code_block("indented code"),blockquote[paragraph[text("A block quote.")]]]]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -393,7 +393,7 @@ struct MarkdownListItemsTests {
     """#
     let result = parser.parse(input, language: language)
 
-    let expectedSig = #"document[ordered_list(level:1)[list_item[paragraph[text("A paragraph"),text("with two lines.")],code_block("indented code"),blockquote[paragraph[text("A block quote.")]]]]]"#
+    let expectedSig = #"document[ordered_list(level:1)[list_item[paragraph[text("A paragraph"),line_break(soft),text("with two lines.")],code_block("indented code"),blockquote[paragraph[text("A block quote.")]]]]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -425,7 +425,7 @@ struct MarkdownListItemsTests {
     """#
     let result = parser.parse(input, language: language)
 
-    let expectedSig = #"document[ordered_list(level:1)[list_item[paragraph[text("A paragraph"),text("with two lines.")],code_block("indented code"),blockquote[paragraph[text("A block quote.")]]]]]"#
+    let expectedSig = #"document[ordered_list(level:1)[list_item[paragraph[text("A paragraph"),line_break(soft),text("with two lines.")],code_block("indented code"),blockquote[paragraph[text("A block quote.")]]]]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -437,7 +437,7 @@ struct MarkdownListItemsTests {
     """#
     let result = parser.parse(input, language: language)
 
-    let expectedSig = #"document[ordered_list(level:1)[list_item[paragraph[text("A paragraph"),text("with two lines.")]]]]"#
+    let expectedSig = #"document[ordered_list(level:1)[list_item[paragraph[text("A paragraph"),line_break(soft),text("with two lines.")]]]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -449,7 +449,7 @@ struct MarkdownListItemsTests {
     """#
     let result = parser.parse(input, language: language)
 
-    let expectedSig = #"document[blockquote[ordered_list(level:1)[list_item[blockquote[paragraph[text("Blockquote"),text("continued here.")]]]]]]"#
+    let expectedSig = #"document[blockquote[ordered_list(level:1)[list_item[blockquote[paragraph[text("Blockquote"),line_break(soft),text("continued here.")]]]]]]"#
     #expect(sig(result.root) == expectedSig)
   }
 

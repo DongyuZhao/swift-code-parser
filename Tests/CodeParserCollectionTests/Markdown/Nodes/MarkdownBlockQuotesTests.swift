@@ -15,15 +15,15 @@ struct MarkdownBlockQuotesTests {
 
   @Test("Simple block quote with heading and paragraph")
   func simpleBlockQuoteWithHeadingAndParagraph() {
-    let input = """
+    let input = ##"""
       > # Foo
       > bar
       > baz
-      """
+      """##
     let result = parser.parse(input, language: language)
 
     let expectedSig =
-      "document[blockquote[heading(level:1)[text(\"Foo\")],paragraph[text(\"bar\"),text(\"baz\")]]]"
+      #"document[blockquote[heading(level:1)[text("Foo")],paragraph[text("bar"),line_break(soft),text("baz")]]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -37,7 +37,7 @@ struct MarkdownBlockQuotesTests {
     let result = parser.parse(input, language: language)
 
     let expectedSig =
-      "document[blockquote[heading(level:1)[text(\"Foo\")],paragraph[text(\"bar\"),text(\"baz\")]]]"
+      #"document[blockquote[heading(level:1)[text("Foo")],paragraph[text("bar"),line_break(soft),text("baz")]]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -51,7 +51,7 @@ struct MarkdownBlockQuotesTests {
     let result = parser.parse(input, language: language)
 
     let expectedSig =
-      "document[blockquote[heading(level:1)[text(\"Foo\")],paragraph[text(\"bar\"),text(\"baz\")]]]"
+      #"document[blockquote[heading(level:1)[text("Foo")],paragraph[text("bar"),line_break(soft),text("baz")]]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -66,7 +66,7 @@ struct MarkdownBlockQuotesTests {
 
     // Should create code block, not block quote
 
-    let expectedSig = "document[code_block(\"> # Foo\n> bar\n> baz\")]"
+    let expectedSig = #"document[code_block("> # Foo\n> bar\n> baz")]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -80,7 +80,7 @@ struct MarkdownBlockQuotesTests {
     let result = parser.parse(input, language: language)
 
     let expectedSig =
-      "document[blockquote[heading(level:1)[text(\"Foo\")],paragraph[text(\"bar\"),text(\"baz\")]]]"
+      #"document[blockquote[heading(level:1)[text("Foo")],paragraph[text("bar"),line_break(soft),text("baz")]]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -93,7 +93,7 @@ struct MarkdownBlockQuotesTests {
       """
     let result = parser.parse(input, language: language)
 
-    let expectedSig = "document[blockquote[paragraph[text(\"bar\"),text(\"baz\"),text(\"foo\")]]]"
+    let expectedSig = #"document[blockquote[paragraph[text("bar"),line_break(soft),text("baz"),line_break(soft),text("foo")]]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -105,7 +105,7 @@ struct MarkdownBlockQuotesTests {
       """
     let result = parser.parse(input, language: language)
 
-    let expectedSig = "document[blockquote[paragraph[text(\"foo\")]],thematic_break]"
+    let expectedSig = #"document[blockquote[paragraph[text("foo")]],thematic_break]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -118,7 +118,7 @@ struct MarkdownBlockQuotesTests {
     let result = parser.parse(input, language: language)
 
     let expectedSig =
-      "document[blockquote[unordered_list(level:1)[list_item[paragraph[text(\"foo\")]]]],unordered_list(level:1)[list_item[paragraph[text(\"bar\")]]]]"
+      #"document[blockquote[unordered_list(level:1)[list_item[paragraph[text("foo")]]]],unordered_list(level:1)[list_item[paragraph[text("bar")]]]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -130,7 +130,7 @@ struct MarkdownBlockQuotesTests {
       """
     let result = parser.parse(input, language: language)
 
-    let expectedSig = "document[blockquote[code_block(\"foo\")],code_block(\"bar\")]"
+    let expectedSig = #"document[blockquote[code_block("foo")],code_block("bar")]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -144,7 +144,7 @@ struct MarkdownBlockQuotesTests {
     let result = parser.parse(input, language: language)
 
     let expectedSig =
-      "document[blockquote[code_block(\"\")],paragraph[text(\"foo\")],code_block(\"\")]"
+      #"document[blockquote[code_block("")],paragraph[text("foo")],code_block("")]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -156,7 +156,7 @@ struct MarkdownBlockQuotesTests {
       """
     let result = parser.parse(input, language: language)
 
-    let expectedSig = "document[blockquote[paragraph[text(\"foo\"),text(\"- bar\")]]]"
+    let expectedSig = #"document[blockquote[paragraph[text("foo"),line_break(soft),text("- bar")]]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -165,7 +165,7 @@ struct MarkdownBlockQuotesTests {
     let input = ">"
     let result = parser.parse(input, language: language)
 
-    let expectedSig = "document[blockquote]"
+    let expectedSig = #"document[blockquote]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -178,7 +178,7 @@ struct MarkdownBlockQuotesTests {
       """
     let result = parser.parse(input, language: language)
 
-    let expectedSig = "document[blockquote]"
+    let expectedSig = #"document[blockquote]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -191,7 +191,7 @@ struct MarkdownBlockQuotesTests {
       """
     let result = parser.parse(input, language: language)
 
-    let expectedSig = "document[blockquote[paragraph[text(\"foo\")]]]"
+    let expectedSig = #"document[blockquote[paragraph[text("foo")]]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -205,7 +205,7 @@ struct MarkdownBlockQuotesTests {
     let result = parser.parse(input, language: language)
 
     let expectedSig =
-      "document[blockquote[paragraph[text(\"foo\")]],blockquote[paragraph[text(\"bar\")]]]"
+      #"document[blockquote[paragraph[text("foo")]],blockquote[paragraph[text("bar")]]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -217,7 +217,7 @@ struct MarkdownBlockQuotesTests {
       """
     let result = parser.parse(input, language: language)
 
-    let expectedSig = "document[blockquote[paragraph[text(\"foo\"),line_break(soft),text(\"bar\")]]]"
+    let expectedSig = #"document[blockquote[paragraph[text("foo"),line_break(soft),text("bar")]]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -230,7 +230,7 @@ struct MarkdownBlockQuotesTests {
       """
     let result = parser.parse(input, language: language)
 
-    let expectedSig = "document[blockquote[paragraph[text(\"foo\")],paragraph[text(\"bar\")]]]"
+    let expectedSig = #"document[blockquote[paragraph[text("foo")],paragraph[text("bar")]]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -242,7 +242,7 @@ struct MarkdownBlockQuotesTests {
       """
     let result = parser.parse(input, language: language)
 
-    let expectedSig = "document[paragraph[text(\"foo\")],blockquote[paragraph[text(\"bar\")]]]"
+    let expectedSig = #"document[paragraph[text("foo")],blockquote[paragraph[text("bar")]]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -256,7 +256,7 @@ struct MarkdownBlockQuotesTests {
     let result = parser.parse(input, language: language)
 
     let expectedSig =
-      "document[blockquote[paragraph[text(\"aaa\")]],thematic_break,blockquote[paragraph[text(\"bbb\")]]]"
+      #"document[blockquote[paragraph[text("aaa")]],thematic_break,blockquote[paragraph[text("bbb")]]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -268,7 +268,7 @@ struct MarkdownBlockQuotesTests {
       """
     let result = parser.parse(input, language: language)
 
-    let expectedSig = "document[blockquote[paragraph[text(\"bar\"),text(\"baz\")]]]"
+    let expectedSig = #"document[blockquote[paragraph[text("bar"),line_break(soft),text("baz")]]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -281,7 +281,7 @@ struct MarkdownBlockQuotesTests {
       """
     let result = parser.parse(input, language: language)
 
-    let expectedSig = "document[blockquote[paragraph[text(\"bar\")]],paragraph[text(\"baz\")]]"
+    let expectedSig = #"document[blockquote[paragraph[text("bar")]],paragraph[text("baz")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -294,7 +294,7 @@ struct MarkdownBlockQuotesTests {
       """
     let result = parser.parse(input, language: language)
 
-    let expectedSig = "document[blockquote[paragraph[text(\"bar\")]],paragraph[text(\"baz\")]]"
+    let expectedSig = #"document[blockquote[paragraph[text("bar")]],paragraph[text("baz")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -307,7 +307,7 @@ struct MarkdownBlockQuotesTests {
     let result = parser.parse(input, language: language)
 
     let expectedSig =
-      "document[blockquote[blockquote[blockquote[paragraph[text(\"foo\"),text(\"bar\")]]]]]"
+      #"document[blockquote[blockquote[blockquote[paragraph[text("foo"),line_break(soft),text("bar")]]]]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -321,7 +321,7 @@ struct MarkdownBlockQuotesTests {
     let result = parser.parse(input, language: language)
 
     let expectedSig =
-      "document[blockquote[blockquote[blockquote[paragraph[text(\"foo\"),text(\"bar\"),text(\"baz\")]]]]]"
+      #"document[blockquote[blockquote[blockquote[paragraph[text("foo"),line_break(soft),text("bar"),line_break(soft),text("baz")]]]]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -339,7 +339,7 @@ struct MarkdownBlockQuotesTests {
     // Second blockquote should contain paragraph (not code)
 
     let expectedSig =
-      "document[blockquote[code_block(\"code\")],blockquote[paragraph[text(\"not code\")]]]"
+      #"document[blockquote[code_block("code")],blockquote[paragraph[text("not code")]]]"#
     #expect(sig(result.root) == expectedSig)
   }
 }

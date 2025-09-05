@@ -102,7 +102,7 @@ struct MarkdownTablesExtensionTests {
 
     // Should create a paragraph instead
 
-    let expectedSig = #"document[paragraph[text("| abc | def |"),text("| --- |"),text("| bar |")]]"#
+    let expectedSig = #"document[paragraph[text("| abc | def |"),line_break(soft),text("| --- |"),line_break(soft),text("| bar |")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
