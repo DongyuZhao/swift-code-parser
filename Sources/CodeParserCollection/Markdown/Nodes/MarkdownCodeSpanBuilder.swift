@@ -99,6 +99,8 @@ public class MarkdownCodeSpanBuilder {
     content = content.replacingOccurrences(of: "\n", with: " ")
     content = content.replacingOccurrences(of: "\r\n", with: " ")
     content = content.replacingOccurrences(of: "\r", with: " ")
+    content = content.replacingOccurrences(of: "__SOFT_LINE_BREAK__", with: " ")
+    content = content.replacingOccurrences(of: "__HARD_LINE_BREAK__", with: " ")
     
     // Strip single leading and trailing spaces if there are non-space characters
     if content.count > 2 && content.hasPrefix(" ") && content.hasSuffix(" ") && 

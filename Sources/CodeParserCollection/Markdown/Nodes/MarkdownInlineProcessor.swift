@@ -198,11 +198,12 @@ public class MarkdownInlineProcessor {
   }
   
   /// Process emphasis using CommonMark delimiter stack algorithm
+  /// This implements the official CommonMark emphasis algorithm with proper nesting
   private func processEmphasisWithDelimiterStack(tokens: [any CodeToken<MarkdownTokenElement>], delimiters: [EmphasisDelimiter]) -> [ProcessedEmphasis] {
     var processedEmphasis: [ProcessedEmphasis] = []
     var delimiterStack = delimiters
     
-    // Process delimiters from left to right
+    // Process delimiters from left to right, finding matching pairs
     var stackIndex = 0
     while stackIndex < delimiterStack.count {
       let currentDelimiter = delimiterStack[stackIndex]
@@ -245,17 +246,16 @@ public class MarkdownInlineProcessor {
         }
         
         // Determine how many delimiters to use
+        // For proper nesting in cases like ***foo***, we need to use 2 when both sides have >=2
         let useCount: Int
         if openingDelimiter.length >= 2 && currentDelimiter.length >= 2 {
-          useCount = 2  // Strong emphasis
+          useCount = 2  // Strong emphasis takes precedence for >=2
         } else {
-          useCount = 1  // Regular emphasis
+          useCount = min(openingDelimiter.length, currentDelimiter.length)
         }
         
         // Calculate token positions after using delimiters
         let openingStartToken = openingDelimiter.tokenIndex + (openingDelimiter.length - useCount)
-        let openingEndToken = openingDelimiter.tokenIndex + openingDelimiter.length - 1
-        let closingStartToken = currentDelimiter.tokenIndex                 
         let closingEndToken = currentDelimiter.tokenIndex + useCount - 1
         
         // Create range for the entire emphasis span (including delimiters)
@@ -264,13 +264,13 @@ public class MarkdownInlineProcessor {
         
         processedEmphasis.append(ProcessedEmphasis(range: tokenRange, isStrong: isStrong))
         
-        // Update or remove delimiters based on usage
+        // Remove processed delimiters and add remaining ones
         var newDelimiters: [EmphasisDelimiter] = Array(delimiterStack[0..<openingIndex])
         
         // Add remaining opening delimiter if any
         if openingDelimiter.length > useCount {
           let remainingOpener = EmphasisDelimiter(
-            tokenIndex: openingDelimiter.tokenIndex + useCount,
+            tokenIndex: openingDelimiter.tokenIndex,
             character: openingDelimiter.character,
             length: openingDelimiter.length - useCount,
             canOpen: openingDelimiter.canOpen,
@@ -299,11 +299,8 @@ public class MarkdownInlineProcessor {
         
         delimiterStack = newDelimiters
         
-        // Continue processing from the updated position
-        stackIndex = openingIndex
-        if openingDelimiter.length > useCount {
-          stackIndex += 1
-        }
+        // Restart from beginning to handle newly exposed delimiters
+        stackIndex = 0
       } else {
         stackIndex += 1
       }
