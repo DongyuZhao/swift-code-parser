@@ -104,17 +104,22 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
       // FIRST: Check if any builder can transform the last block (pluggable transformation)
       if let lastBlock = findLastBlock(in: context.current) {
         let sortedBuilders = blockBuilders.sorted { $0.priority < $1.priority }
+        var transformationSucceeded = false
         for builder in sortedBuilders {
           if builder.canTransform(block: lastBlock, with: currentLine) {
             if builder.transform(block: lastBlock, with: currentLine) {
-              state.currentLineProcessed = true
+              transformationSucceeded = true
               break
             }
           }
         }
         
-        if state.currentLineProcessed {
+        if transformationSucceeded {
+          state.currentLineProcessed = true
           continue
+        } else {
+          // Mark as not processed so we continue to the next steps
+          state.currentLineProcessed = false
         }
       }
       
@@ -143,7 +148,6 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
       
       // THIRD: Check if any existing block can continue with current tokens
       if let continuingBlock = findBlockThatCanContinue(currentLine, in: context.current) {
-        print("DEBUG: Found continuing block \(type(of: continuingBlock))")
         // Check if continuation is valid before processing
         if canContinueBlock(continuingBlock, with: currentLine) {
           processLineWithBuilder(currentLine, for: continuingBlock, state: &state)
