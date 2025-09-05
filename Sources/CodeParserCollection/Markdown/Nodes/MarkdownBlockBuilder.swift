@@ -151,22 +151,21 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
   
   /// Find an existing block in the AST that can continue with this line
   private func findBlockThatCanContinue(_ line: MarkdownLine, in node: CodeNode<MarkdownNodeElement>) -> (any MarkdownBlockNode)? {
-    // First, check if any immediate children can continue
-    for child in node.children.reversed() { // Check from last to first (most recent)
-      if let markdownChild = child as? MarkdownNodeBase {
-        if let blockNode = markdownChild as? any MarkdownBlockNode {
-          // Check if any builder can continue this block
-          for builder in blockBuilders {
-            if builder.canContinue(block: blockNode, line: line) {
-              return blockNode
-            }
+    // In CommonMark, only the most recently added (leaf) block can be continued
+    // Check only the last child first, then recursively check its children
+    if let lastChild = node.children.last as? MarkdownNodeBase {
+      if let blockNode = lastChild as? any MarkdownBlockNode {
+        // Check if any builder can continue this block
+        for builder in blockBuilders {
+          if builder.canContinue(block: blockNode, line: line) {
+            return blockNode
           }
         }
-        
-        // Recursively check nested structures (for open container blocks)
-        if let nestedBlock = findBlockThatCanContinue(line, in: markdownChild) {
-          return nestedBlock
-        }
+      }
+      
+      // Recursively check the last child's children (for open container blocks)
+      if let nestedBlock = findBlockThatCanContinue(line, in: lastChild) {
+        return nestedBlock
       }
     }
     
@@ -180,6 +179,7 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
       if builder.canStart(line: line) {
         let builderType = type(of: builder)
         if builderType is MarkdownATXHeadingBuilder.Type ||
+           builderType is MarkdownSetextHeadingBuilder.Type ||
            builderType is MarkdownThematicBreakBuilder.Type ||
            builderType is MarkdownFencedCodeBlockBuilder.Type {
           return true
@@ -394,7 +394,7 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
   private func canBuilderHandle(_ builder: MarkdownBlockBuilderProtocol, blockType: String) -> Bool {
     switch blockType {
     case "paragraph": return builder is MarkdownParagraphBuilder
-    case "heading": return builder is MarkdownATXHeadingBuilder
+    case "heading": return builder is MarkdownATXHeadingBuilder || builder is MarkdownSetextHeadingBuilder
     case "thematic_break": return builder is MarkdownThematicBreakBuilder
     case "code_block": return builder is MarkdownIndentedCodeBlockBuilder
     case "fenced_code_block": return builder is MarkdownFencedCodeBlockBuilder
@@ -408,6 +408,7 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
   public static func createDefaultBuilders() -> [MarkdownBlockBuilderProtocol] {
     return [
       // Order matters: more specific builders should come first
+      MarkdownSetextHeadingBuilder(), // Must come before thematic break to handle "---" after text
       MarkdownATXHeadingBuilder(),
       MarkdownThematicBreakBuilder(),
       MarkdownFencedCodeBlockBuilder(),
