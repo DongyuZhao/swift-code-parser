@@ -18,7 +18,7 @@ public class MarkdownSetextHeadingBuilder: MarkdownBlockBuilderProtocol {
     }
     
     // Use the simpler content-based approach
-    let content = line.content.trimmingCharacters(in: .whitespaces)
+    let content = line.content.trimmingCharacters(in: .whitespacesAndNewlines)
     
     if content.isEmpty {
       return false
@@ -71,7 +71,7 @@ public class MarkdownSetextHeadingBuilder: MarkdownBlockBuilderProtocol {
       return (false, 0)
     }
     
-    let content = line.content.trimmingCharacters(in: .whitespaces)
+    let content = line.content.trimmingCharacters(in: .whitespacesAndNewlines)
     
     if content.isEmpty {
       return (false, 0)
