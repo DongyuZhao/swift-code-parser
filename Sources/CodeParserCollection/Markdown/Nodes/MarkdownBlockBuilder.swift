@@ -36,7 +36,7 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
     // Extract lines from remaining tokens
     let remainingTokens = Array(context.tokens[context.consuming...])
     guard !remainingTokens.isEmpty else { return false }
-    
+
     let lines = extractLines(from: remainingTokens, startingAt: 0)
     guard !lines.isEmpty else { return false }
     

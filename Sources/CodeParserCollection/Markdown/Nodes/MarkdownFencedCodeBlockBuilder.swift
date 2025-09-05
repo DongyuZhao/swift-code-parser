@@ -20,7 +20,9 @@ public class MarkdownFencedCodeBlockBuilder: MarkdownBlockBuilderProtocol {
       tokenIndex += 1
     }
     
-    guard tokenIndex < line.tokens.count else { return false }
+    guard tokenIndex < line.tokens.count else { 
+      return false 
+    }
     
     // Check for fence start using tokens directly
     let (isFence, _, fenceLength) = checkFencePattern(tokens: line.tokens, startIndex: tokenIndex)
@@ -29,8 +31,9 @@ public class MarkdownFencedCodeBlockBuilder: MarkdownBlockBuilderProtocol {
       // For backticks, check that info string doesn't contain backticks
       if let firstFenceToken = line.tokens[tokenIndex].text.first,
          firstFenceToken == "`" {
-        // Check remaining tokens for backticks in info string
-        for i in (tokenIndex + 1)..<line.tokens.count {
+        // Check remaining tokens AFTER the fence for backticks in info string
+        let infoStartIndex = tokenIndex + fenceLength  // Skip past all fence tokens
+        for i in infoStartIndex..<line.tokens.count {
           let token = line.tokens[i]
           if token.element == .newline || token.element == .eof {
             break
@@ -203,26 +206,22 @@ public class MarkdownFencedCodeBlockBuilder: MarkdownBlockBuilderProtocol {
 }
 
 /// Specialized code block for fenced code blocks
-public class MarkdownFencedCodeBlock: MarkdownNodeBase, MarkdownBlockNode {
-  public var blockType: String { "fenced_code_block" }
+public class MarkdownFencedCodeBlock: CodeBlockNode {
+  public override var blockType: String { "fenced_code_block" }
   public var fenceChar: Character
   public var fenceLength: Int
-  public var language: String?
-  public var source: String = ""
   public var isClosed: Bool = false
   
   public init(fenceChar: Character, fenceLength: Int, language: String? = nil) {
     self.fenceChar = fenceChar
     self.fenceLength = fenceLength
-    self.language = language
-    super.init(element: .codeBlock)
+    // Use empty source initially, will be populated during processing
+    super.init(source: "", language: language)
   }
   
   public override func hash(into hasher: inout Hasher) {
     super.hash(into: &hasher)
     hasher.combine(fenceChar)
     hasher.combine(fenceLength)
-    hasher.combine(language)
-    hasher.combine(source)
   }
 }

@@ -131,6 +131,34 @@ public class MarkdownParagraphBuilder: MarkdownBlockBuilderProtocol {
       return true
     }
     
+    // Check for fenced code blocks (``` or ~~~)
+    if firstToken.element == .punctuation {
+      let char = firstToken.text
+      if char == "`" || char == "~" {
+        // Count consecutive fence characters
+        var count = 0
+        for token in line.tokens {
+          if token.element == .punctuation && token.text == char {
+            count += 1
+          } else if token.element == .whitespaces {
+            // Whitespace after fence is allowed for info string
+            break
+          } else if token.element == .newline || token.element == .eof {
+            // End of line
+            break
+          } else {
+            // Other characters after fence are allowed for info string
+            break
+          }
+        }
+        
+        // Must have at least 3 fence characters
+        if count >= 3 {
+          return true
+        }
+      }
+    }
+    
     // Don't check for heading markers here - let the actual heading builders decide
     // This prevents conflicts where "#5 bolt" gets marked as a block starter
     // when it should be a paragraph
@@ -153,6 +181,34 @@ public class MarkdownParagraphBuilder: MarkdownBlockBuilderProtocol {
     
     // Don't check for heading markers here either - let the actual heading builders decide
     // This prevents conflicts with lines like "#5 bolt" when they're part of a paragraph
+    
+    // Check for fenced code blocks (``` or ~~~) - these DO interrupt paragraphs
+    if firstToken.element == .punctuation {
+      let char = firstToken.text
+      if char == "`" || char == "~" {
+        // Count consecutive fence characters
+        var count = 0
+        for token in line.tokens {
+          if token.element == .punctuation && token.text == char {
+            count += 1
+          } else if token.element == .whitespaces {
+            // Whitespace after fence is allowed for info string
+            break
+          } else if token.element == .newline || token.element == .eof {
+            // End of line
+            break
+          } else {
+            // Other characters after fence are allowed for info string
+            break
+          }
+        }
+        
+        // Must have at least 3 fence characters
+        if count >= 3 {
+          return true
+        }
+      }
+    }
     
     // Check for thematic break (these DO interrupt paragraphs)
     // Thematic breaks are tokenized as individual punctuation characters
