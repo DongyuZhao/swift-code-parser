@@ -54,7 +54,7 @@ public class MarkdownSetextHeadingBuilder: MarkdownBlockBuilderProtocol {
     return nil
   }
   
-  public func processLine(block: any MarkdownBlockNode, line: MarkdownLine) -> Bool {
+  public func processLine(block: any MarkdownBlockNode, line: MarkdownLine, state: inout MarkdownConstructState) -> Bool {
     // Setext headings don't process additional lines
     return false
   }

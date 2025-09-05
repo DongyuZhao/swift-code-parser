@@ -85,27 +85,56 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
       return
     }
     
-    // Check if any existing block can continue with this line
-    if let continuingBlock = findBlockThatCanContinue(line, in: context.current) {
-      // Let the appropriate builder process this line into the existing block
-      processContinuationLine(line, for: continuingBlock)
-      return
-    }
-    
-    // Check if this line should interrupt any existing blocks
-    if canLineInterruptExistingBlocks(line) {
-      closeInterruptibleBlocks(context: &context)
-    }
-    
-    // Try to start a new block with this line
-    if let newBlock = tryCreateNewBlock(for: line) {
-      // Add the new block to the AST
-      context.current.append(newBlock as! MarkdownNodeBase)
-      // Process the opening line
-      processOpeningLine(line, for: newBlock)
-    } else {
-      // Fallback to paragraph
-      createAndProcessParagraph(for: line, context: &context)
+    // Store the current line in state for builders to process
+    if var state = context.state as? MarkdownConstructState {
+      state.tokens = line.tokens
+      state.currentLineProcessed = false
+      
+      // Keep processing until the line is fully processed
+      while !state.currentLineProcessed && !state.tokens.isEmpty {
+        state.currentLineProcessed = true // Will be set to false if a builder yields back
+        
+        // Check if any existing block can continue with current tokens
+        let currentLine = MarkdownLine(tokens: state.tokens, lineNumber: line.lineNumber)
+        if let continuingBlock = findBlockThatCanContinue(currentLine, in: context.current) {
+          // Let the appropriate builder process tokens and potentially modify state
+          processContinuationLine(currentLine, for: continuingBlock, state: &state)
+        } else {
+          // Check if this line should interrupt any existing blocks
+          if canLineInterruptExistingBlocks(MarkdownLine(tokens: state.tokens, lineNumber: line.lineNumber)) {
+            closeInterruptibleBlocks(context: &context)
+          }
+          
+          // Try to start a new block with current tokens
+          let currentLine = MarkdownLine(tokens: state.tokens, lineNumber: line.lineNumber)
+          if let newBlock = tryCreateNewBlock(for: currentLine) {
+            // Add the new block to the AST
+            context.current.append(newBlock as! MarkdownNodeBase)
+            
+            // If this is a container block (like blockquote), update context to point to it
+            let wasContainer = isContainerBlock(newBlock)
+            if wasContainer {
+              context.current = newBlock as! MarkdownNodeBase
+            }
+            
+            // Process the opening line and potentially modify state
+            processOpeningLine(currentLine, for: newBlock, state: &state)
+            
+            // If we made current point to a container and processing isn't complete,
+            // continue processing within that container
+            if wasContainer && !state.currentLineProcessed {
+              continue
+            }
+          } else {
+            // Fallback to paragraph
+            createAndProcessParagraph(for: currentLine, context: &context, state: &state)
+            break // Paragraph consumes everything
+          }
+        }
+      }
+      
+      // Update context state
+      context.state = state
     }
   }
   
@@ -191,29 +220,29 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
   }
   
   /// Process a line that continues an existing block
-  private func processContinuationLine(_ line: MarkdownLine, for block: any MarkdownBlockNode) {
+  private func processContinuationLine(_ line: MarkdownLine, for block: any MarkdownBlockNode, state: inout MarkdownConstructState) {
     // Find the builder for this block and let it process the line
     for builder in blockBuilders {
       if builder.canContinue(block: block, line: line) {
-        _ = builder.processLine(block: block, line: line)
+        _ = builder.processLine(block: block, line: line, state: &state)
         return
       }
     }
   }
   
   /// Process a line that opens a new block
-  private func processOpeningLine(_ line: MarkdownLine, for block: any MarkdownBlockNode) {
+  private func processOpeningLine(_ line: MarkdownLine, for block: any MarkdownBlockNode, state: inout MarkdownConstructState) {
     // Find the builder for this block and let it process the opening line
     for builder in blockBuilders {
       if canBuilderHandle(builder, blockType: block.blockType) {
-        _ = builder.processLine(block: block, line: line)
+        _ = builder.processLine(block: block, line: line, state: &state)
         return
       }
     }
   }
   
   /// Create and process a paragraph for this line
-  private func createAndProcessParagraph(for line: MarkdownLine, context: inout CodeConstructContext<Node, Token>) {
+  private func createAndProcessParagraph(for line: MarkdownLine, context: inout CodeConstructContext<Node, Token>, state: inout MarkdownConstructState) {
     // Create a new paragraph
     let paragraph = createParagraphBlock()
     context.current.append(paragraph as! MarkdownNodeBase)
@@ -221,7 +250,7 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
     // Process the line into the paragraph
     for builder in blockBuilders {
       if builder is MarkdownParagraphBuilder {
-        _ = builder.processLine(block: paragraph, line: line)
+        _ = builder.processLine(block: paragraph, line: line, state: &state)
         return
       }
     }
@@ -233,6 +262,15 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
     let dummyString = ""
     let range = dummyString.startIndex..<dummyString.endIndex
     return ParagraphNode(range: range)
+  }
+  
+  /// Check if a block is a container block that can contain other blocks
+  private func isContainerBlock(_ block: any MarkdownBlockNode) -> Bool {
+    switch block.blockType {
+    case "blockquote": return true
+    case "list_item": return true
+    default: return false
+    }
   }
   
   /// Check if a builder can handle a specific block type

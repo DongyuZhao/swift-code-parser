@@ -12,6 +12,14 @@ public class MarkdownConstructState: CodeConstructState {
   /// Note: This cannot be derived from AST since reference definitions may appear
   /// anywhere in the document and need to be available for link resolution
   public var referenceDefinitions: [String: (url: String, title: String)] = [:]
+  
+  /// Current line tokens being processed - builders can modify these
+  /// This allows builders to consume their part and leave remaining tokens for further processing
+  public var tokens: [any CodeToken<MarkdownTokenElement>] = []
+  
+  /// Flag indicating if current line has been fully processed by a builder
+  /// When false, MarkdownBlockBuilder should continue processing the remaining tokens
+  public var currentLineProcessed: Bool = true
 
   public init() {}
   

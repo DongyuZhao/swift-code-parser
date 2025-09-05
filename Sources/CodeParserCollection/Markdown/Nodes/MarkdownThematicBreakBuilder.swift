@@ -82,7 +82,7 @@ public class MarkdownThematicBreakBuilder: MarkdownBlockBuilderProtocol {
     return MarkdownThematicBreak()
   }
   
-  public func processLine(block: any MarkdownBlockNode, line: MarkdownLine) -> Bool {
+  public func processLine(block: any MarkdownBlockNode, line: MarkdownLine, state: inout MarkdownConstructState) -> Bool {
     // Thematic breaks are single-line blocks, no processing needed
     return false
   }

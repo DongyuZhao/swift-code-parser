@@ -26,8 +26,9 @@ public protocol MarkdownBlockBuilderProtocol {
   /// - Parameters:
   ///   - block: The existing block to add content to
   ///   - line: The line tokens to process
+  ///   - state: The construction state that can be modified by the builder
   /// - Returns: True if the line was successfully processed
-  func processLine(block: any MarkdownBlockNode, line: MarkdownLine) -> Bool
+  func processLine(block: any MarkdownBlockNode, line: MarkdownLine, state: inout MarkdownConstructState) -> Bool
   
   /// Close and finalize a block (post-processing)
   /// - Parameter block: The block to finalize

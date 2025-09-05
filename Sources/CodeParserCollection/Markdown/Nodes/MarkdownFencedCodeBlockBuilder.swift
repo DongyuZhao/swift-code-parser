@@ -156,7 +156,7 @@ public class MarkdownFencedCodeBlockBuilder: MarkdownBlockBuilderProtocol {
     return codeBlock
   }
   
-  public func processLine(block: any MarkdownBlockNode, line: MarkdownLine) -> Bool {
+  public func processLine(block: any MarkdownBlockNode, line: MarkdownLine, state: inout MarkdownConstructState) -> Bool {
     guard let codeBlock = block as? MarkdownFencedCodeBlock else { return false }
     
     // Check if this is a closing fence

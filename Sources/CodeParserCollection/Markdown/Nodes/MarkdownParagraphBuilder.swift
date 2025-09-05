@@ -49,11 +49,11 @@ public class MarkdownParagraphBuilder: MarkdownBlockBuilderProtocol {
     return paragraph
   }
   
-  public func processLine(block: any MarkdownBlockNode, line: MarkdownLine) -> Bool {
+  public func processLine(block: any MarkdownBlockNode, line: MarkdownLine, state: inout MarkdownConstructState) -> Bool {
     guard let paragraph = block as? ParagraphNode else { return false }
     
-    // Get content tokens (exclude EOF and newline)
-    var contentTokens = line.tokens.filter { token in
+    // Get content tokens from state (these may have been processed by other builders)
+    var contentTokens = state.tokens.filter { token in
       token.element != .eof && token.element != .newline
     }
     
@@ -101,6 +101,9 @@ public class MarkdownParagraphBuilder: MarkdownBlockBuilderProtocol {
         paragraph.children.append(node)
       }
     }
+    
+    // Mark current line as fully processed since paragraph consumes everything
+    state.currentLineProcessed = true
     
     return true
   }

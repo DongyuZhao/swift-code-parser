@@ -154,13 +154,10 @@ public class MarkdownListItemBuilder: MarkdownBlockBuilderProtocol {
     // Set the old properties for backward compatibility
     listItem.contentIndent = contentColumn
     
-    // Process the content after marker
-    _ = processLine(block: listItem, line: line)
-    
     return listItem
   }
   
-  public func processLine(block: any MarkdownBlockNode, line: MarkdownLine) -> Bool {
+  public func processLine(block: any MarkdownBlockNode, line: MarkdownLine, state: inout MarkdownConstructState) -> Bool {
     guard let listItem = block as? MarkdownListItem else { return false }
     
     var contentTokens: [any CodeToken<MarkdownTokenElement>] = []

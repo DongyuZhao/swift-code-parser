@@ -189,7 +189,7 @@ public class MarkdownATXHeadingBuilder: MarkdownBlockBuilderProtocol {
     return result
   }
   
-  public func processLine(block: any MarkdownBlockNode, line: MarkdownLine) -> Bool {
+  public func processLine(block: any MarkdownBlockNode, line: MarkdownLine, state: inout MarkdownConstructState) -> Bool {
     // ATX headings are single-line blocks, no processing needed
     return false
   }

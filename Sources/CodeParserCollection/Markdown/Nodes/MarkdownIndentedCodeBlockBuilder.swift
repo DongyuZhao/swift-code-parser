@@ -29,7 +29,7 @@ public class MarkdownIndentedCodeBlockBuilder: MarkdownBlockBuilderProtocol {
     return codeBlock
   }
   
-  public func processLine(block: any MarkdownBlockNode, line: MarkdownLine) -> Bool {
+  public func processLine(block: any MarkdownBlockNode, line: MarkdownLine, state: inout MarkdownConstructState) -> Bool {
     guard let codeBlock = block as? CodeBlockNode else { return false }
     
     if line.isBlank {
