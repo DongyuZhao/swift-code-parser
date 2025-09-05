@@ -101,7 +101,16 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
       // Store tokens count to detect infinite loops
       let tokensBeforeProcessing = state.tokens.count
       
-      // FIRST: Check if this line can start an interrupting block type
+      // FIRST: Check if this line can create a setext heading by transforming the previous paragraph
+      if let lastParagraph = findLastParagraph(in: context.current) {
+        if tryCreateSetextHeading(from: currentLine, transforming: lastParagraph) {
+          // Successfully transformed paragraph into heading
+          state.currentLineProcessed = true
+          continue
+        }
+      }
+      
+      // SECOND: Check if this line can start an interrupting block type
       // If so, create it immediately (this handles thematic breaks, headings, etc.)
       if canLineInterruptExistingBlocks(currentLine) {
         closeInterruptibleBlocks(context: &context)
@@ -404,6 +413,86 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
     }
   }
   
+  /// Find the last paragraph in the AST (for setext heading transformation)
+  private func findLastParagraph(in node: CodeNode<MarkdownNodeElement>) -> ParagraphNode? {
+    // Check the last child first
+    if let lastChild = node.children.last as? MarkdownNodeBase {
+      if let paragraph = lastChild as? ParagraphNode {
+        return paragraph
+      }
+      // Recursively check in container blocks
+      if let containerParagraph = findLastParagraph(in: lastChild) {
+        return containerParagraph
+      }
+    }
+    return nil
+  }
+  
+  /// Try to create a setext heading by transforming an existing paragraph
+  private func tryCreateSetextHeading(from line: MarkdownLine, transforming paragraph: ParagraphNode) -> Bool {
+    // Use the setext heading builder to check if this line is a valid underline
+    let setextBuilder = MarkdownSetextHeadingBuilder()
+    
+    // Check if this line can be a setext underline
+    if !setextBuilder.canStart(line: line) {
+      return false
+    }
+    
+    // Get the paragraph's text content for the heading
+    guard let textContent = extractTextContent(from: paragraph) else {
+      return false
+    }
+    
+    // Determine heading level based on underline character
+    let level = line.content.trimmingCharacters(in: .whitespaces).first == "=" ? 1 : 2
+    
+    // Transform the paragraph into a heading by replacing it in the AST
+    transformParagraphToHeading(paragraph, text: textContent, level: level)
+    
+    return true
+  }
+  
+  /// Extract text content from a paragraph node
+  private func extractTextContent(from paragraph: ParagraphNode) -> String? {
+    // Walk through the paragraph's children and extract text
+    var textContent = ""
+    
+    func extractTextRecursively(from node: CodeNode<MarkdownNodeElement>) {
+      for child in node.children {
+        if let textNode = child as? TextNode {
+          textContent += textNode.content
+        } else if let markdownChild = child as? MarkdownNodeBase {
+          extractTextRecursively(from: markdownChild)
+        }
+      }
+    }
+    
+    extractTextRecursively(from: paragraph)
+    
+    let trimmed = textContent.trimmingCharacters(in: .whitespacesAndNewlines)
+    return trimmed.isEmpty ? nil : trimmed
+  }
+  
+  /// Transform a paragraph node into a heading node (AST editing)
+  private func transformParagraphToHeading(_ paragraph: ParagraphNode, text: String, level: Int) {
+    // Get the parent node so we can replace the paragraph
+    guard let parent = paragraph.parent as? MarkdownNodeBase else { return }
+    
+    // Find the index of the paragraph in its parent
+    guard let paragraphIndex = parent.children.firstIndex(where: { $0 === paragraph }) else { return }
+    
+    // Create a new heading node
+    let heading = HeaderNode(level: level)
+    
+    // Add the text content as a child of the heading
+    let textNode = TextNode(content: text)
+    heading.append(textNode)
+    
+    // Replace the paragraph with the heading in the parent
+    parent.children.remove(at: paragraphIndex)
+    parent.children.insert(heading, at: paragraphIndex)
+  }
+
   /// Create default set of block builders
   public static func createDefaultBuilders() -> [MarkdownBlockBuilderProtocol] {
     return [
