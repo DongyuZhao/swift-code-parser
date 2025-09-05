@@ -60,27 +60,39 @@ public class MarkdownParagraphBuilder: MarkdownBlockBuilderProtocol {
     // Strip leading whitespace (up to 3 spaces for paragraph indentation)
     contentTokens = stripLeadingIndentation(contentTokens, maxSpaces: 3)
     
-    // Check for hard line break (two trailing spaces)
-    var endsWithTwoSpaces = false
+    // Check for hard line break (two trailing spaces OR backslash at end of line)
+    var endsWithHardBreak = false
+    
+    // Method 1: Two or more trailing spaces
     if let lastToken = contentTokens.last,
        lastToken.element == .whitespaces && lastToken.text.count >= 2 {
-      endsWithTwoSpaces = true
+      endsWithHardBreak = true
       // Remove the trailing whitespace token
       contentTokens.removeLast()
     }
     
-    // If paragraph already has tokens, add a space between lines
+    // Method 2: Backslash at end of line (backslash should be punctuation token)
+    if !endsWithHardBreak && !contentTokens.isEmpty {
+      if let lastToken = contentTokens.last,
+         lastToken.element == .punctuation && lastToken.text == "\\" {
+        endsWithHardBreak = true
+        // Remove the backslash token
+        contentTokens.removeLast()
+      }
+    }
+    
+    // If paragraph already has tokens, add a line break between lines
     if !paragraph.accumulatedTokens.isEmpty {
       // Add appropriate line break token
-      let lineBreakToken = createLineBreakToken(isHard: paragraph.lastLineEndedWithTwoSpaces)
+      let lineBreakToken = createLineBreakToken(isHard: paragraph.lastLineEndedWithHardBreak)
       paragraph.accumulatedTokens.append(lineBreakToken)
     }
     
     // Add content tokens directly - no conversion to string!
     paragraph.accumulatedTokens.append(contentsOf: contentTokens)
     
-    // Store whether this line ended with two spaces for next line's line break
-    paragraph.lastLineEndedWithTwoSpaces = endsWithTwoSpaces
+    // Store whether this line ended with hard break for next line's line break
+    paragraph.lastLineEndedWithHardBreak = endsWithHardBreak
     
     return true
   }

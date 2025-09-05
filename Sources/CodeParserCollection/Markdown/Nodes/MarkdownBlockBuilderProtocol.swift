@@ -56,13 +56,33 @@ public struct MarkdownLine {
     }
   }
   
-  /// Get leading whitespace count
+  /// Get leading whitespace count (converts tabs to equivalent spaces according to CommonMark)
   public var leadingWhitespace: Int {
     guard let firstToken = tokens.first,
           firstToken.element == .whitespaces else {
       return 0
     }
-    return firstToken.text.count
+    
+    // Convert tabs to spaces according to CommonMark tab expansion rules
+    return expandTabsToSpaceCount(firstToken.text)
+  }
+  
+  /// Expand tabs to equivalent space count according to CommonMark spec
+  /// Tabs expand to the next 4-character tab stop
+  private func expandTabsToSpaceCount(_ text: String) -> Int {
+    var column = 0
+    
+    for char in text {
+      if char == "\t" {
+        // Add spaces until next 4-character boundary
+        let spacesToAdd = 4 - (column % 4)
+        column += spacesToAdd
+      } else {
+        column += 1
+      }
+    }
+    
+    return column
   }
 }
 

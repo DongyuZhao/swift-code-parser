@@ -40,21 +40,42 @@ public class MarkdownIndentedCodeBlockBuilder: MarkdownBlockBuilderProtocol {
       return true
     }
     
-    // Extract code content, removing 4 spaces of indentation
+    // Extract code content, removing 4 spaces worth of indentation (with tab expansion)
     var codeContent = ""
     var remainingIndent = 4
+    var column = 0  // Track column position for tab expansion
     
     for token in line.tokens {
       if token.element == .whitespaces && remainingIndent > 0 {
-        let spaces = token.text
-        if spaces.count <= remainingIndent {
-          // Consume all this whitespace as indentation
-          remainingIndent -= spaces.count
-        } else {
-          // Keep extra whitespace beyond 4 spaces
-          let extraSpaces = String(spaces.dropFirst(remainingIndent))
-          codeContent += extraSpaces
-          remainingIndent = 0
+        let whitespaceText = token.text
+        
+        // Process character by character to handle tab expansion
+        for char in whitespaceText {
+          if remainingIndent <= 0 {
+            // No more indentation to consume, add to content
+            codeContent += String(char)
+            continue
+          }
+          
+          if char == "\t" {
+            // Tab expands to next 4-character boundary
+            let spacesToAdd = 4 - (column % 4)
+            if spacesToAdd <= remainingIndent {
+              // Consume entire tab as indentation
+              remainingIndent -= spacesToAdd
+              column += spacesToAdd
+            } else {
+              // Partially consume tab, add remaining spaces to content
+              let remainingSpaces = spacesToAdd - remainingIndent
+              codeContent += String(repeating: " ", count: remainingSpaces)
+              remainingIndent = 0
+              column += spacesToAdd
+            }
+          } else {
+            // Regular space character
+            remainingIndent -= 1
+            column += 1
+          }
         }
       } else if token.element != .newline && token.element != .eof {
         // Add all other content (except newlines, which are implied)
