@@ -62,10 +62,11 @@ public class MarkdownParagraphBuilder: MarkdownBlockBuilderProtocol {
       token.element != .eof && token.element != .newline
     }
     
-    // Strip leading whitespace (up to 3 spaces for paragraph indentation)
-    contentTokens = stripLeadingIndentation(contentTokens, maxSpaces: 3)
+    // Strip ALL leading whitespace for continuation lines
+    // (The 3-space limit only applies to determining whether a line starts a new paragraph)
+    contentTokens = stripAllLeadingWhitespace(contentTokens)
     
-    // Check for hard line break (two trailing spaces OR backslash at end of line)
+    // Check for hard line break (two or more trailing spaces OR backslash at end of line)
     var endsWithHardBreak = false
     
     // Method 1: Two or more trailing spaces
@@ -86,17 +87,23 @@ public class MarkdownParagraphBuilder: MarkdownBlockBuilderProtocol {
       }
     }
     
-    // Add line breaks for continuation lines if there's existing content and this line has content  
+    // Remove single trailing space (but only if not a hard line break)
+    if !endsWithHardBreak {
+      contentTokens = removeTrailingSpace(contentTokens)
+    }
+    
+    // Add line breaks for continuation lines if there's existing content and this line has content
+    // Use the PREVIOUS line's hard break status for the line break type
     if !paragraph.children.isEmpty && !contentTokens.isEmpty {
-      if endsWithHardBreak {
-        // Add hard line break for lines ending with two spaces or backslash
+      if state.lastLineEndedWithHardBreak {
+        // Previous line ended with hard break - add hard line break
         let lineBreakToken = createLineBreakToken("__HARD_LINE_BREAK__")
         let lineBreakNodes = inlineProcessor.processInlineTokens([lineBreakToken])
         for node in lineBreakNodes {
           paragraph.children.append(node)
         }
       } else {
-        // Add soft line break for regular continuation lines
+        // Previous line ended normally - add soft line break
         let lineBreakToken = createLineBreakToken("__SOFT_LINE_BREAK__")
         let lineBreakNodes = inlineProcessor.processInlineTokens([lineBreakToken])
         for node in lineBreakNodes {
@@ -112,6 +119,9 @@ public class MarkdownParagraphBuilder: MarkdownBlockBuilderProtocol {
         paragraph.children.append(node)
       }
     }
+    
+    // Update state with current line's hard break status for next line
+    state.lastLineEndedWithHardBreak = endsWithHardBreak
     
     // Mark current line as fully processed since paragraph consumes everything
     state.currentLineProcessed = true
@@ -262,6 +272,36 @@ public class MarkdownParagraphBuilder: MarkdownBlockBuilderProtocol {
     return false
   }
   
+  /// Strip ALL leading whitespace tokens from paragraph content
+  /// For continuation lines, all indentation should be removed
+  private func stripAllLeadingWhitespace(_ tokens: [any CodeToken<MarkdownTokenElement>]) -> [any CodeToken<MarkdownTokenElement>] {
+    guard !tokens.isEmpty else { return tokens }
+    
+    var result = tokens
+    
+    // Remove all leading whitespace tokens
+    while !result.isEmpty && result[0].element == .whitespaces {
+      result.removeFirst()
+    }
+    
+    return result
+  }
+  
+  /// Remove single trailing space (unless it's part of a 2+ space hard line break)
+  private func removeTrailingSpace(_ tokens: [any CodeToken<MarkdownTokenElement>]) -> [any CodeToken<MarkdownTokenElement>] {
+    guard !tokens.isEmpty else { return tokens }
+    
+    var result = tokens
+    
+    // Check if last token is a single space (not 2+ spaces which would be a hard break)
+    if let lastToken = result.last,
+       lastToken.element == .whitespaces && lastToken.text.count == 1 {
+      result.removeLast()
+    }
+    
+    return result
+  }
+
   /// Strip leading whitespace tokens (up to maxSpaces spaces) from paragraph content
   private func stripLeadingIndentation(_ tokens: [any CodeToken<MarkdownTokenElement>], maxSpaces: Int) -> [any CodeToken<MarkdownTokenElement>] {
     guard !tokens.isEmpty else { return tokens }

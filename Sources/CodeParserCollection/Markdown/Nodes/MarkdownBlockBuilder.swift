@@ -79,16 +79,23 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
   
   /// Process a line by determining what block it belongs to and directly editing the AST
   private func processLineIntoAST(_ line: MarkdownLine, context: inout CodeConstructContext<Node, Token>) {
+    // Track blank line state for block continuation logic
+    guard var state = context.state as? MarkdownConstructState else { return }
+    
     // Skip blank lines - they typically close blocks or are ignored
     if line.isBlank {
       closeOpenBlocks(context: &context)
+      state.lastLineWasBlank = true
+      context.state = state
       return
     }
     
     // Store the current line in state for builders to process
-    guard var state = context.state as? MarkdownConstructState else { return }
     state.tokens = line.tokens
     state.currentLineProcessed = false
+    // Reset blank line flag since this is a non-blank line
+    let wasBlankLine = state.lastLineWasBlank
+    state.lastLineWasBlank = false
     
     // Process with yield-back pattern: keep processing until line is fully consumed
     var iterations = 0
@@ -147,22 +154,33 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
       }
       
       // THIRD: Check if any existing block can continue with current tokens
-      if let continuingBlock = findBlockThatCanContinue(currentLine, in: context.current) {
-        // Check if continuation is valid before processing
-        if canContinueBlock(continuingBlock, with: currentLine) {
-          processLineWithBuilder(currentLine, for: continuingBlock, state: &state)
-          
-          // If this is a container block and tokens were yielded back, process them in the container's context
-          if !state.currentLineProcessed && isContainerBlock(continuingBlock) {
-            processYieldedTokensInContainer(continuingBlock, state: &state, lineNumber: line.lineNumber)
+      // But not if the last line was blank - blank lines close blocks for continuation
+      if !wasBlankLine {
+        if let continuingBlock = findBlockThatCanContinue(currentLine, in: context.current) {
+          // Check if continuation is valid before processing
+          if canContinueBlock(continuingBlock, with: currentLine) {
+            processLineWithBuilder(currentLine, for: continuingBlock, state: &state)
+            
+            // If this is a container block and tokens were yielded back, process them in the container's context
+            if !state.currentLineProcessed && isContainerBlock(continuingBlock) {
+              processYieldedTokensInContainer(continuingBlock, state: &state, lineNumber: line.lineNumber)
+            }
+          } else {
+            // Block cannot continue, close it and try new block
+            closeBlock(continuingBlock, context: &context)
+            _ = tryCreateNewBlockWithLine(currentLine, context: &context, state: &state)
           }
         } else {
-          // Block cannot continue, close it and try new block
-          closeBlock(continuingBlock, context: &context)
-          _ = tryCreateNewBlockWithLine(currentLine, context: &context, state: &state)
+          // No continuing block, try new block
+          let newBlockCreated = tryCreateNewBlockWithLine(currentLine, context: &context, state: &state)
+          
+          // If a container block was created and tokens were yielded back, process them in the container's context
+          if !state.currentLineProcessed && newBlockCreated != nil && isContainerBlock(newBlockCreated!) {
+            processYieldedTokensInContainer(newBlockCreated!, state: &state, lineNumber: line.lineNumber)
+          }
         }
       } else {
-        // No continuing block, try new block
+        // Last line was blank, so start fresh - no continuation
         let newBlockCreated = tryCreateNewBlockWithLine(currentLine, context: &context, state: &state)
         
         // If a container block was created and tokens were yielded back, process them in the container's context

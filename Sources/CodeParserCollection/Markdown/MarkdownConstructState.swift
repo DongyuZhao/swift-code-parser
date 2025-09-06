@@ -20,6 +20,14 @@ public class MarkdownConstructState: CodeConstructState {
   /// Flag indicating if current line has been fully processed by a builder
   /// When false, MarkdownBlockBuilder should continue processing the remaining tokens
   public var currentLineProcessed: Bool = true
+  
+  /// Flag indicating if the last processed line was blank
+  /// This affects block continuation - blocks closed by blank lines cannot be continued
+  public var lastLineWasBlank: Bool = false
+  
+  /// Flag indicating if the last processed line ended with a hard line break
+  /// This affects how the next line break is rendered
+  public var lastLineEndedWithHardBreak: Bool = false
 
   public init() {}
   

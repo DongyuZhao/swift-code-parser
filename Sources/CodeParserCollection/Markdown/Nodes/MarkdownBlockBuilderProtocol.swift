@@ -59,6 +59,11 @@ public protocol MarkdownBlockBuilderProtocol {
   /// Check if this builder creates container blocks that can contain other blocks
   /// - Returns: True if this builder creates container blocks (like blockquotes, list items)
   func isContainerBuilder() -> Bool
+  
+  /// Check if this builder can handle operations on the given block
+  /// - Parameter block: The block to check
+  /// - Returns: True if this builder can handle operations on this block
+  func canHandle(block: any MarkdownBlockNode) -> Bool
 }
 
 /// Represents a line of tokens for block processing
