@@ -241,14 +241,8 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
   /// Create a new block using a specific builder (pluggable block creation)
   private func createNewBlockWithBuilder(_ builder: MarkdownBlockBuilderProtocol, line: MarkdownLine, context: inout CodeConstructContext<Node, Token>, state: inout MarkdownConstructState) -> (any MarkdownBlockNode)? {
     if let newBlock = builder.createBlock(from: line) {
-      // For interrupting blocks, add at the current context level (don't dive into containers)
-      if builder.canInterrupt() {
-        context.current.append(newBlock as! MarkdownNodeBase)
-      } else {
-        // For non-interrupting blocks, use the normal target finding logic
-        let targetNode = findTargetNodeForNewBlock(in: context.current)
-        targetNode.append(newBlock as! MarkdownNodeBase)
-      }
+      // Add the new block to the current context position
+      context.current.append(newBlock as! MarkdownNodeBase)
       
       // Process the opening line with the builder
       _ = builder.processLine(block: newBlock, line: line, state: &state)
@@ -400,9 +394,8 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
             _ = builder.processLine(block: newBlock, line: line, state: &state)
             return newBlock
           } else {
-            // Regular block handling
-            let targetNode = findTargetNodeForNewBlock(in: context.current)
-            targetNode.append(newBlock as! MarkdownNodeBase)
+            // Regular block handling - add to current context position
+            context.current.append(newBlock as! MarkdownNodeBase)
             
             // Process the opening line with the builder
             _ = builder.processLine(block: newBlock, line: line, state: &state)
@@ -468,20 +461,6 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
   private func isUnorderedListItem(_ listItem: MarkdownListItem) -> Bool {
     return !isOrderedListItem(listItem)
   }
-  private func findTargetNodeForNewBlock(in node: CodeNode<MarkdownNodeElement>) -> CodeNode<MarkdownNodeElement> {
-    // For now, find the deepest open container block or return the root
-    if let lastChild = node.children.last as? MarkdownNodeBase {
-      if let blockNode = lastChild as? any MarkdownBlockNode {
-        if isContainerBlock(blockNode) {
-          // This is a container block, add content to it
-          return lastChild
-        }
-      }
-    }
-    
-    // Default to the current node
-    return node
-  }
   
   /// Process yielded-back tokens within a container block's context
   private func processYieldedTokensInContainer(_ containerBlock: any MarkdownBlockNode, state: inout MarkdownConstructState, lineNumber: Int) {
@@ -544,9 +523,8 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
     // Create a new paragraph
     let paragraph = createParagraphBlock()
     
-    // Add paragraph to the appropriate target node
-    let targetNode = findTargetNodeForNewBlock(in: context.current)
-    targetNode.append(paragraph as! MarkdownNodeBase)
+    // Add paragraph to the current context position
+    context.current.append(paragraph as! MarkdownNodeBase)
     
     // Process the line into the paragraph
     for builder in blockBuilders {
