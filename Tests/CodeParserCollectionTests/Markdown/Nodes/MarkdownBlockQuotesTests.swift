@@ -24,6 +24,11 @@ struct MarkdownBlockQuotesTests {
 
     let expectedSig =
       #"document[blockquote[heading(level:1)[text("Foo")],paragraph[text("bar"),line_break(soft),text("baz")]]]"#
+    
+    print("ACTUAL OUTPUT: \(sig(result.root))")
+    print("EXPECTED OUTPUT: \(expectedSig)")
+    print("MATCH: \(sig(result.root) == expectedSig)")
+    
     #expect(sig(result.root) == expectedSig)
   }
 

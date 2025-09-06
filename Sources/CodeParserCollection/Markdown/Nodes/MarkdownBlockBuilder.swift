@@ -82,8 +82,12 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
     // Track blank line state for block continuation logic
     guard var state = context.state as? MarkdownConstructState else { return }
     
+    // Debug: Log line processing
+    print("DEBUG: Processing line \(line.lineNumber): '\(line.content)' (isBlank: \(line.isBlank))")
+    
     // Handle blank lines - they close blocks and potentially remove trailing line breaks
     if line.isBlank {
+      print("DEBUG: Handling blank line")
       handleBlankLine(context: &context, state: &state)
       state.lastLineWasBlank = true
       context.state = state
@@ -110,11 +114,14 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
       
       // FIRST: Check if any builder can transform the last block (pluggable transformation)
       if let lastBlock = findLastBlock(in: context.current) {
+        print("DEBUG: Found last block: \(type(of: lastBlock)) (\(lastBlock.blockType))")
         let sortedBuilders = blockBuilders.sorted { $0.priority < $1.priority }
         var transformationSucceeded = false
         for builder in sortedBuilders {
           if builder.canTransform(block: lastBlock, with: currentLine) {
+            print("DEBUG: Builder \(type(of: builder)) can transform \(lastBlock.blockType)")
             if builder.transform(block: lastBlock, with: currentLine) {
+              print("DEBUG: Transformation succeeded")
               transformationSucceeded = true
               break
             }
@@ -130,62 +137,92 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
         }
       }
       
-      // SECOND: Check if any interrupting builder can start (pluggable interruption)
+      // SECOND: Check for high-priority interrupting blocks FIRST (like blockquotes that can interrupt paragraphs)
       let sortedBuilders = blockBuilders.sorted { $0.priority < $1.priority }
       var interruptingBlockCreated = false
+      var blockContinued = false
+      
+      print("DEBUG: Checking for high-priority interrupting blocks")
       for builder in sortedBuilders {
         if builder.canInterrupt() && builder.canStart(line: currentLine) {
-          handleBlockInterruption(context: &context, state: &state)
-          if let newBlock = createNewBlockWithBuilder(builder, line: currentLine, context: &context, state: &state) {
-            print("DEBUG: Created interrupting block \(type(of: newBlock))")
-            interruptingBlockCreated = true
-            
-            // If a container block was created and tokens were yielded back, process them
-            if !state.currentLineProcessed && isContainerBlock(newBlock) {
-              processYieldedTokensInContainer(newBlock, state: &state, lineNumber: line.lineNumber)
+          // Check if this would interrupt a paragraph (or other continuable blocks)
+          if let continuingBlock = findBlockThatCanContinue(currentLine, in: context.current),
+             continuingBlock.blockType == "paragraph" { // Blockquotes can interrupt paragraphs
+            print("DEBUG: High-priority builder \(type(of: builder)) interrupting \(continuingBlock.blockType)")
+            handleBlockInterruption(context: &context, state: &state)
+            if let newBlock = createNewBlockWithBuilder(builder, line: currentLine, context: &context, state: &state) {
+              print("DEBUG: Created interrupting block \(type(of: newBlock))")
+              interruptingBlockCreated = true
+              
+              // If a container block was created and tokens were yielded back, process them
+              if !state.currentLineProcessed && isContainerBlock(newBlock) {
+                processYieldedTokensInContainer(newBlock, state: &state, lineNumber: line.lineNumber)
+              }
+              break
             }
-            break
           }
         }
       }
       
-      if interruptingBlockCreated {
-        continue
-      }
-      
-      // THIRD: Check if any existing block can continue with current tokens
-      // But not if the last line was blank - blank lines close blocks for continuation
-      if !wasBlankLine {
+      // THIRD: If no interruption, check if existing blocks can continue
+      if !interruptingBlockCreated && !wasBlankLine {
+        print("DEBUG: Checking for block continuation (last line was not blank)")
         if let continuingBlock = findBlockThatCanContinue(currentLine, in: context.current) {
+          print("DEBUG: Found block that can continue: \(type(of: continuingBlock)) (\(continuingBlock.blockType))")
           // Check if continuation is valid before processing
           if canContinueBlock(continuingBlock, with: currentLine) {
+            print("DEBUG: Block continuation is valid")
             processLineWithBuilder(currentLine, for: continuingBlock, state: &state)
             
             // If this is a container block and tokens were yielded back, process them in the container's context
             if !state.currentLineProcessed && isContainerBlock(continuingBlock) {
               processYieldedTokensInContainer(continuingBlock, state: &state, lineNumber: line.lineNumber)
             }
+            blockContinued = true
           } else {
-            // Block cannot continue, close it and try new block
+            // Block cannot continue, close it and fall through to interruption/new block logic
+            print("DEBUG: Block cannot continue, closing and trying interruption/new block")
             closeBlockAndMoveContext(continuingBlock, context: &context)
-            _ = tryCreateNewBlockWithLine(currentLine, context: &context, state: &state)
           }
-        } else {
-          // No continuing block, try new block
+        }
+      }
+      
+      // FIFTH: If no high-priority interruption or continuation, try other blocks
+      if !interruptingBlockCreated && !blockContinued {
+        // Try other interrupting blocks (that don't have high priority)
+        print("DEBUG: Checking for other interrupting blocks")
+        for builder in sortedBuilders {
+          if builder.canInterrupt() && builder.canStart(line: currentLine) {
+            // Skip blocks that were already checked in high-priority phase
+            if let continuingBlock = findBlockThatCanContinue(currentLine, in: context.current),
+               continuingBlock.blockType == "paragraph" {
+              continue // Already handled in high-priority phase
+            }
+            
+            print("DEBUG: Builder \(type(of: builder)) can interrupt and start")
+            handleBlockInterruption(context: &context, state: &state)
+            if let newBlock = createNewBlockWithBuilder(builder, line: currentLine, context: &context, state: &state) {
+              print("DEBUG: Created interrupting block \(type(of: newBlock))")
+              interruptingBlockCreated = true
+              
+              // If a container block was created and tokens were yielded back, process them
+              if !state.currentLineProcessed && isContainerBlock(newBlock) {
+                processYieldedTokensInContainer(newBlock, state: &state, lineNumber: line.lineNumber)
+              }
+              break
+            }
+          }
+        }
+        
+        // SIXTH: If no interruption, try creating new blocks
+        if !interruptingBlockCreated {
+          print("DEBUG: No interrupting block created, trying new block")
           let newBlockCreated = tryCreateNewBlockWithLine(currentLine, context: &context, state: &state)
           
           // If a container block was created and tokens were yielded back, process them in the container's context
           if !state.currentLineProcessed && newBlockCreated != nil && isContainerBlock(newBlockCreated!) {
             processYieldedTokensInContainer(newBlockCreated!, state: &state, lineNumber: line.lineNumber)
           }
-        }
-      } else {
-        // Last line was blank, so start fresh - no continuation
-        let newBlockCreated = tryCreateNewBlockWithLine(currentLine, context: &context, state: &state)
-        
-        // If a container block was created and tokens were yielded back, process them in the container's context
-        if !state.currentLineProcessed && newBlockCreated != nil && isContainerBlock(newBlockCreated!) {
-          processYieldedTokensInContainer(newBlockCreated!, state: &state, lineNumber: line.lineNumber)
         }
       }
       
@@ -469,6 +506,29 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
       return 
     }
     
+    // Check for special blank line signal from blockquote
+    if state.tokens.count == 1 && state.tokens[0].text == "__BLOCKQUOTE_BLANK_LINE__" {
+      print("DEBUG: Processing blank line signal within container - closing open blocks")
+      // This represents a blank line within the container (like ">\n" in a blockquote)
+      // We need to close any open blocks (like paragraphs) within the container
+      
+      let containerNode = containerBlock as! MarkdownNodeBase
+      // Move context to the container so any "last line break removal" affects the container
+      // Find and remove any trailing line break nodes in open paragraphs
+      if let lastChild = containerNode.children.last as? MarkdownNodeBase,
+         let paragraph = lastChild as? ParagraphNode,
+         let _ = paragraph.children.last as? LineBreakNode {
+        // Remove the trailing line break since the blank line ends the paragraph cleanly
+        paragraph.children.removeLast()
+      }
+      
+      // Set the flag to indicate a blank line was processed within a container
+      state.lastContainerLineWasBlank = true
+      
+      state.currentLineProcessed = true
+      return
+    }
+    
     // Create a sub-context where context.current points to the container block
     let containerNode = containerBlock as! MarkdownNodeBase
     
@@ -476,12 +536,18 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
     let containerLine = MarkdownLine(tokens: state.tokens, lineNumber: lineNumber)
     
     // First, check if any existing block within the container can continue
-    if let continuingBlock = findBlockThatCanContinue(containerLine, in: containerNode) {
-      if canContinueBlock(continuingBlock, with: containerLine) {
-        processLineWithBuilder(containerLine, for: continuingBlock, state: &state)
-        state.currentLineProcessed = true
-        return
+    // But not if the last container line was blank - this should start new blocks
+    if !state.lastContainerLineWasBlank {
+      if let continuingBlock = findBlockThatCanContinue(containerLine, in: containerNode) {
+        if canContinueBlock(continuingBlock, with: containerLine) {
+          print("DEBUG: Container processing - continuing existing block")
+          processLineWithBuilder(containerLine, for: continuingBlock, state: &state)
+          state.currentLineProcessed = true
+          return
+        }
       }
+    } else {
+      print("DEBUG: Container processing - blank line processed, starting new block instead of continuing")
     }
     
     // Try each plugged builder to see if it can start a new block within the container
@@ -490,9 +556,13 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
         if let newBlock = builder.createBlock(from: containerLine) {
           // Add the new block to the container
           containerNode.append(newBlock as! MarkdownNodeBase)
+          print("DEBUG: Container processing - created new block \(type(of: newBlock))")
           
           // Process the opening line with the builder
           _ = builder.processLine(block: newBlock, line: containerLine, state: &state)
+          
+          // Reset the blank line flag after processing content
+          state.lastContainerLineWasBlank = false
           
           // Mark as processed since we handled the yielded tokens
           state.currentLineProcessed = true
@@ -509,12 +579,17 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
     for builder in blockBuilders {
       if builder.canHandle(block: paragraph) {
         _ = builder.processLine(block: paragraph, line: containerLine, state: &state)
+        
+        // Reset the blank line flag after processing content
+        state.lastContainerLineWasBlank = false
+        
         state.currentLineProcessed = true
         return
       }
     }
     
-    // Ensure we mark as processed
+    // Ensure we mark as processed and reset blank line flag
+    state.lastContainerLineWasBlank = false
     state.currentLineProcessed = true
   }
   

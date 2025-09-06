@@ -33,6 +33,10 @@ public class MarkdownConstructState: CodeConstructState {
   /// This enables AST-based line break handling where we add line breaks immediately
   /// and remove them if the next line turns out to be a block interruption
   public var lastLineBreakNode: MarkdownNodeBase? = nil
+  
+  /// Flag indicating if the last processed line was a blank line within a container
+  /// This affects continuation decisions - after a blank line, content should start new blocks
+  public var lastContainerLineWasBlank: Bool = false
 
   public init() {}
   
