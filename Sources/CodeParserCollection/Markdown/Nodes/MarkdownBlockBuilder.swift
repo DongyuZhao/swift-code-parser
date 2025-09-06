@@ -241,9 +241,14 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
   /// Create a new block using a specific builder (pluggable block creation)
   private func createNewBlockWithBuilder(_ builder: MarkdownBlockBuilderProtocol, line: MarkdownLine, context: inout CodeConstructContext<Node, Token>, state: inout MarkdownConstructState) -> (any MarkdownBlockNode)? {
     if let newBlock = builder.createBlock(from: line) {
-      // Determine where to add the new block based on current context
-      let targetNode = findTargetNodeForNewBlock(in: context.current)
-      targetNode.append(newBlock as! MarkdownNodeBase)
+      // For interrupting blocks, add at the current context level (don't dive into containers)
+      if builder.canInterrupt() {
+        context.current.append(newBlock as! MarkdownNodeBase)
+      } else {
+        // For non-interrupting blocks, use the normal target finding logic
+        let targetNode = findTargetNodeForNewBlock(in: context.current)
+        targetNode.append(newBlock as! MarkdownNodeBase)
+      }
       
       // Process the opening line with the builder
       _ = builder.processLine(block: newBlock, line: line, state: &state)
@@ -279,16 +284,9 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
       state.lastLineBreakNode = nil
     }
     
-    // Close interruptible blocks by moving context to appropriate parent
-    // Let builders decide where to move the context
-    if let currentBlock = findLastBlock(in: context.current) {
-      for builder in blockBuilders {
-        if builder.canHandle(block: currentBlock) {
-          builder.moveContextOnClose(block: currentBlock, context: &context)
-          break
-        }
-      }
-    }
+    // For interrupting blocks, move context to document level directly
+    // This ensures interrupting blocks like thematic breaks properly close all open blocks
+    context.current = context.root
   }
   
   /// Close a specific block using builder's context manipulation
@@ -389,13 +387,27 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
     for builder in blockBuilders {
       if builder.canStart(line: line) {
         if let newBlock = builder.createBlock(from: line) {
-          // Determine where to add the new block based on current context
-          let targetNode = findTargetNodeForNewBlock(in: context.current)
-          targetNode.append(newBlock as! MarkdownNodeBase)
           
-          // Process the opening line with the builder
-          _ = builder.processLine(block: newBlock, line: line, state: &state)
-          return newBlock
+          // Special handling for list items - create list containers as needed
+          if let listItem = newBlock as? MarkdownListItem {
+            let targetNode = handleListItemCreation(listItem, context: &context)
+            targetNode.append(newBlock as! MarkdownNodeBase)
+            
+            // Set context to the list item so its content is added to it
+            context.current = newBlock as! MarkdownNodeBase
+            
+            // Process the opening line with the builder
+            _ = builder.processLine(block: newBlock, line: line, state: &state)
+            return newBlock
+          } else {
+            // Regular block handling
+            let targetNode = findTargetNodeForNewBlock(in: context.current)
+            targetNode.append(newBlock as! MarkdownNodeBase)
+            
+            // Process the opening line with the builder
+            _ = builder.processLine(block: newBlock, line: line, state: &state)
+            return newBlock
+          }
         }
       }
     }
@@ -405,7 +417,57 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
     return nil
   }
   
-  /// This ensures blocks are added in the correct container context
+  /// Handle list item creation with proper list container logic
+  private func handleListItemCreation(_ listItem: MarkdownListItem, context: inout CodeConstructContext<Node, Token>) -> CodeNode<MarkdownNodeElement> {
+    // Check if there's an existing compatible list to add to
+    if let lastChild = context.current.children.last as? MarkdownNodeBase,
+       let existingList = lastChild as? ListNode {
+      
+      // Check if this list item is compatible with the existing list
+      if isCompatibleWithList(listItem: listItem, list: existingList) {
+        return existingList
+      }
+    }
+    
+    // Create a new list container
+    let listContainer: ListNode
+    if isOrderedListItem(listItem) {
+      listContainer = OrderedListNode(level: 1)
+    } else {
+      listContainer = UnorderedListNode(level: 1, marker: listItem.marker)
+    }
+    
+    // Add the list container to the current context
+    context.current.append(listContainer)
+    
+    return listContainer
+  }
+  
+  /// Check if a list item is compatible with an existing list
+  private func isCompatibleWithList(listItem: MarkdownListItem, list: ListNode) -> Bool {
+    // For unordered lists, check if markers are compatible
+    if let unorderedList = list as? UnorderedListNode {
+      return isUnorderedListItem(listItem) && unorderedList.marker == listItem.marker
+    }
+    
+    // For ordered lists, check if it's an ordered list item
+    if list is OrderedListNode {
+      return isOrderedListItem(listItem)
+    }
+    
+    return false
+  }
+  
+  /// Check if a list item is an ordered list item
+  private func isOrderedListItem(_ listItem: MarkdownListItem) -> Bool {
+    let marker = listItem.marker
+    return marker.dropLast().allSatisfy(\.isNumber) && (marker.hasSuffix(".") || marker.hasSuffix(")"))
+  }
+  
+  /// Check if a list item is an unordered list item  
+  private func isUnorderedListItem(_ listItem: MarkdownListItem) -> Bool {
+    return !isOrderedListItem(listItem)
+  }
   private func findTargetNodeForNewBlock(in node: CodeNode<MarkdownNodeElement>) -> CodeNode<MarkdownNodeElement> {
     // For now, find the deepest open container block or return the root
     if let lastChild = node.children.last as? MarkdownNodeBase {

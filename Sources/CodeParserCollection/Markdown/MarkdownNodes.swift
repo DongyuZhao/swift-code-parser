@@ -168,7 +168,8 @@ public class BlockquoteNode: MarkdownNodeBase, MarkdownBlockNode {
   }
 }
 
-public class ListNode: MarkdownNodeBase {
+public class ListNode: MarkdownNodeBase, MarkdownBlockNode {
+  public var blockType: String { element.rawValue }
   public var level: Int
 
   public init(element: MarkdownNodeElement, level: Int = 1) {
