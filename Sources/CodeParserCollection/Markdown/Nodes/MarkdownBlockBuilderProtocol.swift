@@ -55,6 +55,10 @@ public protocol MarkdownBlockBuilderProtocol {
   /// Check if this builder creates interrupting blocks that can interrupt other blocks
   /// - Returns: True if this builder creates blocks that can interrupt paragraphs and other blocks
   func canInterrupt() -> Bool
+  
+  /// Check if this builder creates container blocks that can contain other blocks
+  /// - Returns: True if this builder creates container blocks (like blockquotes, list items)
+  func isContainerBuilder() -> Bool
 }
 
 /// Represents a line of tokens for block processing
@@ -133,6 +137,17 @@ extension MarkdownBlockBuilderProtocol {
   
   /// Default implementation: cannot interrupt other blocks
   public func canInterrupt() -> Bool {
+    return false
+  }
+  
+  /// Default implementation: cannot handle any blocks
+  /// Builders should override this to specify which blocks they can handle
+  public func canHandle(block: any MarkdownBlockNode) -> Bool {
+    return false
+  }
+  
+  /// Default implementation: does not create container blocks
+  public func isContainerBuilder() -> Bool {
     return false
   }
 }

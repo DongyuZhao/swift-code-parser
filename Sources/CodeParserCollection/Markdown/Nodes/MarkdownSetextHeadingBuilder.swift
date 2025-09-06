@@ -10,6 +10,10 @@ public class MarkdownSetextHeadingBuilder: MarkdownBlockBuilderProtocol {
   
   public init() {}
   
+  public func canHandle(block: any MarkdownBlockNode) -> Bool {
+    return block.blockType == "heading"
+  }
+  
   public func canStart(line: MarkdownLine) -> Bool {
     // Setext headings are detected when we see an underline (= or -)
     // Check if this could be a setext heading underline

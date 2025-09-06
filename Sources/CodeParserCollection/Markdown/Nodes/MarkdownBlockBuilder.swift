@@ -252,9 +252,9 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
     for child in node.children {
       if let markdownChild = child as? MarkdownNodeBase {
         if let blockNode = markdownChild as? any MarkdownBlockNode {
-          // Close this block
+          // Find the appropriate builder to close this block
           for builder in blockBuilders {
-            if canBuilderHandle(builder, blockType: blockNode.blockType) {
+            if builder.canHandle(block: blockNode) {
               builder.closeBlock(block: blockNode)
               break
             }
@@ -322,7 +322,7 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
   /// Close a specific block
   private func closeBlock(_ block: any MarkdownBlockNode, context: inout CodeConstructContext<Node, Token>) {
     for builder in blockBuilders {
-      if canBuilderHandle(builder, blockType: block.blockType) {
+      if builder.canHandle(block: block) {
         builder.closeBlock(block: block)
         return
       }
@@ -426,28 +426,15 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
     return ParagraphNode(range: range)
   }
   
-  /// Check if a block is a container block that can contain other blocks
+  /// Check if a block is a container block by asking its builder
   private func isContainerBlock(_ block: any MarkdownBlockNode) -> Bool {
-    switch block.blockType {
-    case "blockquote": return true
-    case "list_item": return true
-    default: return false
+    // Find the builder that handles this block and ask if it's a container builder
+    for builder in blockBuilders {
+      if builder.canHandle(block: block) {
+        return builder.isContainerBuilder()
+      }
     }
-  }
-  
-  /// Check if a builder can handle a specific block type (for generic processing)
-  private func canBuilderHandle(_ builder: MarkdownBlockBuilderProtocol, blockType: String) -> Bool {
-    let builderType = type(of: builder)
-    switch blockType {
-    case "paragraph": return builderType is MarkdownParagraphBuilder.Type
-    case "heading": return builderType is MarkdownATXHeadingBuilder.Type || builderType is MarkdownSetextHeadingBuilder.Type
-    case "thematic_break": return builderType is MarkdownThematicBreakBuilder.Type
-    case "code_block": return builderType is MarkdownIndentedCodeBlockBuilder.Type
-    case "fenced_code_block": return builderType is MarkdownFencedCodeBlockBuilder.Type
-    case "blockquote": return builderType is MarkdownBlockquoteBuilder.Type
-    case "list_item": return builderType is MarkdownListItemBuilder.Type
-    default: return false
-    }
+    return false
   }
 
   /// Create default set of block builders with priority-based ordering

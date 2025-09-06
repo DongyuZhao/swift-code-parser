@@ -9,6 +9,10 @@ public class MarkdownThematicBreakBuilder: MarkdownBlockBuilderProtocol {
   
   public init() {}
   
+  public func canHandle(block: any MarkdownBlockNode) -> Bool {
+    return block.blockType == "thematic_break"
+  }
+  
   /// Thematic breaks can interrupt other blocks
   public func canInterrupt() -> Bool {
     return true

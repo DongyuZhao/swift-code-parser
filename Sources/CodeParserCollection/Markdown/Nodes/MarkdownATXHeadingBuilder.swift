@@ -10,6 +10,10 @@ public class MarkdownATXHeadingBuilder: MarkdownBlockBuilderProtocol {
   
   public init() {}
   
+  public func canHandle(block: any MarkdownBlockNode) -> Bool {
+    return block.blockType == "heading"
+  }
+  
   /// ATX headings can interrupt other blocks
   public func canInterrupt() -> Bool {
     return true

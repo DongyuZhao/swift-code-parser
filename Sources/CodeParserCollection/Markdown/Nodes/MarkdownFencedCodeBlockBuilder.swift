@@ -9,6 +9,10 @@ public class MarkdownFencedCodeBlockBuilder: MarkdownBlockBuilderProtocol {
   
   public init() {}
   
+  public func canHandle(block: any MarkdownBlockNode) -> Bool {
+    return block.blockType == "fenced_code_block"
+  }
+  
   /// Fenced code blocks can interrupt other blocks
   public func canInterrupt() -> Bool {
     return true

@@ -8,6 +8,10 @@ public class MarkdownIndentedCodeBlockBuilder: MarkdownBlockBuilderProtocol {
   
   public init() {}
   
+  public func canHandle(block: any MarkdownBlockNode) -> Bool {
+    return block.blockType == "code_block"
+  }
+  
   public func canStart(line: MarkdownLine) -> Bool {
     // Indented code blocks start with 4+ spaces followed by non-whitespace
     return line.leadingWhitespace >= 4 && hasNonWhitespaceContent(line: line)

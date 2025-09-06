@@ -25,6 +25,10 @@ public class MarkdownParagraphBuilder: MarkdownBlockBuilderProtocol {
   
   public init() {}
   
+  public func canHandle(block: any MarkdownBlockNode) -> Bool {
+    return block.blockType == "paragraph"
+  }
+  
   public func canStart(line: MarkdownLine) -> Bool {
     // Paragraphs can start with any non-blank line that doesn't start another block type
     return !line.isBlank && !startsWithBlockMarker(line: line)

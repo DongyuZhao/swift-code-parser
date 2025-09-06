@@ -9,6 +9,14 @@ public class MarkdownBlockquoteBuilder: MarkdownBlockBuilderProtocol {
   
   public init() {}
   
+  public func canHandle(block: any MarkdownBlockNode) -> Bool {
+    return block.blockType == "blockquote"
+  }
+  
+  public func isContainerBuilder() -> Bool {
+    return true
+  }
+  
   public func canStart(line: MarkdownLine) -> Bool {
     // Blockquotes can be indented 0-3 spaces
     let (leadingSpaces, _, _) = MarkdownIndentation.calculateIndentation(from: line.tokens)
