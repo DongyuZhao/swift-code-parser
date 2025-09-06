@@ -28,6 +28,11 @@ public class MarkdownConstructState: CodeConstructState {
   /// Flag indicating if the last processed line ended with a hard line break
   /// This affects how the next line break is rendered
   public var lastLineEndedWithHardBreak: Bool = false
+  
+  /// Reference to the last line break node added to AST (for potential removal)
+  /// This enables AST-based line break handling where we add line breaks immediately
+  /// and remove them if the next line turns out to be a block interruption
+  public var lastLineBreakNode: MarkdownNodeBase? = nil
 
   public init() {}
   

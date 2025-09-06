@@ -64,6 +64,13 @@ public protocol MarkdownBlockBuilderProtocol {
   /// - Parameter block: The block to check
   /// - Returns: True if this builder can handle operations on this block
   func canHandle(block: any MarkdownBlockNode) -> Bool
+  
+  /// Move the context.current pointer to the appropriate parent when this builder closes a block
+  /// This implements the "AST is editable" principle by using context pointer manipulation instead of state tracking
+  /// - Parameters:
+  ///   - block: The block being closed
+  ///   - context: The context containing the current pointer to manipulate
+  func moveContextOnClose(block: any MarkdownBlockNode, context: inout CodeConstructContext<MarkdownNodeElement, MarkdownTokenElement>)
 }
 
 /// Represents a line of tokens for block processing
@@ -154,5 +161,13 @@ extension MarkdownBlockBuilderProtocol {
   /// Default implementation: does not create container blocks
   public func isContainerBuilder() -> Bool {
     return false
+  }
+  
+  /// Default implementation: move context to parent when closing
+  public func moveContextOnClose(block: any MarkdownBlockNode, context: inout CodeConstructContext<MarkdownNodeElement, MarkdownTokenElement>) {
+    // Default: move context to parent node
+    if let parent = context.current.parent {
+      context.current = parent
+    }
   }
 }

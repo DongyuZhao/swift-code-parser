@@ -93,22 +93,23 @@ public class MarkdownParagraphBuilder: MarkdownBlockBuilderProtocol {
     }
     
     // Add line breaks for continuation lines if there's existing content and this line has content
-    // Use the PREVIOUS line's hard break status for the line break type
+    // Use AST-based line break handling: add line break immediately to AST
     if !paragraph.children.isEmpty && !contentTokens.isEmpty {
+      let lineBreakToken: any CodeToken<MarkdownTokenElement>
+      
       if state.lastLineEndedWithHardBreak {
         // Previous line ended with hard break - add hard line break
-        let lineBreakToken = createLineBreakToken("__HARD_LINE_BREAK__")
-        let lineBreakNodes = inlineProcessor.processInlineTokens([lineBreakToken])
-        for node in lineBreakNodes {
-          paragraph.children.append(node)
-        }
+        lineBreakToken = createLineBreakToken("__HARD_LINE_BREAK__")
       } else {
         // Previous line ended normally - add soft line break
-        let lineBreakToken = createLineBreakToken("__SOFT_LINE_BREAK__")
-        let lineBreakNodes = inlineProcessor.processInlineTokens([lineBreakToken])
-        for node in lineBreakNodes {
-          paragraph.children.append(node)
-        }
+        lineBreakToken = createLineBreakToken("__SOFT_LINE_BREAK__")
+      }
+      
+      let lineBreakNodes = inlineProcessor.processInlineTokens([lineBreakToken])
+      for node in lineBreakNodes {
+        paragraph.children.append(node)
+        // Store reference to this line break node for potential removal (AST-based handling)
+        state.lastLineBreakNode = node
       }
     }
     

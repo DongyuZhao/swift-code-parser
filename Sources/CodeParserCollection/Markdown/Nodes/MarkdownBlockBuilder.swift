@@ -82,9 +82,9 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
     // Track blank line state for block continuation logic
     guard var state = context.state as? MarkdownConstructState else { return }
     
-    // Skip blank lines - they typically close blocks or are ignored
+    // Handle blank lines - they close blocks and potentially remove trailing line breaks
     if line.isBlank {
-      closeOpenBlocks(context: &context)
+      handleBlankLine(context: &context, state: &state)
       state.lastLineWasBlank = true
       context.state = state
       return
@@ -135,7 +135,7 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
       var interruptingBlockCreated = false
       for builder in sortedBuilders {
         if builder.canInterrupt() && builder.canStart(line: currentLine) {
-          closeInterruptibleBlocks(context: &context)
+          handleBlockInterruption(context: &context, state: &state)
           if let newBlock = createNewBlockWithBuilder(builder, line: currentLine, context: &context, state: &state) {
             print("DEBUG: Created interrupting block \(type(of: newBlock))")
             interruptingBlockCreated = true
@@ -167,7 +167,7 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
             }
           } else {
             // Block cannot continue, close it and try new block
-            closeBlock(continuingBlock, context: &context)
+            closeBlockAndMoveContext(continuingBlock, context: &context)
             _ = tryCreateNewBlockWithLine(currentLine, context: &context, state: &state)
           }
         } else {
@@ -259,6 +259,74 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
     closeOpenBlocks(context: &context)
   }
   
+  /// Handle blank line processing - closes blocks and removes trailing line breaks if needed
+  private func handleBlankLine(context: inout CodeConstructContext<Node, Token>, state: inout MarkdownConstructState) {
+    // DON'T remove line breaks on blank lines - they should be preserved within paragraphs
+    // Blank lines just separate paragraphs, they don't affect line breaks within established paragraphs
+    state.lastLineBreakNode = nil
+    
+    // Close all open blocks by moving context.current to root
+    context.current = context.root
+    state.lastLineEndedWithHardBreak = false
+  }
+  
+  /// Handle block interruption - removes trailing line breaks and closes interrupted blocks
+  private func handleBlockInterruption(context: inout CodeConstructContext<Node, Token>, state: inout MarkdownConstructState) {
+    // Remove the last line break node if it exists (AST-based line break handling)
+    // Block interruptions should remove trailing line breaks
+    if let lastLineBreak = state.lastLineBreakNode {
+      removeNodeFromAST(lastLineBreak, in: context.current)
+      state.lastLineBreakNode = nil
+    }
+    
+    // Close interruptible blocks by moving context to appropriate parent
+    // Let builders decide where to move the context
+    if let currentBlock = findLastBlock(in: context.current) {
+      for builder in blockBuilders {
+        if builder.canHandle(block: currentBlock) {
+          builder.moveContextOnClose(block: currentBlock, context: &context)
+          break
+        }
+      }
+    }
+  }
+  
+  /// Close a specific block using builder's context manipulation
+  private func closeBlockAndMoveContext(_ block: any MarkdownBlockNode, context: inout CodeConstructContext<Node, Token>) {
+    for builder in blockBuilders {
+      if builder.canHandle(block: block) {
+        builder.closeBlock(block: block)
+        builder.moveContextOnClose(block: block, context: &context)
+        return
+      }
+    }
+  }
+  
+  /// Remove a node from the AST (helper for AST-based line break handling)
+  private func removeNodeFromAST(_ nodeToRemove: MarkdownNodeBase, in searchRoot: CodeNode<MarkdownNodeElement>) {
+    // Search for the node in the AST and remove it from its parent
+    removeNodeRecursively(nodeToRemove, from: searchRoot)
+  }
+  
+  /// Recursively search and remove a node from the AST
+  private func removeNodeRecursively(_ nodeToRemove: MarkdownNodeBase, from node: CodeNode<MarkdownNodeElement>) {
+    // Check direct children
+    for (index, child) in node.children.enumerated() {
+      if let markdownChild = child as? MarkdownNodeBase,
+         markdownChild === nodeToRemove {
+        node.children.remove(at: index)
+        return
+      }
+    }
+    
+    // Recursively search in children
+    for child in node.children {
+      if let markdownChild = child as? MarkdownNodeBase {
+        removeNodeRecursively(nodeToRemove, from: markdownChild)
+      }
+    }
+  }
+  
   /// Close all open blocks
   private func closeOpenBlocks(context: inout CodeConstructContext<Node, Token>) {
     // Walk the AST and finalize any blocks that need closing
@@ -337,14 +405,20 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
     return nil
   }
   
-  /// Close a specific block
-  private func closeBlock(_ block: any MarkdownBlockNode, context: inout CodeConstructContext<Node, Token>) {
-    for builder in blockBuilders {
-      if builder.canHandle(block: block) {
-        builder.closeBlock(block: block)
-        return
+  /// This ensures blocks are added in the correct container context
+  private func findTargetNodeForNewBlock(in node: CodeNode<MarkdownNodeElement>) -> CodeNode<MarkdownNodeElement> {
+    // For now, find the deepest open container block or return the root
+    if let lastChild = node.children.last as? MarkdownNodeBase {
+      if let blockNode = lastChild as? any MarkdownBlockNode {
+        if isContainerBlock(blockNode) {
+          // This is a container block, add content to it
+          return lastChild
+        }
       }
     }
+    
+    // Default to the current node
+    return node
   }
   
   /// Process yielded-back tokens within a container block's context
@@ -401,21 +475,6 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
     
     // Ensure we mark as processed
     state.currentLineProcessed = true
-  }
-  /// This ensures blocks are added in the correct container context
-  private func findTargetNodeForNewBlock(in node: CodeNode<MarkdownNodeElement>) -> CodeNode<MarkdownNodeElement> {
-    // For now, find the deepest open container block or return the root
-    if let lastChild = node.children.last as? MarkdownNodeBase {
-      if let blockNode = lastChild as? any MarkdownBlockNode {
-        if isContainerBlock(blockNode) {
-          // This is a container block, add content to it
-          return lastChild
-        }
-      }
-    }
-    
-    // Default to the current node
-    return node
   }
   
   /// Create and process a paragraph for this line

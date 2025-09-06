@@ -104,4 +104,16 @@ public class MarkdownBlockquoteBuilder: MarkdownBlockBuilderProtocol {
   public func closeBlock(block: any MarkdownBlockNode) {
     // No special closing logic needed - the recursive parsing is handled by MarkdownBlockBuilder
   }
+  
+  /// When blockquote is closed, move context to its parent
+  public func moveContextOnClose(block: any MarkdownBlockNode, context: inout CodeConstructContext<MarkdownNodeElement, MarkdownTokenElement>) {
+    // As mentioned by user: if blockquote builder decided to close a blockquote, 
+    // just move the context.current pointer to its parent
+    if let parent = context.current.parent {
+      context.current = parent
+    } else {
+      // Fallback to root if no parent
+      context.current = context.root
+    }
+  }
 }

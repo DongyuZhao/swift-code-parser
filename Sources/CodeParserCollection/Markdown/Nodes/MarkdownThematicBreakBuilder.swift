@@ -99,4 +99,11 @@ public class MarkdownThematicBreakBuilder: MarkdownBlockBuilderProtocol {
     state.currentLineProcessed = true
     return true
   }
+  
+  /// Thematic breaks can close many types of blocks - move context to document level
+  public func moveContextOnClose(block: any MarkdownBlockNode, context: inout CodeConstructContext<MarkdownNodeElement, MarkdownTokenElement>) {
+    // As mentioned by user: if thematic break builder finds a thematic break in list item block, 
+    // just move back the context.current to document node
+    context.current = context.root
+  }
 }
