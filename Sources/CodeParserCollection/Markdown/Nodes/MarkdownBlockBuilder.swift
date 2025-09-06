@@ -374,7 +374,7 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
     
     // Process the line into the paragraph
     for builder in blockBuilders {
-      if builder is MarkdownParagraphBuilder {
+      if builder.canHandle(block: paragraph) {
         _ = builder.processLine(block: paragraph, line: containerLine, state: &state)
         state.currentLineProcessed = true
         return
@@ -411,7 +411,7 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
     
     // Process the line into the paragraph
     for builder in blockBuilders {
-      if builder is MarkdownParagraphBuilder {
+      if builder.canHandle(block: paragraph) {
         _ = builder.processLine(block: paragraph, line: line, state: &state)
         return
       }
