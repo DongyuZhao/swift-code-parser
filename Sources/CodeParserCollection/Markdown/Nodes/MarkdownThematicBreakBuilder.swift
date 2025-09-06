@@ -5,7 +5,18 @@ import Foundation
 /// Implements CommonMark specification for thematic breaks (Spec 010)
 public class MarkdownThematicBreakBuilder: MarkdownBlockBuilderProtocol {
   
+  public let priority: Int = 30 // Lower priority than setext for precedence
+  
   public init() {}
+  
+  public func canHandle(block: any MarkdownBlockNode) -> Bool {
+    return block.blockType == "thematic_break"
+  }
+  
+  /// Thematic breaks can interrupt other blocks
+  public func canInterrupt() -> Bool {
+    return true
+  }
   
   public func canStart(line: MarkdownLine) -> Bool {
     // Thematic breaks can be indented 0-3 spaces
@@ -83,7 +94,16 @@ public class MarkdownThematicBreakBuilder: MarkdownBlockBuilderProtocol {
   }
   
   public func processLine(block: any MarkdownBlockNode, line: MarkdownLine, state: inout MarkdownConstructState) -> Bool {
-    // Thematic breaks are single-line blocks, no processing needed
-    return false
+    // Thematic breaks are single-line blocks, no additional processing needed
+    // Mark the line as processed since we consumed it
+    state.currentLineProcessed = true
+    return true
+  }
+  
+  /// Thematic breaks can close many types of blocks - move context to document level
+  public func moveContextOnClose(block: any MarkdownBlockNode, context: inout CodeConstructContext<MarkdownNodeElement, MarkdownTokenElement>) {
+    // As mentioned by user: if thematic break builder finds a thematic break in list item block, 
+    // just move back the context.current to document node
+    context.current = context.root
   }
 }

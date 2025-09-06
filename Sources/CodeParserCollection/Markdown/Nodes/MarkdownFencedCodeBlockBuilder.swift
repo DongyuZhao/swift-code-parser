@@ -5,7 +5,18 @@ import Foundation
 /// Implements CommonMark specification for fenced code blocks (Spec 018)
 public class MarkdownFencedCodeBlockBuilder: MarkdownBlockBuilderProtocol {
   
+  public let priority: Int = 40 // Medium priority
+  
   public init() {}
+  
+  public func canHandle(block: any MarkdownBlockNode) -> Bool {
+    return block.blockType == "fenced_code_block"
+  }
+  
+  /// Fenced code blocks can interrupt other blocks
+  public func canInterrupt() -> Bool {
+    return true
+  }
   
   public func canStart(line: MarkdownLine) -> Bool {
     // Fenced code blocks can be indented 0-3 spaces

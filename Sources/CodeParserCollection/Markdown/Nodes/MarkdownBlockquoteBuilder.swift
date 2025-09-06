@@ -5,7 +5,17 @@ import Foundation
 /// Implements CommonMark specification for blockquotes (Spec 024)
 public class MarkdownBlockquoteBuilder: MarkdownBlockBuilderProtocol {
   
+  public let priority: Int = 50 // Medium priority
+  
   public init() {}
+  
+  public func canHandle(block: any MarkdownBlockNode) -> Bool {
+    return block.blockType == "blockquote"
+  }
+  
+  public func isContainerBuilder() -> Bool {
+    return true
+  }
   
   public func canStart(line: MarkdownLine) -> Bool {
     // Blockquotes can be indented 0-3 spaces
@@ -93,5 +103,17 @@ public class MarkdownBlockquoteBuilder: MarkdownBlockBuilderProtocol {
   /// Close the block - no special processing needed as content is parsed recursively by MarkdownBlockBuilder
   public func closeBlock(block: any MarkdownBlockNode) {
     // No special closing logic needed - the recursive parsing is handled by MarkdownBlockBuilder
+  }
+  
+  /// When blockquote is closed, move context to its parent
+  public func moveContextOnClose(block: any MarkdownBlockNode, context: inout CodeConstructContext<MarkdownNodeElement, MarkdownTokenElement>) {
+    // As mentioned by user: if blockquote builder decided to close a blockquote, 
+    // just move the context.current pointer to its parent
+    if let parent = context.current.parent {
+      context.current = parent
+    } else {
+      // Fallback to root if no parent
+      context.current = context.root
+    }
   }
 }

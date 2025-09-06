@@ -6,38 +6,36 @@ import Foundation
 public class MarkdownSetextHeadingBuilder: MarkdownBlockBuilderProtocol {
   
   private var pendingLine: MarkdownLine?
+  public let priority: Int = 10 // High priority for transformation
   
   public init() {}
   
+  public func canHandle(block: any MarkdownBlockNode) -> Bool {
+    return block.blockType == "heading"
+  }
+  
   public func canStart(line: MarkdownLine) -> Bool {
-    // Setext headings need two lines, so we can't start with just one line
-    // However, we can start collecting a potential heading line
-    
+    // Setext headings are detected when we see an underline (= or -)
     // Check if this could be a setext heading underline
     let leadingSpaces = line.leadingWhitespace
     if leadingSpaces > 3 {
       return false
     }
     
-    let content = line.content.trimmingCharacters(in: .whitespaces)
+    // Use the simpler content-based approach
+    let content = line.content.trimmingCharacters(in: .whitespacesAndNewlines)
     
-    // Check if it's a setext heading underline (= or - characters)
     if content.isEmpty {
       return false
     }
     
     let firstChar = content.first!
-    if firstChar == "=" || firstChar == "-" {
-      // Check if entire line consists of only = or - (with optional spaces)
-      let isValidUnderline = content.allSatisfy { char in
-        char == firstChar || char == " " || char == "\t"
-      }
-      
-      if isValidUnderline {
-        // This could be an underline, but we need a preceding line to be a heading
-        // For now, return false - setext headings will be handled differently
-        return false
-      }
+    
+    // Check if it's a valid setext underline
+    if firstChar == "=" {
+      return content.allSatisfy { $0 == "=" }
+    } else if firstChar == "-" {
+      return content.allSatisfy { $0 == "-" }
     }
     
     return false
@@ -59,6 +57,65 @@ public class MarkdownSetextHeadingBuilder: MarkdownBlockBuilderProtocol {
     return false
   }
   
+  /// Check if this builder can transform an existing block (implements pluggable transformation)
+  public func canTransform(block: any MarkdownBlockNode, with line: MarkdownLine) -> Bool {
+    // Can only transform paragraph blocks
+    guard block is ParagraphNode else { return false }
+    
+    // Must be a valid setext underline
+    if !canStart(line: line) {
+      return false
+    }
+    
+    // Paragraph must have content
+    let paragraph = block as! ParagraphNode
+    if paragraph.children.isEmpty {
+      return false
+    }
+    
+    return true
+  }
+  
+  /// Transform an existing paragraph node into a setext heading (implements AST editing)
+  public func transform(block: any MarkdownBlockNode, with line: MarkdownLine) -> Bool {
+    guard let paragraph = block as? ParagraphNode else { return false }
+    
+    // Verify this is a valid transformation
+    guard canTransform(block: paragraph, with: line) else {
+      return false
+    }
+    
+    // Get the parent node so we can replace the paragraph
+    guard let parent = paragraph.parent as? MarkdownNodeBase else { 
+      return false 
+    }
+    
+    // Find the index of the paragraph in its parent
+    guard let paragraphIndex = parent.children.firstIndex(where: { $0 === paragraph }) else { 
+      return false 
+    }
+    
+    // Determine heading level based on underline character
+    let level = line.content.trimmingCharacters(in: .whitespaces).first == "=" ? 1 : 2
+    
+    // Create a new heading node
+    let heading = HeaderNode(level: level)
+    
+    // Move all children from paragraph to heading (preserves inline markup like emphasis)
+    // This is the key: we don't re-parse the text, we move the existing AST nodes
+    let paragraphChildren = Array(paragraph.children)
+    paragraph.children.removeAll()
+    for child in paragraphChildren {
+      heading.append(child as! MarkdownNodeBase)
+    }
+    
+    // Replace the paragraph with the heading in the parent
+    parent.children.remove(at: paragraphIndex)
+    parent.children.insert(heading, at: paragraphIndex)
+    
+    return true
+  }
+  
   /// Check if a line could be a setext heading underline for the given text line
   public static func isSetextUnderline(_ line: MarkdownLine, for textLine: MarkdownLine?) -> (isUnderline: Bool, level: Int) {
     guard let textLine = textLine else { return (false, 0) }
@@ -78,7 +135,7 @@ public class MarkdownSetextHeadingBuilder: MarkdownBlockBuilderProtocol {
       return (false, 0)
     }
     
-    let content = line.content.trimmingCharacters(in: .whitespaces)
+    let content = line.content.trimmingCharacters(in: .whitespacesAndNewlines)
     
     if content.isEmpty {
       return (false, 0)
@@ -88,17 +145,17 @@ public class MarkdownSetextHeadingBuilder: MarkdownBlockBuilderProtocol {
     
     // Check for level 1 heading (=)
     if firstChar == "=" {
-      let isValid = content.allSatisfy { char in
-        char == "=" || char == " " || char == "\t"
-      }
+      // Must be only = characters with optional leading/trailing spaces
+      let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
+      let isValid = trimmed.allSatisfy { $0 == "=" } && !trimmed.isEmpty
       return (isValid, 1)
     }
     
     // Check for level 2 heading (-)
     if firstChar == "-" {
-      let isValid = content.allSatisfy { char in
-        char == "-" || char == " " || char == "\t"
-      }
+      // Must be only - characters with optional leading/trailing spaces  
+      let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
+      let isValid = trimmed.allSatisfy { $0 == "-" } && !trimmed.isEmpty
       return (isValid, 2)
     }
     

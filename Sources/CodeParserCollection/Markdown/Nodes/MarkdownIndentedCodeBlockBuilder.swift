@@ -4,7 +4,13 @@ import Foundation
 /// Indented code block builder - handles 4+ space indented code blocks
 public class MarkdownIndentedCodeBlockBuilder: MarkdownBlockBuilderProtocol {
   
+  public let priority: Int = 80 // Low priority
+  
   public init() {}
+  
+  public func canHandle(block: any MarkdownBlockNode) -> Bool {
+    return block.blockType == "code_block"
+  }
   
   public func canStart(line: MarkdownLine) -> Bool {
     // Indented code blocks start with 4+ spaces followed by non-whitespace

@@ -6,8 +6,18 @@ import Foundation
 public class MarkdownATXHeadingBuilder: MarkdownBlockBuilderProtocol {
   
   private let inlineProcessor = MarkdownInlineProcessor()
+  public let priority: Int = 20 // High priority for interruption
   
   public init() {}
+  
+  public func canHandle(block: any MarkdownBlockNode) -> Bool {
+    return block.blockType == "heading"
+  }
+  
+  /// ATX headings can interrupt other blocks
+  public func canInterrupt() -> Bool {
+    return true
+  }
   
   public func canStart(line: MarkdownLine) -> Bool {
     // ATX headings can be indented 0-3 spaces

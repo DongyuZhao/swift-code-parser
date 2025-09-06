@@ -5,7 +5,17 @@ import Foundation
 /// Implements CommonMark specification for list items (Spec 025)
 public class MarkdownListItemBuilder: MarkdownBlockBuilderProtocol {
   
+  public let priority: Int = 60 // Medium-low priority
+  
   public init() {}
+  
+  public func canHandle(block: any MarkdownBlockNode) -> Bool {
+    return block.blockType == "list_item"
+  }
+  
+  public func isContainerBuilder() -> Bool {
+    return true
+  }
   
   public func canStart(line: MarkdownLine) -> Bool {
     // List items can be indented 0-3 spaces
@@ -143,6 +153,7 @@ public class MarkdownListItemBuilder: MarkdownBlockBuilderProtocol {
       }
     }
     
+    // Return just the list item - the main builder will handle container creation
     let listItem = MarkdownListItem(marker: marker)
     
     // Set package-level indentation properties
@@ -170,25 +181,43 @@ public class MarkdownListItemBuilder: MarkdownBlockBuilderProtocol {
       contentTokens = MarkdownIndentation.removeIndentation(from: line.tokens, upToColumn: listItem.contentColumn)
     }
     
-    // Convert content tokens to text
-    var contentParts: [String] = []
-    for token in contentTokens {
-      if token.element == .newline || token.element == .eof {
-        break
-      }
-      contentParts.append(token.text)
+    // Check if there's actual content to process
+    let hasContent = contentTokens.contains { token in
+      token.element != .whitespaces && token.element != .newline && token.element != .eof
     }
-    let itemContent = contentParts.joined().trimmingCharacters(in: .whitespaces)
     
-    // Add content to list item
-    if !itemContent.isEmpty {
-      // Create a paragraph for the content
-      let paragraph = MarkdownParagraph(range: itemContent.startIndex..<itemContent.endIndex)
-      let textNode = MarkdownText(content: itemContent)
-      paragraph.children.append(textNode)
-      listItem.children.append(paragraph)
+    if hasContent {
+      // Yield back the content tokens for processing within the list item
+      state.tokens = contentTokens
+      state.currentLineProcessed = false // Let the container processing handle the content
+    } else {
+      // No content to process, mark as done
+      state.currentLineProcessed = true
     }
     
     return true
+  }
+  
+  /// List items cannot transform blocks
+  public func canTransform(block: any MarkdownBlockNode, with line: MarkdownLine) -> Bool {
+    return false
+  }
+  
+  /// List items cannot transform blocks
+  public func transform(block: any MarkdownBlockNode, with line: MarkdownLine) -> Bool {
+    return false
+  }
+  
+  /// List items generally do not interrupt other blocks except in special circumstances
+  public func canInterrupt() -> Bool {
+    return false
+  }
+  
+  /// Move context when list item is closed - move to parent to allow new list items
+  public func moveContextOnClose(block: any MarkdownBlockNode, context: inout CodeConstructContext<MarkdownNodeElement, MarkdownTokenElement>) {
+    // List items should move context to their parent (the list container)
+    if let parent = context.current.parent {
+      context.current = parent
+    }
   }
 }

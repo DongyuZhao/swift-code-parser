@@ -5,6 +5,9 @@ import Foundation
 /// These builders are NOT CodeNodeBuilders - they work with line-based processing within MarkdownBlockBuilder
 public protocol MarkdownBlockBuilderProtocol {
   
+  /// Processing priority for this builder (lower numbers = higher priority)
+  var priority: Int { get }
+  
   /// Check if this builder can start a new block with the given line
   /// - Parameter line: The line tokens to examine
   /// - Returns: True if this builder can handle this line as a new block start
@@ -33,6 +36,41 @@ public protocol MarkdownBlockBuilderProtocol {
   /// Close and finalize a block (post-processing)
   /// - Parameter block: The block to finalize
   func closeBlock(block: any MarkdownBlockNode)
+  
+  /// Check if this builder can transform an existing block into a different type
+  /// This enables the "AST is editable" principle for pluggable builders
+  /// - Parameters:
+  ///   - block: The existing block to potentially transform
+  ///   - line: The line that might trigger the transformation
+  /// - Returns: True if this builder can transform the block with this line
+  func canTransform(block: any MarkdownBlockNode, with line: MarkdownLine) -> Bool
+  
+  /// Transform an existing block using this line (AST editing)
+  /// - Parameters:
+  ///   - block: The existing block to transform
+  ///   - line: The line that triggers the transformation
+  /// - Returns: True if the transformation was successful
+  func transform(block: any MarkdownBlockNode, with line: MarkdownLine) -> Bool
+  
+  /// Check if this builder creates interrupting blocks that can interrupt other blocks
+  /// - Returns: True if this builder creates blocks that can interrupt paragraphs and other blocks
+  func canInterrupt() -> Bool
+  
+  /// Check if this builder creates container blocks that can contain other blocks
+  /// - Returns: True if this builder creates container blocks (like blockquotes, list items)
+  func isContainerBuilder() -> Bool
+  
+  /// Check if this builder can handle operations on the given block
+  /// - Parameter block: The block to check
+  /// - Returns: True if this builder can handle operations on this block
+  func canHandle(block: any MarkdownBlockNode) -> Bool
+  
+  /// Move the context.current pointer to the appropriate parent when this builder closes a block
+  /// This implements the "AST is editable" principle by using context pointer manipulation instead of state tracking
+  /// - Parameters:
+  ///   - block: The block being closed
+  ///   - context: The context containing the current pointer to manipulate
+  func moveContextOnClose(block: any MarkdownBlockNode, context: inout CodeConstructContext<MarkdownNodeElement, MarkdownTokenElement>)
 }
 
 /// Represents a line of tokens for block processing
@@ -92,10 +130,44 @@ public protocol MarkdownBlockNode: AnyObject {
   var blockType: String { get }
 }
 
-/// Extension to add default implementations
+/// Extension to add default implementations for optional methods
 extension MarkdownBlockBuilderProtocol {
   /// Default implementation that returns false - override if the builder needs closing logic
   public func closeBlock(block: any MarkdownBlockNode) {
     // Default: no special closing logic needed
+  }
+  
+  /// Default implementation: cannot transform blocks
+  public func canTransform(block: any MarkdownBlockNode, with line: MarkdownLine) -> Bool {
+    return false
+  }
+  
+  /// Default implementation: cannot transform blocks
+  public func transform(block: any MarkdownBlockNode, with line: MarkdownLine) -> Bool {
+    return false
+  }
+  
+  /// Default implementation: cannot interrupt other blocks
+  public func canInterrupt() -> Bool {
+    return false
+  }
+  
+  /// Default implementation: cannot handle any blocks
+  /// Builders should override this to specify which blocks they can handle
+  public func canHandle(block: any MarkdownBlockNode) -> Bool {
+    return false
+  }
+  
+  /// Default implementation: does not create container blocks
+  public func isContainerBuilder() -> Bool {
+    return false
+  }
+  
+  /// Default implementation: move context to parent when closing
+  public func moveContextOnClose(block: any MarkdownBlockNode, context: inout CodeConstructContext<MarkdownNodeElement, MarkdownTokenElement>) {
+    // Default: move context to parent node
+    if let parent = context.current.parent {
+      context.current = parent
+    }
   }
 }
