@@ -75,7 +75,7 @@ struct MarkdownThematicBreaksTests {
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = "document[code_block(\"***\")]"
+    let expectedSig = "document[code_block(\"***\n\")]"
     #expect(sig(result.root) == expectedSig)
   }
 

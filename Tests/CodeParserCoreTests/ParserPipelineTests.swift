@@ -93,8 +93,8 @@ struct ParserPipelineTests {
     var nodes: [any CodeNodeBuilder<Node, Token>] { [NumberNodeBuilder()] }
 
     func root() -> CodeNode<Node> { CodeNode<Node>(element: .root) }
-    func state() -> (any CodeConstructState<Node, Token>)? { nil }
-    func state() -> (any CodeTokenState<Token>)? { nil }
+    func constructState() -> (any CodeConstructState<Node, Token>)? { nil }
+    func tokenState() -> (any CodeTokenState<Token>)? { nil }
     // rely on default eof implementation
   }
 

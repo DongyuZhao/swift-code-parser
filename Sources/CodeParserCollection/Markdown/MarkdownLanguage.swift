@@ -40,11 +40,11 @@ public class MarkdownLanguage: CodeLanguage {
     return DocumentNode()
   }
 
-  public func state() -> (any CodeConstructState<Node, Token>)? {
+  public func constructState() -> (any CodeConstructState<Node, Token>)? {
     return MarkdownConstructState()
   }
 
-  public func state() -> (any CodeTokenState<MarkdownTokenElement>)? {
+  public func tokenState() -> (any CodeTokenState<MarkdownTokenElement>)? {
     return MarkdownTokenState()
   }
 

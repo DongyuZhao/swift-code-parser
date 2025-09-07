@@ -22,6 +22,7 @@ public class CodeTokenizer<Token> where Token: CodeTokenElement {
 
   public func tokenize(_ input: String) -> ([any CodeToken<Token>], [CodeError]) {
     var context = CodeTokenContext<Token>(source: input, state: state())
+    var position = 0
 
     while context.consuming < context.source.endIndex {
       let start = context.consuming
@@ -47,6 +48,8 @@ public class CodeTokenizer<Token> where Token: CodeTokenElement {
         // Ensure progress to avoid infinite loop
         context.consuming = context.source.index(after: context.consuming)
       }
+
+      position += 1
     }
 
     // Append EOF token if provided by the language

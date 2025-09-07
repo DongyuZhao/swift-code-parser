@@ -66,12 +66,10 @@ func sig(_ node: CodeNode<MarkdownNodeElement>) -> String {
       return "ordered_list(level:\(ol.level))"
     case is ListItemNode: return "list_item"
     case let c as CodeBlockNode:
-      let escapedSource = c.source.replacingOccurrences(of: "\t", with: "\\t")
-                                   .replacingOccurrences(of: "\n", with: "\\n")
       if let lang = c.language {
-        return "code_block(lang:\"\(lang)\",\"\(escapedSource)\")"
+        return "code_block(lang:\"\(lang)\",\"\(c.source)\")"
       } else {
-        return "code_block(\"\(escapedSource)\")"
+        return "code_block(\"\(c.source)\")"
       }
     case let ic as CodeSpanNode: return "code(\"\(ic.code)\")"
     case let t as TextNode: return "text(\"\(t.content)\")"

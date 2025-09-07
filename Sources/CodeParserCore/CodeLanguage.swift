@@ -14,10 +14,10 @@ public protocol CodeLanguage<Node, Token> where Node: CodeNodeElement, Token: Co
   func root() -> CodeNode<Node>
 
   /// The function that creates the initial context for AST construction.
-  func state() -> (any CodeConstructState<Node, Token>)?
+  func constructState() -> (any CodeConstructState<Node, Token>)?
 
   /// The function that creates the initial context for tokenization.
-  func state() -> (any CodeTokenState<Token>)?
+  func tokenState() -> (any CodeTokenState<Token>)?
 
   /// Provide an EOF token if the language requires one.
   /// - Parameter range: The range where the EOF token should be inserted.

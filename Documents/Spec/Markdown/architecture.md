@@ -47,7 +47,7 @@ The construction stage builds an AST from the token array. It is implemented via
 
 For Markdown, we use two entry builders:
 	•	MarkdownBlockBuilder — Dispatches block parsing and populates the block-level AST.
-	•	MarkdownEOFBuilder — On .eof, triggers the inline parsing pass.
+	•	MarkdownEOFBuilder — On .eof, triggers the inline parsing pass and post handle stage.
 
 Each language can provide its own context.state type to carry whatever transient information is needed.
 

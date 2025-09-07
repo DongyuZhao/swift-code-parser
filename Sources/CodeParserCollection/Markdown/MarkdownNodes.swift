@@ -110,16 +110,13 @@ public class DocumentNode: MarkdownNodeBase {
 }
 
 // MARK: - Block Elements
-public class ParagraphNode: MarkdownNodeBase, MarkdownBlockNode {
-  public var blockType: String { "paragraph" }
-  
+public class ParagraphNode: MarkdownNodeBase {
   public init(range: Range<String.Index>) {
     super.init(element: .paragraph)
   }
 }
 
-public class HeaderNode: MarkdownNodeBase, MarkdownBlockNode {
-  public var blockType: String { "heading" }
+public class HeaderNode: MarkdownNodeBase {
   public var level: Int
 
   public init(level: Int) {
@@ -133,8 +130,7 @@ public class HeaderNode: MarkdownNodeBase, MarkdownBlockNode {
   }
 }
 
-public class ThematicBreakNode: MarkdownNodeBase, MarkdownBlockNode {
-  public var blockType: String { "thematic_break" }
+public class ThematicBreakNode: MarkdownNodeBase {
   public var marker: String
 
   public init(marker: String = "---") {
@@ -148,10 +144,9 @@ public class ThematicBreakNode: MarkdownNodeBase, MarkdownBlockNode {
   }
 }
 
-public class BlockquoteNode: MarkdownNodeBase, MarkdownBlockNode {
-  public var blockType: String { "blockquote" }
+public class BlockquoteNode: MarkdownNodeBase {
   public var level: Int
-  
+
   // Package-level indentation properties for nested block parsing
   package var indent: Int = 0  // Number of spaces before the '>' marker
   package var markerColumn: Int = 0  // Column position of the '>' marker
@@ -168,8 +163,7 @@ public class BlockquoteNode: MarkdownNodeBase, MarkdownBlockNode {
   }
 }
 
-public class ListNode: MarkdownNodeBase, MarkdownBlockNode {
-  public var blockType: String { element.rawValue }
+public class ListNode: MarkdownNodeBase {
   public var level: Int
 
   public init(element: MarkdownNodeElement, level: Int = 1) {
@@ -209,13 +203,12 @@ public class UnorderedListNode: ListNode {
   }
 }
 
-public class ListItemNode: MarkdownNodeBase, MarkdownBlockNode {
-  public var blockType: String { "list_item" }
+public class ListItemNode: MarkdownNodeBase {
   public var marker: String
   // indentation before marker and content indent column for continuation
   public var markerIndent: Int = 0
   public var contentIndent: Int = 0
-  
+
   // Package-level properties for enhanced nested block parsing
   package var markerColumn: Int = 0  // Exact column position of the marker
   package var contentColumn: Int = 0  // Exact column position where content starts
@@ -232,11 +225,10 @@ public class ListItemNode: MarkdownNodeBase, MarkdownBlockNode {
   }
 }
 
-public class CodeBlockNode: MarkdownNodeBase, MarkdownBlockNode {
-  public var blockType: String { "code_block" }
+public class CodeBlockNode: MarkdownNodeBase {
   public var language: String?
   public var source: String
-  
+
   // Package-level indentation properties for nested block parsing
   package var indent: Int = 0  // Number of spaces before the code block
 

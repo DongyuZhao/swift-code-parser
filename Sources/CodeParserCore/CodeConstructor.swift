@@ -38,6 +38,7 @@ public class CodeConstructor<Node, Token> where Node: CodeNodeElement, Token: Co
       var consumed = false
       for node in builders {
         let prev = context.consuming
+
         if node.build(from: &context) {
           consumed = true
           // Safety guard: ensure progress to avoid infinite loops when a builder

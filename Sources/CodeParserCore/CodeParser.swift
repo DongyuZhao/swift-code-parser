@@ -33,12 +33,12 @@ where Node: CodeNodeElement, Token: CodeTokenElement {
     self.language = language
     self.tokenizer = CodeTokenizer(
       builders: language.tokens,
-      state: language.state,
+      state: language.tokenState,
       eof: { language.eof(at: $0) }
     )
     self.constructor = CodeConstructor(
       builders: language.nodes,
-      state: language.state
+      state: language.constructState
     )
   }
 

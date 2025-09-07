@@ -155,6 +155,7 @@ struct MarkdownTokenEscapeTests {
 
     let expected: [(MarkdownTokenElement, String)] = [
       (.characters, "foo"),
+      (.punctuation, "\\"),
       (.newline, "\n"),
       (.characters, "bar"),
       (.newline, "\n"),

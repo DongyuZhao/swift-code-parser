@@ -3,7 +3,7 @@ import Testing
 @testable import CodeParserCollection
 @testable import CodeParserCore
 
-@Suite("Markdown ATX Headings Tests - Spec 011")
+@Suite("Markdown ATX Headings Tests")
 struct MarkdownATXHeadingsTests {
   private let parser: CodeParser<MarkdownNodeElement, MarkdownTokenElement>
   private let language: MarkdownLanguage
@@ -108,7 +108,7 @@ struct MarkdownATXHeadingsTests {
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = ##########"document[code_block("# foo")]"##########
+    let expectedSig = ##########"document[code_block("# foo\##########n")]"##########
     #expect(sig(result.root) == expectedSig)
   }
 

@@ -172,7 +172,7 @@ struct MarkdownSetextHeadingsTests {
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = #"document[heading(level:2)[text("Foo")]]"#
+    let expectedSig = #"document[heading(level:2)[text("Foo\")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
