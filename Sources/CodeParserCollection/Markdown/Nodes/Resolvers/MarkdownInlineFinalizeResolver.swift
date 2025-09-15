@@ -111,28 +111,41 @@ public class MarkdownInlineFinalizeResolver: MarkdownBlockResolver {
         i += 1
       case .punctuation:
         if t.text == "`" {
-          // Code span with single backticks (simplified); do not span across newline/EOF
           flushText()
-          var j = i + 1
+          let runLen = readRun(of: "`", from: i)
+          var j = i + runLen
           var code = String()
           var found = false
           while j < tokens.count {
             let tk = tokens[j]
-            if tk.element == .newline || tk.element == .eof { break }
-            if tk.element == .punctuation, tk.text == "`" {
-              found = true
-              break
+            if tk.element == .punctuation {
+              let closeRun = readRun(of: "`", from: j)
+              if closeRun >= runLen {
+                found = true
+                j += closeRun
+                break
+              }
             }
+            if tk.element == .newline {
+              code.append("\n")
+              j += 1
+              continue
+            }
+            if tk.element == .eof { break }
             code.append(tk.text)
             j += 1
           }
           if found {
-            nodes.append(CodeSpanNode(code: code))
-            i = j + 1
+            var content = code.replacingOccurrences(of: "\n", with: " ")
+            if content.count >= 2, content.first == " ", content.last == " " {
+              content.removeFirst()
+              content.removeLast()
+            }
+            nodes.append(CodeSpanNode(code: content))
+            i = j
           } else {
-            // No closing before newline/EOF; treat as literal backtick
-            textBuffer.append("`")
-            i += 1
+            textBuffer.append(String(repeating: "`", count: runLen))
+            i += runLen
           }
         } else if t.text == "*" || t.text == "_" {
           let ch = Character(t.text)

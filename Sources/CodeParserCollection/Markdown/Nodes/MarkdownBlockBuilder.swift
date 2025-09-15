@@ -32,8 +32,10 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
       .creation: [
         MarkdownBlockquoteCreationResolver(),
         MarkdownUnorderedListCreationResolver(),
+        MarkdownOrderedListCreationResolver(),
         MarkdownSetextHeadingCreationResolver(),
         MarkdownThematicBreakCreationResolver(),
+        MarkdownFencedCodeBlockCreationResolver(),
         MarkdownIndentedCodeBlockCreationResolver(),
         MarkdownATXHeadingCreationResolver(),
         MarkdownParagraphCreationResolver(),
@@ -41,7 +43,9 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
       .continuation: [
         MarkdownBlockquoteContinuationResolver(),
         MarkdownUnorderedListContinuationResolver(),
+        MarkdownOrderedListContinuationResolver(),
         MarkdownThematicBreakContinuationResolver(),
+        MarkdownFencedCodeBlockContinuationResolver(),
         MarkdownIndentedCodeBlockContinuationResolver(),
         MarkdownATXHeadingContinuationResolver(),
         MarkdownParagraphContinuationResolver(),
@@ -50,7 +54,9 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
       .construction: [
         MarkdownBlockquoteConstructionResolver(),
         MarkdownUnorderedListConstructionResolver(),
+        MarkdownOrderedListConstructionResolver(),
         MarkdownThematicBreakConstructionResolver(),
+        MarkdownFencedCodeBlockConstructionResolver(),
         MarkdownIndentedCodeBlockConstructionResolver(),
         MarkdownATXHeadingConstructionResolver(),
         MarkdownParagraphConstructionResolver(),

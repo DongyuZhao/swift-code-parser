@@ -39,9 +39,31 @@ public class MarkdownThematicBreakCreationResolver: MarkdownBlockResolver {
     }
     guard count >= 3, marker != nil else { return false }
 
-    if let parent = context.current as? MarkdownNodeBase {
+    var target = context.current
+    // A thematic break interrupts a paragraph inside a list item, but can also
+    // appear as content of a list item. Pop out when we're in a paragraph within
+    // a list item or when the list item already has content (meaning the break
+    // should end the list).
+    if target.element == .paragraph, let p = target.parent, p.element == .listItem {
+      if let list = p.parent {
+        target = list.parent ?? list
+      } else {
+        target = p.parent ?? p
+      }
+      context.current = target
+    } else if target.element == .listItem,
+              let item = target as? MarkdownNodeBase, !item.children.isEmpty {
+      if let list = item.parent {
+        target = list.parent ?? list
+      } else {
+        target = item.parent ?? item
+      }
+      context.current = target
+    }
+    if let parent = target as? MarkdownNodeBase {
       parent.append(ThematicBreakNode())
-      // Remain at parent level (no child container)
+      // Consume the line so no further resolvers act on it
+      context.tokens = []
       return true
     }
     return false

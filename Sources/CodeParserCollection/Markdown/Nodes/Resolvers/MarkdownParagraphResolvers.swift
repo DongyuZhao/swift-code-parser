@@ -57,22 +57,6 @@ public class MarkdownParagraphContinuationResolver: MarkdownBlockResolver {
             return true
           }
         }
-        if parent.element == .listItem {
-          // Underline without sufficient indent ends the list item and list
-          var leading = 0
-          if let t = tokens.first, t.element == .whitespaces {
-            leading = t.text.reduce(0) { $0 + ($1 == " " ? 1 : 0) }
-          }
-          if leading < 4 {
-            if let list = parent.parent as? MarkdownNodeBase {
-              context.current = list.parent ?? list
-            } else {
-              context.current = parent.parent ?? parent
-            }
-            context.refreshed = true
-            return true
-          }
-        }
       }
       // Otherwise, keep paragraph open for heading transformation
       return true
@@ -90,13 +74,6 @@ public class MarkdownParagraphContinuationResolver: MarkdownBlockResolver {
           } else {
             context.current = parent
           }
-        } else if parent.element == .listItem {
-          // A thematic break interrupts the list item (and the list itself)
-          if let list = parent.parent as? MarkdownNodeBase {
-            context.current = list.parent ?? list
-          } else {
-            context.current = parent.parent ?? parent
-          }
         } else {
           context.current = parent
         }
@@ -106,18 +83,15 @@ public class MarkdownParagraphContinuationResolver: MarkdownBlockResolver {
       return true
     }
 
-    // If next line starts a blockquote or a new list item, end the paragraph to allow interruption
+    // If next line starts a blockquote, end the paragraph to allow interruption
     let (bqDepth, _) = MarkdownBlockquoteUtils.parseMarkers(in: tokens)
     if bqDepth > 0 {
       if let parent = context.current.parent { context.current = parent }
       return true
     }
-    if MarkdownListUtils.startsWithAnyMarker(tokens: tokens) {
-      if let parent = context.current.parent as? MarkdownNodeBase, parent.element == .listItem {
-        context.current = parent.parent ?? parent
-      } else if let parent = context.current.parent {
-        context.current = parent
-      }
+
+    if MarkdownFenceUtils.isFencedCodeFenceLine(tokens) {
+      if let parent = context.current.parent { context.current = parent }
       context.refreshed = true
       return true
     }
@@ -162,11 +136,13 @@ public class MarkdownParagraphConstructionResolver: MarkdownBlockResolver {
       let ws = tokens[i].text
       let spaceCount = ws.reduce(0) { $0 + ($1 == " " ? 1 : 0) }
       if hasPriorContent {
-        // For continuation lines, strip all leading indentation
         i += 1
       } else {
-        // For the first line, skip at most three spaces
-        if spaceCount <= 3 { i += 1 }
+        if let parent = paragraph.parent, parent.element == .listItem {
+          i += 1
+        } else if spaceCount <= 3 {
+          i += 1
+        }
       }
     }
 

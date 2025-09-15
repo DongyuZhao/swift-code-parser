@@ -14,9 +14,9 @@ package enum MarkdownListUtils {
   }
 
   /// Detect unordered list marker at BOL (up to 3 leading spaces). Returns marker and index after marker+space.
-  package static func detectUnorderedMarker(tokens: [any CodeToken<MarkdownTokenElement>]) -> UnorderedMarker? {
+  package static func detectUnorderedMarker(tokens: [any CodeToken<MarkdownTokenElement>], allowIndented: Bool = false) -> UnorderedMarker? {
     let (leadingSpaces, _, _) = MarkdownIndentation.calculateIndentation(from: tokens)
-    if leadingSpaces > 3 { return nil }
+    if !allowIndented && leadingSpaces > 3 { return nil }
     var i = 0
     while i < tokens.count && tokens[i].element == .whitespaces { i += 1 }
     guard i < tokens.count else { return nil }
@@ -33,9 +33,9 @@ package enum MarkdownListUtils {
   }
 
   /// Detect ordered list marker at BOL (up to 3 leading spaces). Returns number, delimiter, and index after marker.
-  package static func detectOrderedMarker(tokens: [any CodeToken<MarkdownTokenElement>]) -> OrderedMarker? {
+  package static func detectOrderedMarker(tokens: [any CodeToken<MarkdownTokenElement>], allowIndented: Bool = false) -> OrderedMarker? {
     let (leadingSpaces, _, _) = MarkdownIndentation.calculateIndentation(from: tokens)
-    if leadingSpaces > 3 { return nil }
+    if !allowIndented && leadingSpaces > 3 { return nil }
     var i = 0
     while i < tokens.count && tokens[i].element == .whitespaces { i += 1 }
     guard i < tokens.count else { return nil }
@@ -52,8 +52,8 @@ package enum MarkdownListUtils {
   }
 
   /// Detect either unordered or ordered marker at BOL.
-  package static func startsWithAnyMarker(tokens: [any CodeToken<MarkdownTokenElement>]) -> Bool {
-    detectUnorderedMarker(tokens: tokens) != nil || detectOrderedMarker(tokens: tokens) != nil
+  package static func startsWithAnyMarker(tokens: [any CodeToken<MarkdownTokenElement>], allowIndented: Bool = false) -> Bool {
+    detectUnorderedMarker(tokens: tokens, allowIndented: allowIndented) != nil || detectOrderedMarker(tokens: tokens, allowIndented: allowIndented) != nil
   }
 }
 
