@@ -67,13 +67,7 @@ public class MarkdownIndentedCodeBlockContinuationResolver: MarkdownBlockResolve
     if isBlank { return true }
 
     // Otherwise, end the code block and move current to parent
-    var leading = 0
-    if let t = tokens.first, t.element == .whitespaces {
-      leading = t.text.reduce(0) { $0 + ($1 == " " ? 1 : 0) }
-    }
-    if leading == 0, let code = context.current as? CodeBlockNode, code.source.hasSuffix("\n") {
-      code.source.removeLast()
-    }
+    // Preserve trailing newline per specification
     if let parent = context.current.parent { context.current = parent }
     return true
   }

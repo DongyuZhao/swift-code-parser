@@ -37,6 +37,8 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
         MarkdownThematicBreakCreationResolver(),
         MarkdownFencedCodeBlockCreationResolver(),
         MarkdownIndentedCodeBlockCreationResolver(),
+        MarkdownReferenceDefinitionResolver(),
+        MarkdownHTMLBlockCreationResolver(),
         MarkdownATXHeadingCreationResolver(),
         MarkdownParagraphCreationResolver(),
       ],
