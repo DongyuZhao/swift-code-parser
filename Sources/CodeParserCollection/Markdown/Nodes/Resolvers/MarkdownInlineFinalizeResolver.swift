@@ -135,10 +135,18 @@ public class MarkdownInlineFinalizeResolver: MarkdownBlockResolver {
             i += 1
           }
         } else if t.text == "*" || t.text == "_" {
-          flushText()
           let ch = Character(t.text)
           let runLen = readRun(of: ch, from: i)
-          handleEmphasis(runChar: ch, runLen: runLen)
+          let prev = i > 0 ? tokens[i - 1] : nil
+          let next = i + runLen < tokens.count ? tokens[i + runLen] : nil
+          let prevIsWS = prev == nil || prev!.element == .whitespaces || prev!.element == .newline
+          let nextIsWS = next == nil || next!.element == .whitespaces || next!.element == .newline
+          if (ch == "_" && (prevIsWS || nextIsWS)) || (ch == "*" && prevIsWS && nextIsWS) {
+            textBuffer.append(String(repeating: ch, count: runLen))
+          } else {
+            flushText()
+            handleEmphasis(runChar: ch, runLen: runLen)
+          }
           i += runLen
         } else {
           textBuffer.append(t.text)
