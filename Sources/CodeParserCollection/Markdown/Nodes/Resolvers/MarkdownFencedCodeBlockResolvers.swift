@@ -40,6 +40,9 @@ public class MarkdownFencedCodeBlockCreationResolver: MarkdownBlockResolver {
     guard let parent = context.current as? MarkdownNodeBase else { return false }
     let code = CodeBlockNode(source: "", language: lang?.isEmpty == false ? lang : nil)
     code.indent = indent
+    if let item = ancestorListItem(from: parent) {
+      code.indent += item.contentIndent
+    }
     code.fenceChar = fenceChar.first
     code.fenceCount = fenceCount
     parent.append(code)
@@ -47,6 +50,15 @@ public class MarkdownFencedCodeBlockCreationResolver: MarkdownBlockResolver {
     context.tokens = []
     return true
   }
+}
+
+private func ancestorListItem(from node: CodeNode<MarkdownNodeElement>) -> ListItemNode? {
+  var cur = node as? MarkdownNodeBase
+  while let c = cur {
+    if let item = c as? ListItemNode { return item }
+    cur = c.parent as? MarkdownNodeBase
+  }
+  return nil
 }
 
 public class MarkdownFencedCodeBlockContinuationResolver: MarkdownBlockResolver {
