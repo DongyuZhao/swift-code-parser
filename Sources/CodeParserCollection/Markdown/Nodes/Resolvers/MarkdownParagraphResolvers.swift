@@ -12,6 +12,27 @@ public class MarkdownParagraphCreationResolver: MarkdownBlockResolver {
 
     let tokens = context.tokens
     guard !isBlankLine(tokens) else { return false }
+
+    // If we're inside a list item but the line's indentation is less than the
+    // item's content indentation, we may need to realign to the parent so that
+    // new list markers can be recognized. However, lazy continuation lines
+    // within existing paragraphs should remain attached to the current item.
+    if let item = nearestListItem(from: context.current) {
+      let (spaces, _, _) = MarkdownIndentation.calculateIndentation(from: tokens)
+      if spaces < item.contentIndent {
+        if MarkdownListUtils.startsWithAnyMarker(tokens: tokens, allowIndented: false) {
+          if let list = item.parent as? MarkdownNodeBase {
+            context.current = list
+          }
+          context.refreshed = true
+          return true
+        } else if context.current.element != .paragraph, let list = item.parent as? MarkdownNodeBase {
+          context.current = list.parent as? MarkdownNodeBase ?? list
+          context.refreshed = true
+          return true
+        }
+      }
+    }
     // If line starts an ATX heading, let the heading resolver handle it.
     if isATXStart(tokens) { return false }
     // Do not create a new paragraph if we're already inside one
@@ -126,8 +147,37 @@ public class MarkdownParagraphConstructionResolver: MarkdownBlockResolver {
       return false
     }
 
-    let tokens = context.tokens
+    var tokens = context.tokens
     guard !isBlankLine(tokens) else { return true }
+
+    if let item = paragraph.parent as? ListItemNode {
+      var spacesToStrip = item.contentIndent
+      var idx = 0
+      var stripped: [any CodeToken<MarkdownTokenElement>] = []
+      while spacesToStrip > 0, idx < tokens.count {
+        let t = tokens[idx]
+        if t.element == .whitespaces {
+          var remaining = ""
+          for ch in t.text {
+            if spacesToStrip > 0 {
+              spacesToStrip -= 1
+            } else {
+              remaining.append(ch)
+            }
+          }
+          if !remaining.isEmpty {
+            let range = t.range
+            let newToken = MarkdownToken(element: .whitespaces, text: remaining, range: range)
+            stripped.append(newToken)
+          }
+          idx += 1
+        } else {
+          break
+        }
+      }
+      stripped.append(contentsOf: tokens[idx...])
+      tokens = stripped
+    }
 
     var i = 0
     // Determine if this is a continued line within an existing paragraph
@@ -202,4 +252,13 @@ private func isSetextUnderline(_ tokens: [any CodeToken<MarkdownTokenElement>]) 
   }
 
   return MarkdownSetextUtils.headingLevel(for: tokens) != nil
+}
+
+private func nearestListItem(from node: CodeNode<MarkdownNodeElement>) -> ListItemNode? {
+  var cur = node as? MarkdownNodeBase
+  while let c = cur {
+    if let item = c as? ListItemNode { return item }
+    cur = c.parent as? MarkdownNodeBase
+  }
+  return nil
 }
