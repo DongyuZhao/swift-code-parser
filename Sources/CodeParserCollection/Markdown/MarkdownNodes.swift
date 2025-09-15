@@ -231,6 +231,9 @@ public class CodeBlockNode: MarkdownNodeBase {
 
   // Package-level indentation properties for nested block parsing
   package var indent: Int = 0  // Number of spaces before the code block
+  // Fenced code block properties
+  package var fenceChar: Character?  // ` or ~ when parsed from fenced code
+  package var fenceCount: Int = 0    // number of fence characters defining the block
 
   public init(source: String, language: String? = nil) {
     self.language = language

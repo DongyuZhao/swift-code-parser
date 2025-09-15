@@ -10,8 +10,9 @@ public class MarkdownIndentedCodeBlockCreationResolver: MarkdownBlockResolver {
   public func resolve(from context: inout MarkdownBlockContext) -> Bool {
     let tokens = context.tokens
     var i = 0
-    // Do not start an indented code block inside a paragraph or another code block
-    guard context.current.element != .paragraph, context.current.element != .codeBlock else { return false }
+    // Do not start an indented code block inside a paragraph, list item, or another code block
+    guard context.current.element != .paragraph, context.current.element != .listItem,
+          context.current.element != .codeBlock else { return false }
     guard i < tokens.count, tokens[i].element == .whitespaces else { return false }
     let ws = tokens[i].text
     let spaceCount = ws.reduce(0) { $0 + ($1 == " " ? 1 : 0) }
@@ -33,7 +34,13 @@ public class MarkdownIndentedCodeBlockContinuationResolver: MarkdownBlockResolve
     guard context.current.element == .codeBlock else { return false }
     let tokens = context.tokens
     if tokens.count == 1, tokens.first?.element == .eof {
-      // Nothing to do at EOF; leave as-is
+      if let code = context.current as? CodeBlockNode {
+        while code.source.hasSuffix("\n") { code.source.removeLast() }
+        if !code.source.isEmpty && !code.source.hasSuffix("```") && !code.source.hasSuffix("~~~") {
+          code.source.append("\n")
+        }
+      }
+      if let parent = context.current.parent { context.current = parent }
       return false
     }
     // Continue only if current line has >= 4 leading spaces or is blank
@@ -48,11 +55,13 @@ public class MarkdownIndentedCodeBlockContinuationResolver: MarkdownBlockResolve
     for t in tokens { if t.element != .whitespaces && t.element != .newline && t.element != .eof { isBlank = false; break } }
     if isBlank { return true }
 
-    // Otherwise, end the code block by trimming trailing newline and moving current to parent
-    if let code = context.current as? CodeBlockNode {
-      if code.source.hasSuffix("\n") {
-        code.source.removeLast()
-      }
+    // Otherwise, end the code block and move current to parent
+    var leading = 0
+    if let t = tokens.first, t.element == .whitespaces {
+      leading = t.text.reduce(0) { $0 + ($1 == " " ? 1 : 0) }
+    }
+    if leading == 0, let code = context.current as? CodeBlockNode, code.source.hasSuffix("\n") {
+      code.source.removeLast()
     }
     if let parent = context.current.parent { context.current = parent }
     return true

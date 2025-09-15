@@ -32,6 +32,21 @@ public class MarkdownSetextHeadingCreationResolver: MarkdownBlockResolver {
     if container.element == .blockquote && bqDepth == 0 {
       return false
     }
+    if container.element == .listItem {
+      var leading = 0
+      if let t = tokens.first, t.element == .whitespaces {
+        leading = t.text.reduce(0) { $0 + ($1 == " " ? 1 : 0) }
+      }
+      if leading < 4 {
+        if let list = container.parent as? MarkdownNodeBase {
+          context.current = list.parent ?? list
+        } else {
+          context.current = container.parent ?? container
+        }
+        context.refreshed = true
+        return true
+      }
+    }
 
     // Create heading node with the detected level
     let heading = HeaderNode(level: level)
