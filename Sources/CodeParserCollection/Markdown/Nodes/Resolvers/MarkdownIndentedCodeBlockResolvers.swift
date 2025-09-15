@@ -10,16 +10,23 @@ public class MarkdownIndentedCodeBlockCreationResolver: MarkdownBlockResolver {
   public func resolve(from context: inout MarkdownBlockContext) -> Bool {
     let tokens = context.tokens
     var i = 0
-    // Do not start an indented code block inside a paragraph, list item, or another code block
-    guard context.current.element != .paragraph, context.current.element != .listItem,
+    // Do not start an indented code block inside a paragraph or another code block
+    guard context.current.element != .paragraph,
           context.current.element != .codeBlock else { return false }
     guard i < tokens.count, tokens[i].element == .whitespaces else { return false }
     let ws = tokens[i].text
     let spaceCount = ws.reduce(0) { $0 + ($1 == " " ? 1 : 0) }
-    guard spaceCount >= 4 else { return false }
+    if let item = ancestorListItem(from: context.current) {
+      guard spaceCount >= item.contentIndent + 4 else { return false }
+    } else {
+      guard spaceCount >= 4 else { return false }
+    }
 
     if let parent = context.current as? MarkdownNodeBase {
       let code = CodeBlockNode(source: "")
+      if let item = ancestorListItem(from: parent) {
+        code.indent = item.contentIndent
+      }
       parent.append(code)
       context.current = code
       return true
@@ -43,12 +50,16 @@ public class MarkdownIndentedCodeBlockContinuationResolver: MarkdownBlockResolve
       if let parent = context.current.parent { context.current = parent }
       return false
     }
-    // Continue only if current line has >= 4 leading spaces or is blank
+    // Continue only if current line has required indentation or is blank
     var i = 0
     if i < tokens.count, tokens[i].element == .whitespaces {
       let ws = tokens[i].text
       let spaceCount = ws.reduce(0) { $0 + ($1 == " " ? 1 : 0) }
-      if spaceCount >= 4 { return true }
+      if let item = ancestorListItem(from: context.current) {
+        if spaceCount >= item.contentIndent + 4 { return true }
+      } else if spaceCount >= 4 {
+        return true
+      }
     }
     // Blank line continues the code block
     var isBlank = true
@@ -68,18 +79,32 @@ public class MarkdownIndentedCodeBlockContinuationResolver: MarkdownBlockResolve
   }
 }
 
+private func ancestorListItem(from node: CodeNode<MarkdownNodeElement>) -> ListItemNode? {
+  var cur = node as? MarkdownNodeBase
+  while let c = cur {
+    if let item = c as? ListItemNode { return item }
+    cur = c.parent as? MarkdownNodeBase
+  }
+  return nil
+}
+
 public class MarkdownIndentedCodeBlockConstructionResolver: MarkdownBlockResolver {
   public init() {}
   public func resolve(from context: inout MarkdownBlockContext) -> Bool {
     guard let code = context.current as? CodeBlockNode else { return false }
     let tokens = context.tokens
-    // Determine leading spaces to strip (up to 4)
+    // Determine leading spaces to strip: list item indent + 4, or up to 4 normally
     var i = 0
     var stripCount = 0
+    var base = 4
+    if let item = ancestorListItem(from: context.current) {
+      base = item.contentIndent + 4
+    }
     if i < tokens.count, tokens[i].element == .whitespaces {
       let ws = tokens[i].text
-      stripCount = min(4, ws.reduce(0) { $0 + ($1 == " " ? 1 : 0) })
-      // Rebuild whitespace after stripping 4 spaces, if any remain
+      let spaceCount = ws.reduce(0) { $0 + ($1 == " " ? 1 : 0) }
+      stripCount = min(base, spaceCount)
+      // Rebuild whitespace after stripping leading spaces, if any remain
     }
     var line = ""
     var remainingToStrip = stripCount
