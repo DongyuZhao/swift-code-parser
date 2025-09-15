@@ -23,7 +23,12 @@ package enum MarkdownListUtils {
     let t = tokens[i]
     guard t.element == .punctuation, ["-", "*", "+"].contains(t.text) else { return nil }
     var next = i + 1
-    if next < tokens.count, tokens[next].element == .whitespaces { next += 1 }
+    if next >= tokens.count { return nil }
+    let nxt = tokens[next]
+    if nxt.element == .whitespaces { next += 1 }
+    else if nxt.element != .newline && nxt.element != .eof { return nil }
+    // Prevent misidentifying thematic breaks like "- - -" or "* * *" as list markers
+    if next < tokens.count, tokens[next].element == .punctuation, tokens[next].text == t.text { return nil }
     return UnorderedMarker(marker: t.text, nextIndex: next)
   }
 
@@ -39,7 +44,10 @@ package enum MarkdownListUtils {
     let j = i + 1
     guard j < tokens.count, tokens[j].element == .punctuation, [".", ")"].contains(tokens[j].text) else { return nil }
     var next = j + 1
-    if next < tokens.count, tokens[next].element == .whitespaces { next += 1 }
+    if next >= tokens.count { return nil }
+    let nxt = tokens[next]
+    if nxt.element == .whitespaces { next += 1 }
+    else if nxt.element != .newline && nxt.element != .eof { return nil }
     return OrderedMarker(numberText: t.text, delimiter: tokens[j].text, nextIndex: next)
   }
 

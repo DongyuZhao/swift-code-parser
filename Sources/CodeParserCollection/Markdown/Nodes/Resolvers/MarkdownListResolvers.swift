@@ -5,8 +5,8 @@ import Foundation
 public class MarkdownUnorderedListCreationResolver: MarkdownBlockResolver {
   public init() {}
   public func resolve(from context: inout MarkdownBlockContext) -> Bool {
-    // Lists should not start inside code blocks or paragraphs already handled
-    guard context.current.element != .codeBlock else { return false }
+    // Lists should not start inside code blocks or existing list items
+    guard context.current.element != .codeBlock, context.current.element != .listItem else { return false }
     let tokens = context.tokens
     var i = 0
     // Up to three leading spaces
@@ -27,17 +27,22 @@ public class MarkdownUnorderedListCreationResolver: MarkdownBlockResolver {
     if next.element == .whitespaces { i += 1 }
     else if next.element != .newline && next.element != .eof { return false }
 
-    // Ensure the line isn't an alternative thematic break like "* * *"
+    // Ensure the line isn't an alternative thematic break like "- - -" or "* * *"
     if i < tokens.count {
       let after = tokens[i]
-      if after.element == .punctuation && (after.text == "-" || after.text == "*" || after.text == "+") {
+      if after.element == .punctuation && after.text == marker {
         return false
       }
     }
 
     guard let parent = context.current as? MarkdownNodeBase else { return false }
-    let list = UnorderedListNode(level: 1, marker: marker)
-    parent.append(list)
+    let list: UnorderedListNode
+    if let existing = parent as? UnorderedListNode, existing.element == .unorderedList, existing.marker == marker {
+      list = existing
+    } else {
+      list = UnorderedListNode(level: 1, marker: marker)
+      parent.append(list)
+    }
     let item = ListItemNode(marker: marker)
     list.append(item)
     context.current = item
