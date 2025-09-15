@@ -13,29 +13,45 @@ public class MarkdownSetextHeadingCreationResolver: MarkdownBlockResolver {
 
     guard let level = MarkdownSetextUtils.headingLevel(for: tokens) else { return false }
 
-    // Find the last paragraph child in the current container
-    guard let container = context.current as? MarkdownNodeBase else { return false }
-    guard let lastIndex = container.children.lastIndex(where: { $0.element == .paragraph }),
-          let paragraph = container.children[lastIndex] as? MarkdownNodeBase else {
+    // Setext headings transform the _current_ paragraph. Ensure the
+    // current node is a paragraph and we have access to its parent
+    // container to perform the replacement.
+    guard
+      let paragraph = context.current as? MarkdownNodeBase,
+      paragraph.element == .paragraph,
+      let container = paragraph.parent as? MarkdownNodeBase,
+      let index = container.children.firstIndex(where: { $0 === paragraph })
+    else {
       return false
     }
 
-    // Transform paragraph -> heading(level)
+    // Do not transform if inside a blockquote where the underline line is a
+    // lazy continuation (i.e., the line lacks '>'). In that case the underline
+    // should be treated as regular text.
+    let (bqDepth, _) = MarkdownBlockquoteUtils.parseMarkers(in: tokens)
+    if container.element == .blockquote && bqDepth == 0 {
+      return false
+    }
+
+    // Create heading node with the detected level
     let heading = HeaderNode(level: level)
-    // Move children from paragraph to heading
-    let movedChildren = paragraph.children
+
+    // Move existing children from the paragraph to the new heading
+    let moved = paragraph.children
     paragraph.children.removeAll()
-    for child in movedChildren {
-      if let mChild = child as? MarkdownNodeBase {
-        heading.append(mChild)
+    for child in moved {
+      if let m = child as? MarkdownNodeBase {
+        heading.append(m)
       } else {
         heading.append(child)
       }
     }
-    // Replace paragraph with heading in container
-    container.replace(at: lastIndex, with: heading)
 
-    // Keep context.current at container (headings are single-line blocks)
+    // Replace the paragraph in its parent with the heading
+    container.replace(at: index, with: heading)
+
+    // After replacement, the current context should move back to the parent
+    context.current = container
     return true
   }
 

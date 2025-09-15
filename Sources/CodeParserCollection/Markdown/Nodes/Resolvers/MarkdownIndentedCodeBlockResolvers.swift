@@ -10,8 +10,8 @@ public class MarkdownIndentedCodeBlockCreationResolver: MarkdownBlockResolver {
   public func resolve(from context: inout MarkdownBlockContext) -> Bool {
     let tokens = context.tokens
     var i = 0
-    // Do not start an indented code block inside a paragraph
-    guard context.current.element != .paragraph else { return false }
+    // Do not start an indented code block inside a paragraph or another code block
+    guard context.current.element != .paragraph, context.current.element != .codeBlock else { return false }
     guard i < tokens.count, tokens[i].element == .whitespaces else { return false }
     let ws = tokens[i].text
     let spaceCount = ws.reduce(0) { $0 + ($1 == " " ? 1 : 0) }

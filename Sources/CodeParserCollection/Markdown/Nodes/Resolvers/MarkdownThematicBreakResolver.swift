@@ -6,6 +6,9 @@ public class MarkdownThematicBreakCreationResolver: MarkdownBlockResolver {
   public init() {}
 
   public func resolve(from context: inout MarkdownBlockContext) -> Bool {
+    // Do not recognize thematic breaks inside code blocks
+    guard context.current.element != .codeBlock else { return false }
+
     let tokens = context.tokens
     var i = 0
 
