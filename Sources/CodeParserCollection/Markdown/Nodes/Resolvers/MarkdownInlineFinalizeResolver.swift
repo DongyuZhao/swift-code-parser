@@ -145,6 +145,13 @@ public class MarkdownInlineFinalizeResolver: MarkdownBlockResolver {
           i += 1
         }
       case .newline:
+        // If a line ends with a backslash and this newline is the final token,
+        // the backslash should be preserved literally (used in setext headings).
+        if textBuffer.hasSuffix("\\"), i + 1 == tokens.count {
+          // Do not produce a line break; keep the backslash
+          i += 1
+          continue
+        }
         // Decide hard vs soft line break
         // Hard break if textBuffer ends with a backslash (\\) or with two or more spaces
         let (isHardBreak, _): (Bool, Int) = {

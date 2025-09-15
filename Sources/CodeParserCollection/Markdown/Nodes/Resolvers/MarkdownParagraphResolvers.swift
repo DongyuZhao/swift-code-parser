@@ -7,6 +7,9 @@ public class MarkdownParagraphCreationResolver: MarkdownBlockResolver {
   public init() {}
 
   public func resolve(from context: inout MarkdownBlockContext) -> Bool {
+    // Paragraphs cannot start inside code blocks
+    guard context.current.element != .codeBlock else { return false }
+
     let tokens = context.tokens
     guard !isBlankLine(tokens) else { return false }
     // If line starts an ATX heading, let the heading resolver handle it.
@@ -37,6 +40,44 @@ public class MarkdownParagraphContinuationResolver: MarkdownBlockResolver {
     if tokens.count == 1, tokens.first?.element == .eof { return false }
 
     // If this line is a thematic break, close the paragraph to allow interruption
+    // If this line is a setext underline, handle it before thematic breaks so
+    // that underline takes precedence when following a paragraph.
+    if isSetextUnderline(tokens) {
+      let (bqDepth, _) = MarkdownBlockquoteUtils.parseMarkers(in: tokens)
+      let level = MarkdownSetextUtils.headingLevel(for: tokens) ?? 0
+      if let parent = context.current.parent as? MarkdownNodeBase {
+        if parent.element == .blockquote, bqDepth == 0 {
+          if level == 2 {
+            // Dashes: end blockquote and reprocess outside
+            if let grand = parent.parent { context.current = grand } else { context.current = parent }
+            context.refreshed = true
+            return true
+          } else {
+            // Equals: keep inside blockquote as normal text
+            return true
+          }
+        }
+        if parent.element == .listItem {
+          // Underline without sufficient indent ends the list item and list
+          var leading = 0
+          if let t = tokens.first, t.element == .whitespaces {
+            leading = t.text.reduce(0) { $0 + ($1 == " " ? 1 : 0) }
+          }
+          if leading < 4 {
+            if let list = parent.parent as? MarkdownNodeBase {
+              context.current = list.parent ?? list
+            } else {
+              context.current = parent.parent ?? parent
+            }
+            context.refreshed = true
+            return true
+          }
+        }
+      }
+      // Otherwise, keep paragraph open for heading transformation
+      return true
+    }
+
     if MarkdownThematicBreakUtils.isThematicBreakLine(tokens) {
       if let parent = context.current.parent as? MarkdownNodeBase {
         // If we're inside a blockquote and this line does not carry a '>' marker
@@ -62,23 +103,6 @@ public class MarkdownParagraphContinuationResolver: MarkdownBlockResolver {
     let (bqDepth, _) = MarkdownBlockquoteUtils.parseMarkers(in: tokens)
     if bqDepth > 0 {
       if let parent = context.current.parent { context.current = parent }
-      return true
-    }
-
-    // If this line is a setext underline:
-    // - Do NOT end the paragraph here; leave it as current so the creation
-    //   resolver can transform it only when it immediately follows the paragraph.
-    // - Additionally, prevent transformation if we're inside a blockquote and the
-    //   line is a lazy continuation (no '>'): in that case, keep the paragraph
-    //   open so the underline is treated as literal text or other block (e.g. thematic break).
-    if isSetextUnderline(tokens) {
-      if let parent = context.current.parent as? MarkdownNodeBase, parent.element == .blockquote {
-        if bqDepth == 0 {
-          // Lazy continuation within blockquote: keep the paragraph open
-          return true
-        }
-      }
-      // Keep paragraph as current; creation resolver will handle transformation
       return true
     }
 
@@ -130,9 +154,16 @@ public class MarkdownParagraphConstructionResolver: MarkdownBlockResolver {
       }
     }
 
-    // Include all remaining tokens (including .newline/.eof) for inline processing
+    // Include all remaining tokens (including .newline/.eof) for inline processing.
+    // Rather than creating a new ContentNode per line, append the tokens to the
+    // last existing ContentNode so inline parsing can span across line breaks
+    // (needed for emphasis that crosses lines in setext headings).
     let contentTokens: [any CodeToken<MarkdownTokenElement>] = Array(tokens[i...])
-    paragraph.append(ContentNode(tokens: contentTokens))
+    if let last = paragraph.children.last as? ContentNode {
+      last.tokens.append(contentsOf: contentTokens)
+    } else {
+      paragraph.append(ContentNode(tokens: contentTokens))
+    }
     return true
   }
 }

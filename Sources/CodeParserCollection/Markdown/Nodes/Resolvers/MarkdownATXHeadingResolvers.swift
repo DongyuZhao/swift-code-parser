@@ -7,6 +7,9 @@ public class MarkdownATXHeadingCreationResolver: MarkdownBlockResolver {
   public init() {}
 
   public func resolve(from context: inout MarkdownBlockContext) -> Bool {
+    // ATX headings cannot start inside code blocks
+    guard context.current.element != .codeBlock else { return false }
+
     let tokens = context.tokens
     guard !tokens.isEmpty else { return false }
 
