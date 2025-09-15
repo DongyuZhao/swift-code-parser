@@ -8,15 +8,26 @@ public class MarkdownBlockquoteCreationResolver: MarkdownBlockResolver {
   public func resolve(from context: inout MarkdownBlockContext) -> Bool {
     // Do not start a blockquote within a code block
     guard context.current.element != .codeBlock else { return false }
-    let tokens = context.tokens
-    let (depth, endIndex) = MarkdownBlockquoteUtils.parseMarkers(in: tokens)
+    let remainingTokens = Array(context.tokens[context.consumed...])
+    let (depth, endIndex) = MarkdownBlockquoteUtils.parseMarkers(in: remainingTokens)
     guard depth > 0 else { return false }
     guard let parent = context.current as? MarkdownNodeBase else { return false }
     let bq = BlockquoteNode(level: depth)
+    
+    // Set blockquote indentation properties
+    var spaceCount = 0
+    var i = 0
+    while i < remainingTokens.count && remainingTokens[i].element == .whitespace && remainingTokens[i].text == " " {
+      spaceCount += 1
+      i += 1
+    }
+    bq.indent = spaceCount
+    bq.markerColumn = spaceCount
+    
     parent.append(bq)
     context.current = bq
-    // Yield remaining tokens to be processed inside blockquote
-    context.tokens = Array(tokens[endIndex...])
+    // Consume the blockquote markers
+    context.consumed += endIndex
     context.refreshed = true
     return true
   }
@@ -30,13 +41,14 @@ public class MarkdownBlockquoteContinuationResolver: MarkdownBlockResolver {
     if inChild {
       guard context.current.parent?.element == .blockquote else { return false }
     }
-    let tokens = context.tokens
-    let (depth, endIndex) = MarkdownBlockquoteUtils.parseMarkers(in: tokens)
+    let remainingTokens = Array(context.tokens[context.consumed...])
+    let (depth, endIndex) = MarkdownBlockquoteUtils.parseMarkers(in: remainingTokens)
     if depth > 0 {
       // Strip blockquote markers and continue processing remaining tokens in
       // the same iteration so other resolvers (like code blocks) can act on
       // them.
-      context.tokens = Array(tokens[endIndex...])
+      context.consumed += endIndex
+      context.refreshed = true
       return false
     }
     if inChild {
@@ -58,8 +70,8 @@ public class MarkdownBlockquoteContinuationResolver: MarkdownBlockResolver {
       return true
     }
     var isBlank = true
-    for t in tokens {
-      if t.element != .whitespaces && t.element != .newline && t.element != .eof {
+    for t in remainingTokens {
+      if t.element != .whitespace && t.element != .newline && t.element != .eof {
         isBlank = false
         break
       }

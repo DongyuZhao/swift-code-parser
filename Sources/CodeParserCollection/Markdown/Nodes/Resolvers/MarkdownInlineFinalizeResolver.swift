@@ -94,23 +94,59 @@ public class MarkdownInlineFinalizeResolver: MarkdownBlockResolver {
     }
 
     func readRun(of target: Character, from start: Int) -> Int {
+      // Map target to its token element
+      let elem: MarkdownTokenElement? = {
+        switch target {
+        case "`": return .backtick
+        case "*": return .asterisk
+        case "_": return .underscore
+        default: return nil
+        }
+      }()
       var idx = start
       var count = 0
-      while idx < tokens.count, tokens[idx].element == .punctuation, tokens[idx].text == String(target) {
-        count += 1
-        idx += 1
+      while idx < tokens.count {
+        let tk = tokens[idx]
+        if let e = elem, tk.element == e { count += 1; idx += 1 } else { break }
       }
       return count
+    }
+
+    func isPunctuationElement(_ e: MarkdownTokenElement) -> Bool {
+      switch e {
+      case .exclamation, .quote, .hash, .dollar, .percent, .ampersand,
+           .singleQuote, .leftParen, .rightParen, .asterisk, .plus, .comma,
+           .dash, .dot, .forwardSlash, .colon, .semicolon, .lt, .equals, .gt,
+           .question, .atSign, .leftBracket, .backslash, .rightBracket, .caret,
+           .underscore, .backtick, .leftBrace, .pipe, .rightBrace, .tilde:
+        return true
+      default:
+        return false
+      }
     }
 
     while i < tokens.count {
       let t = tokens[i]
       switch t.element {
-      case .characters, .charef, .whitespaces:
+      case .characters, .whitespace:
         textBuffer.append(t.text)
         i += 1
-      case .punctuation:
-        if t.text == "`" {
+      case .backslash:
+        // Backslash escapes ASCII punctuation and backslash; newline after backslash is a hard break
+        let next = (i + 1 < tokens.count) ? tokens[i + 1] : nil
+        if let n = next, n.element == .newline {
+          flushText()
+          nodes.append(LineBreakNode(variant: .hard))
+          i += 2
+        } else if let n = next, isPunctuationElement(n.element) {
+          textBuffer.append(n.text)
+          i += 2
+        } else {
+          textBuffer.append("\\")
+          i += 1
+        }
+      case .backtick:
+        do {
           flushText()
           let runLen = readRun(of: "`", from: i)
           var j = i + runLen
@@ -118,7 +154,7 @@ public class MarkdownInlineFinalizeResolver: MarkdownBlockResolver {
           var found = false
           while j < tokens.count {
             let tk = tokens[j]
-            if tk.element == .punctuation {
+            if tk.element == .backtick {
               let closeRun = readRun(of: "`", from: j)
               if closeRun >= runLen {
                 found = true
@@ -147,13 +183,15 @@ public class MarkdownInlineFinalizeResolver: MarkdownBlockResolver {
             textBuffer.append(String(repeating: "`", count: runLen))
             i += runLen
           }
-        } else if t.text == "*" || t.text == "_" {
+        }
+      case .asterisk, .underscore:
+        do {
           let ch = Character(t.text)
           let runLen = readRun(of: ch, from: i)
           let prev = i > 0 ? tokens[i - 1] : nil
           let next = i + runLen < tokens.count ? tokens[i + runLen] : nil
-          let prevIsWS = prev == nil || prev!.element == .whitespaces || prev!.element == .newline
-          let nextIsWS = next == nil || next!.element == .whitespaces || next!.element == .newline
+          let prevIsWS = prev == nil || prev!.element == .whitespace || prev!.element == .newline
+          let nextIsWS = next == nil || next!.element == .whitespace || next!.element == .newline
           if (ch == "_" && (prevIsWS || nextIsWS)) || (ch == "*" && prevIsWS && nextIsWS) {
             textBuffer.append(String(repeating: ch, count: runLen))
           } else {
@@ -161,26 +199,12 @@ public class MarkdownInlineFinalizeResolver: MarkdownBlockResolver {
             handleEmphasis(runChar: ch, runLen: runLen)
           }
           i += runLen
-        } else {
-          textBuffer.append(t.text)
-          i += 1
         }
+      
       case .newline:
-        // If a line ends with a backslash and this newline is the final token,
-        // the backslash should be preserved literally (used in setext headings).
-        if textBuffer.hasSuffix("\\"), i + 1 == tokens.count {
-          // Do not produce a line break; keep the backslash
-          i += 1
-          continue
-        }
         // Decide hard vs soft line break
-        // Hard break if textBuffer ends with a backslash (\\) or with two or more spaces
+        // Hard break if textBuffer ends with two or more spaces (backslash-newline handled earlier)
         let (isHardBreak, _): (Bool, Int) = {
-          if textBuffer.hasSuffix("\\") {
-            // Remove the trailing backslash used for hard break
-            _ = textBuffer.popLast()
-            return (true, 0)
-          }
           // Count trailing spaces
           var count = 0
           var idx = textBuffer.endIndex
@@ -206,6 +230,9 @@ public class MarkdownInlineFinalizeResolver: MarkdownBlockResolver {
       case .eof:
         // Ignore EOF, just flush
         flushText()
+        i += 1
+      default:
+        textBuffer.append(t.text)
         i += 1
       }
     }

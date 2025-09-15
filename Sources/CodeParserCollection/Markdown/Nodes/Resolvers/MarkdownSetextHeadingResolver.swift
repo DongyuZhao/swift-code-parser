@@ -34,7 +34,7 @@ public class MarkdownSetextHeadingCreationResolver: MarkdownBlockResolver {
     }
     if container.element == .listItem {
       var leading = 0
-      if let t = tokens.first, t.element == .whitespaces {
+      if let t = tokens.first, t.element == .whitespace {
         leading = t.text.reduce(0) { $0 + ($1 == " " ? 1 : 0) }
       }
       if leading < 4 {

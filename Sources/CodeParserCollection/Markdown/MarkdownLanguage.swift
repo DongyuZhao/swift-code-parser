@@ -29,7 +29,6 @@ public class MarkdownLanguage: CodeLanguage {
     self.tokens = [
       MarkdownNewlineTokenBuilder(),
       MarkdownWhitespaceTokenBuilder(),
-      MarkdownEntitiesTokenBuilder(),
       MarkdownCharactersTokenBuilder(),
       MarkdownPunctuationTokenBuilder(),
     ]
@@ -45,7 +44,8 @@ public class MarkdownLanguage: CodeLanguage {
   }
 
   public func tokenState() -> (any CodeTokenState<MarkdownTokenElement>)? {
-    return MarkdownTokenState()
+    // No tokenization mode/state; tokenizers are stateless
+    return nil
   }
 
   public func eof(at range: Range<String.Index>) -> (any CodeToken<MarkdownTokenElement>)? {

@@ -9,7 +9,7 @@ package enum MarkdownSetextUtils {
     guard !tokens.isEmpty else { return nil }
 
     // Up to 3 leading spaces
-    if i < tokens.count, tokens[i].element == .whitespaces {
+    if i < tokens.count, tokens[i].element == .whitespace {
       let ws = tokens[i].text
       let spaceCount = ws.reduce(0) { $0 + ($1 == " " ? 1 : 0) }
       if spaceCount > 3 { return nil }
@@ -17,21 +17,22 @@ package enum MarkdownSetextUtils {
     }
 
     // Require a run of '=' or '-' with NO internal spaces between markers
-    var marker: String? = nil
+    var marker: MarkdownTokenElement? = nil
     var count = 0
     while i < tokens.count {
       let t = tokens[i]
-      if t.element == .punctuation, (t.text == "=" || t.text == "-") {
-        if marker == nil { marker = t.text }
-        if t.text != marker { return nil }
+      if t.element == .backslash { return nil }
+      if t.element == .equals || t.element == .dash {
+        if marker == nil { marker = t.element }
+        if t.element != marker { return nil }
         count += 1
         i += 1
         continue
       }
       // Allow trailing spaces; then must be newline/eof only
-      if t.element == .whitespaces {
+      if t.element == .whitespace {
         i += 1
-        while i < tokens.count, tokens[i].element == .whitespaces { i += 1 }
+        while i < tokens.count, tokens[i].element == .whitespace { i += 1 }
         break
       }
       if t.element == .newline || t.element == .eof { break }
@@ -49,7 +50,6 @@ package enum MarkdownSetextUtils {
     }
 
     guard count >= 1, let m = marker else { return nil }
-    return (m == "=") ? 1 : 2
+    return (m == .equals) ? 1 : 2
   }
 }
-

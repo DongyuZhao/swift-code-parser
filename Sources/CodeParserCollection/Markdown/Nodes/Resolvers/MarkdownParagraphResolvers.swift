@@ -10,36 +10,16 @@ public class MarkdownParagraphCreationResolver: MarkdownBlockResolver {
     // Paragraphs cannot start inside code blocks
     guard context.current.element != .codeBlock else { return false }
 
-    let tokens = context.tokens
-    guard !isBlankLine(tokens) else { return false }
+    let remainingTokens = Array(context.tokens[context.consumed...])
+    guard !isBlankLine(remainingTokens) else { return false }
 
-    // If we're inside a list item but the line's indentation is less than the
-    // item's content indentation, we may need to realign to the parent so that
-    // new list markers can be recognized. However, lazy continuation lines
-    // within existing paragraphs should remain attached to the current item.
-    if let item = nearestListItem(from: context.current) {
-      let (spaces, _, _) = MarkdownIndentation.calculateIndentation(from: tokens)
-      if spaces < item.contentIndent {
-        if MarkdownListUtils.startsWithAnyMarker(tokens: tokens, allowIndented: false) {
-          if let list = item.parent as? MarkdownNodeBase {
-            context.current = list
-          }
-          context.refreshed = true
-          return true
-        } else if context.current.element != .paragraph, let list = item.parent as? MarkdownNodeBase {
-          context.current = list.parent as? MarkdownNodeBase ?? list
-          context.refreshed = true
-          return true
-        }
-      }
-    }
     // If line starts an ATX heading, let the heading resolver handle it.
-    if isATXStart(tokens) { return false }
+    if isATXStart(remainingTokens) { return false }
     // Do not create a new paragraph if we're already inside one
     guard context.current.element != .paragraph else { return false }
 
     if let parent = context.current as? MarkdownNodeBase {
-      let paragraph = ParagraphNode(range: tokens.first?.range ?? tokens.last?.range ?? ("".startIndex..<("".startIndex)))
+      let paragraph = ParagraphNode(range: remainingTokens.first?.range ?? remainingTokens.last?.range ?? ("".startIndex..<("".startIndex)))
       parent.append(paragraph)
       context.current = paragraph
       return true
@@ -55,7 +35,7 @@ public class MarkdownParagraphContinuationResolver: MarkdownBlockResolver {
 
   public func resolve(from context: inout MarkdownBlockContext) -> Bool {
     guard context.current.element == .paragraph else { return false }
-    let tokens = context.tokens
+    let tokens = Array(context.tokens[context.consumed...])
 
     // Ignore EOF-only line; block builder emits it as its own line
     if tokens.count == 1, tokens.first?.element == .eof { return false }
@@ -131,8 +111,8 @@ public class MarkdownParagraphContinuationResolver: MarkdownBlockResolver {
       context.refreshed = true
       return true
     }
-    // Continue within the same paragraph
-    return true
+    // Continue within the same paragraph but don't handle content - let construction resolver do that
+    return false
   }
 }
 
@@ -147,65 +127,20 @@ public class MarkdownParagraphConstructionResolver: MarkdownBlockResolver {
       return false
     }
 
-    var tokens = context.tokens
+    let tokens = Array(context.tokens[context.consumed...])
     guard !isBlankLine(tokens) else { return true }
 
-    if let item = paragraph.parent as? ListItemNode {
-      var spacesToStrip = item.contentIndent
-      var idx = 0
-      var stripped: [any CodeToken<MarkdownTokenElement>] = []
-      while spacesToStrip > 0, idx < tokens.count {
-        let t = tokens[idx]
-        if t.element == .whitespaces {
-          var remaining = ""
-          for ch in t.text {
-            if spacesToStrip > 0 {
-              spacesToStrip -= 1
-            } else {
-              remaining.append(ch)
-            }
-          }
-          if !remaining.isEmpty {
-            let range = t.range
-            let newToken = MarkdownToken(element: .whitespaces, text: remaining, range: range)
-            stripped.append(newToken)
-          }
-          idx += 1
-        } else {
-          break
-        }
-      }
-      stripped.append(contentsOf: tokens[idx...])
-      tokens = stripped
-    }
 
-    var i = 0
-    // Determine if this is a continued line within an existing paragraph
-    let hasPriorContent = paragraph.children.contains { $0.element == .content }
-    if i < tokens.count, tokens[i].element == .whitespaces {
-      let ws = tokens[i].text
-      let spaceCount = ws.reduce(0) { $0 + ($1 == " " ? 1 : 0) }
-      if hasPriorContent {
-        i += 1
-      } else {
-        if let parent = paragraph.parent, parent.element == .listItem {
-          i += 1
-        } else if spaceCount <= 3 {
-          i += 1
-        }
-      }
-    }
-
-    // Include all remaining tokens (including .newline/.eof) for inline processing.
-    // Rather than creating a new ContentNode per line, append the tokens to the
-    // last existing ContentNode so inline parsing can span across line breaks
-    // (needed for emphasis that crosses lines in setext headings).
-    let contentTokens: [any CodeToken<MarkdownTokenElement>] = Array(tokens[i...])
+    // With the consumption mechanism, indentation is already stripped by container resolvers
+    // so we can use the tokens as-is without additional whitespace processing
+    let contentTokens: [any CodeToken<MarkdownTokenElement>] = tokens
     if let last = paragraph.children.last as? ContentNode {
       last.tokens.append(contentsOf: contentTokens)
     } else {
       paragraph.append(ContentNode(tokens: contentTokens))
     }
+    // Consume all tokens from this line since we processed them
+    context.consumed = context.tokens.count
     return true
   }
 }
@@ -216,7 +151,7 @@ private func isBlankLine(_ tokens: [any CodeToken<MarkdownTokenElement>]) -> Boo
   while i < tokens.count {
     let t = tokens[i]
     if t.element == .newline || t.element == .eof { return true }
-    if t.element != .whitespaces { return false }
+    if t.element != .whitespace { return false }
     i += 1
   }
   return true
@@ -224,27 +159,28 @@ private func isBlankLine(_ tokens: [any CodeToken<MarkdownTokenElement>]) -> Boo
 
 private func isATXStart(_ tokens: [any CodeToken<MarkdownTokenElement>]) -> Bool {
   var i = 0
-  if i < tokens.count, tokens[i].element == .whitespaces {
+  if i < tokens.count, tokens[i].element == .whitespace {
     let ws = tokens[i].text
     let spaceCount = ws.reduce(0) { $0 + ($1 == " " ? 1 : 0) }
     if spaceCount > 3 { return false }
     i += 1
   }
   var level = 0
-  while i < tokens.count, tokens[i].element == .punctuation, tokens[i].text == "#" {
+  if i < tokens.count, tokens[i].element == .backslash { return false }
+  while i < tokens.count, tokens[i].element == .hash {
     level += 1
     if level > 6 { break }
     i += 1
   }
   if level == 0 || level > 6 { return false }
   if i >= tokens.count { return false }
-  return tokens[i].element == .whitespaces || tokens[i].element == .newline || tokens[i].element == .eof
+  return tokens[i].element == .whitespace || tokens[i].element == .newline || tokens[i].element == .eof
 }
 
 private func isSetextUnderline(_ tokens: [any CodeToken<MarkdownTokenElement>]) -> Bool {
   // Mirrors the logic in MarkdownSetextUtils
   var i = 0
-  if i < tokens.count, tokens[i].element == .whitespaces {
+  if i < tokens.count, tokens[i].element == .whitespace {
     let ws = tokens[i].text
     let spaceCount = ws.reduce(0) { $0 + ($1 == " " ? 1 : 0) }
     if spaceCount > 3 { return false }

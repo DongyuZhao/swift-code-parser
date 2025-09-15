@@ -18,15 +18,6 @@ public class MarkdownNewlineTokenBuilder: CodeTokenBuilder {
     context.tokens.append(token)
     context.consuming = range.upperBound
 
-    if let state = context.state as? MarkdownTokenState {
-      if let pending = state.pendingMode {
-        state.modes.push(pending)
-        state.pendingMode = nil
-      } else if state.modes.top == .code && !state.inFencedCodeBlock {
-        state.modes.pop()
-      }
-    }
-
     return true
   }
 }

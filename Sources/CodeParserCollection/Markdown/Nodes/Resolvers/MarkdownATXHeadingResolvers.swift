@@ -15,7 +15,7 @@ public class MarkdownATXHeadingCreationResolver: MarkdownBlockResolver {
 
     var i = 0
     // Optional indentation up to 3 spaces
-    if i < tokens.count, tokens[i].element == .whitespaces {
+    if i < tokens.count, tokens[i].element == .whitespace {
       let ws = tokens[i].text
       let spaceCount = ws.reduce(0) { $0 + ($1 == " " ? 1 : 0) }
       if spaceCount > 3 { return false }
@@ -24,7 +24,8 @@ public class MarkdownATXHeadingCreationResolver: MarkdownBlockResolver {
 
     // Count leading '#'
     var level = 0
-    while i < tokens.count, tokens[i].element == .punctuation, tokens[i].text == "#" {
+    if i < tokens.count, tokens[i].element == .backslash { return false }
+    while i < tokens.count, tokens[i].element == .hash {
       level += 1
       if level > 6 { break }
       i += 1
@@ -42,7 +43,7 @@ public class MarkdownATXHeadingCreationResolver: MarkdownBlockResolver {
       return false
     }
 
-    guard tokens[i].element == .whitespaces else { return false }
+    guard tokens[i].element == .whitespace else { return false }
 
     // Create the heading node; content is handled in construction phase
     if let parent = context.current as? MarkdownNodeBase {
@@ -90,7 +91,7 @@ public class MarkdownATXHeadingConstructionResolver: MarkdownBlockResolver {
     let tokens = context.tokens
     var i = 0
     // Skip optional indent
-    if i < tokens.count, tokens[i].element == .whitespaces {
+    if i < tokens.count, tokens[i].element == .whitespace {
       let ws = tokens[i].text
       let spaceCount = ws.reduce(0) { $0 + ($1 == " " ? 1 : 0) }
       if spaceCount <= 3 { i += 1 }
@@ -98,7 +99,8 @@ public class MarkdownATXHeadingConstructionResolver: MarkdownBlockResolver {
 
     // Skip leading hashes (up to 6)
     var seen = 0
-    while i < tokens.count, tokens[i].element == .punctuation, tokens[i].text == "#" {
+    if i < tokens.count, tokens[i].element == .backslash { return false }
+    while i < tokens.count, tokens[i].element == .hash {
       seen += 1
       if seen > 6 { break }
       i += 1
@@ -111,7 +113,7 @@ public class MarkdownATXHeadingConstructionResolver: MarkdownBlockResolver {
     }
 
     // Require a space before content per ATX rules
-    guard tokens[i].element == .whitespaces else { return false }
+    guard tokens[i].element == .whitespace else { return false }
     i += 1
 
     // Determine content range including trailing newline/eof tokens
@@ -123,22 +125,22 @@ public class MarkdownATXHeadingConstructionResolver: MarkdownBlockResolver {
     if endContent < i { endContent = i - 1 }
 
     // Trim trailing spaces and optional trailing # run on the content part
-    while endContent >= i, tokens[endContent].element == .whitespaces { endContent -= 1 }
+    while endContent >= i, tokens[endContent].element == .whitespace { endContent -= 1 }
     var j = endContent
     var trailingHashes = 0
-    while j >= i, tokens[j].element == .punctuation, tokens[j].text == "#" {
+    while j >= i, tokens[j].element == .hash {
       trailingHashes += 1
       j -= 1
     }
     if trailingHashes > 0 {
       // Determine if there is any non-space content before the trailing run
       var k = j
-      while k >= i, tokens[k].element == .whitespaces { k -= 1 }
+      while k >= i, tokens[k].element == .whitespace { k -= 1 }
       let onlySpacesBeforeRun = (k < i)
 
       // Closing sequence valid if immediately preceded by whitespace OR if there is no content
-      if (j >= i && tokens[j].element == .whitespaces) || onlySpacesBeforeRun {
-        while j >= i, tokens[j].element == .whitespaces { j -= 1 }
+      if (j >= i && tokens[j].element == .whitespace) || onlySpacesBeforeRun {
+        while j >= i, tokens[j].element == .whitespace { j -= 1 }
         endContent = j
       }
       // else: do not trim; hashes are part of content

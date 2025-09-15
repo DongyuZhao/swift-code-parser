@@ -11,16 +11,17 @@ public class MarkdownFencedCodeBlockCreationResolver: MarkdownBlockResolver {
     let tokens = context.tokens
     var i = 0
     var indent = 0
-    if i < tokens.count, tokens[i].element == .whitespaces {
+    if i < tokens.count, tokens[i].element == .whitespace {
       indent = tokens[i].text.reduce(0) { $0 + ($1 == " " ? 1 : 0) }
       if indent > 3 { return false }
       i += 1
     }
-    guard i < tokens.count, tokens[i].element == .punctuation else { return false }
-    let fenceChar = tokens[i].text
-    guard fenceChar == "`" || fenceChar == "~" else { return false }
+    guard i < tokens.count else { return false }
+    if tokens[i].element == .backslash { return false }
+    let fenceElem = tokens[i].element
+    guard fenceElem == .backtick || fenceElem == .tilde else { return false }
     var fenceCount = 0
-    while i < tokens.count, tokens[i].element == .punctuation, tokens[i].text == fenceChar {
+    while i < tokens.count, tokens[i].element == fenceElem {
       fenceCount += 1
       i += 1
     }
@@ -32,8 +33,8 @@ public class MarkdownFencedCodeBlockCreationResolver: MarkdownBlockResolver {
       infoTokens.append(t)
       i += 1
     }
-    if fenceChar == "`" {
-      for t in infoTokens where t.element == .punctuation && t.text.contains("`") { return false }
+    if fenceElem == .backtick {
+      for t in infoTokens where t.element == .backtick { return false }
     }
     let info = infoTokens.map { $0.text }.joined()
     let lang = info.split { $0 == " " || $0 == "\t" }.first.map(String.init)
@@ -43,7 +44,7 @@ public class MarkdownFencedCodeBlockCreationResolver: MarkdownBlockResolver {
     if let item = ancestorListItem(from: parent) {
       code.indent += item.contentIndent
     }
-    code.fenceChar = fenceChar.first
+    code.fenceChar = (fenceElem == .backtick ? "`" : "~").first
     code.fenceCount = fenceCount
     parent.append(code)
     context.current = code
@@ -73,14 +74,15 @@ public class MarkdownFencedCodeBlockContinuationResolver: MarkdownBlockResolver 
     }
     var i = 0
     var indent = 0
-    if i < tokens.count, tokens[i].element == .whitespaces {
+    if i < tokens.count, tokens[i].element == .whitespace {
       indent = tokens[i].text.reduce(0) { $0 + ($1 == " " ? 1 : 0) }
       if indent > 3 { return true }
       i += 1
     }
-    if i < tokens.count, tokens[i].element == .punctuation, tokens[i].text == String(fenceChar) {
+    let expectedElem: MarkdownTokenElement = (fenceChar == "`" ? .backtick : .tilde)
+    if i < tokens.count, tokens[i].element == expectedElem {
       var run = 0
-      while i < tokens.count, tokens[i].element == .punctuation, tokens[i].text == String(fenceChar) {
+      while i < tokens.count, tokens[i].element == expectedElem {
         run += 1
         i += 1
       }
@@ -90,7 +92,7 @@ public class MarkdownFencedCodeBlockContinuationResolver: MarkdownBlockResolver 
         while j < tokens.count {
           let t = tokens[j]
           if t.element == .newline || t.element == .eof { break }
-          if t.element != .whitespaces { onlySpace = false; break }
+          if t.element != .whitespace { onlySpace = false; break }
           j += 1
         }
         if onlySpace {
@@ -112,7 +114,7 @@ public class MarkdownFencedCodeBlockConstructionResolver: MarkdownBlockResolver 
     var i = 0
     var line = ""
     var strip = code.indent
-    if i < tokens.count, tokens[i].element == .whitespaces {
+    if i < tokens.count, tokens[i].element == .whitespace {
       var rem = strip
       for ch in tokens[i].text {
         if ch == " " && rem > 0 { rem -= 1; continue }

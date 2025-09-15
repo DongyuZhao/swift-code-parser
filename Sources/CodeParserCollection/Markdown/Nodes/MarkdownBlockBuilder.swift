@@ -103,7 +103,7 @@ public class MarkdownBlockBuilder: CodeNodeBuilder {
       current: context.current,
       tokens: line
     )
-
+    
     for phase in [Phase.continuation, .creation, .construction] {
       guard let phaseResolvers = resolvers[phase] else { continue }
       var refreshIterations = 0

@@ -18,17 +18,18 @@ package enum MarkdownListUtils {
     let (leadingSpaces, _, _) = MarkdownIndentation.calculateIndentation(from: tokens)
     if !allowIndented && leadingSpaces > 3 { return nil }
     var i = 0
-    while i < tokens.count && tokens[i].element == .whitespaces { i += 1 }
+    while i < tokens.count && tokens[i].element == .whitespace { i += 1 }
     guard i < tokens.count else { return nil }
+    if tokens[i].element == .backslash { return nil }
     let t = tokens[i]
-    guard t.element == .punctuation, ["-", "*", "+"].contains(t.text) else { return nil }
+    guard t.element == .dash || t.element == .asterisk || t.element == .plus else { return nil }
     var next = i + 1
     if next >= tokens.count { return nil }
     let nxt = tokens[next]
-    if nxt.element == .whitespaces { next += 1 }
+    if nxt.element == .whitespace { next += 1 }
     else if nxt.element != .newline && nxt.element != .eof { return nil }
     // Prevent misidentifying thematic breaks like "- - -" or "* * *" as list markers
-    if next < tokens.count, tokens[next].element == .punctuation, tokens[next].text == t.text { return nil }
+    if next < tokens.count, tokens[next].element == t.element { return nil }
     return UnorderedMarker(marker: t.text, nextIndex: next)
   }
 
@@ -37,16 +38,16 @@ package enum MarkdownListUtils {
     let (leadingSpaces, _, _) = MarkdownIndentation.calculateIndentation(from: tokens)
     if !allowIndented && leadingSpaces > 3 { return nil }
     var i = 0
-    while i < tokens.count && tokens[i].element == .whitespaces { i += 1 }
+    while i < tokens.count && tokens[i].element == .whitespace { i += 1 }
     guard i < tokens.count else { return nil }
     let t = tokens[i]
     guard t.element == .characters, t.text.allSatisfy({ $0.isNumber }) else { return nil }
     let j = i + 1
-    guard j < tokens.count, tokens[j].element == .punctuation, [".", ")"].contains(tokens[j].text) else { return nil }
+    guard j < tokens.count, (tokens[j].element == .dot || tokens[j].element == .rightParen) else { return nil }
     var next = j + 1
     if next >= tokens.count { return nil }
     let nxt = tokens[next]
-    if nxt.element == .whitespaces { next += 1 }
+    if nxt.element == .whitespace { next += 1 }
     else if nxt.element != .newline && nxt.element != .eof { return nil }
     return OrderedMarker(numberText: t.text, delimiter: tokens[j].text, nextIndex: next)
   }
@@ -56,4 +57,3 @@ package enum MarkdownListUtils {
     detectUnorderedMarker(tokens: tokens, allowIndented: allowIndented) != nil || detectOrderedMarker(tokens: tokens, allowIndented: allowIndented) != nil
   }
 }
-

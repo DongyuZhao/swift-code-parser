@@ -15,65 +15,50 @@ public class MarkdownPunctuationTokenBuilder: CodeTokenBuilder {
     let char = source[start]
     guard MarkdownPunctuationCharacter.characters.contains(char) else { return false }
 
-    var current = start
-
-    // Handle runs of backticks or tildes specially for code spans/blocks
-    if char == "`" || char == "~" {
-      var count = 0
-      while current < source.endIndex && source[current] == char {
-        let next = source.index(after: current)
-        let range = current..<next
-        let token = MarkdownToken(element: .punctuation, text: String(char), range: range)
-        context.tokens.append(token)
-        count += 1
-        current = next
-      }
-      context.consuming = current
-
-      if let state = context.state as? MarkdownTokenState {
-        if count >= 3 {
-          // Fenced code block boundaries
-          if state.inFencedCodeBlock && state.modes.top == .code {
-            state.modes.pop()
-            state.inFencedCodeBlock = false
-          } else {
-            state.pendingMode = .code
-            state.inFencedCodeBlock = true
-          }
-        } else {
-          // Inline code spans
-          if state.modes.top == .code {
-            state.modes.pop()
-          } else {
-            state.modes.push(.code)
-          }
-        }
-      }
-      return true
+    // Map character to a specific punctuation element
+    let element: MarkdownTokenElement
+    switch char {
+    case "!": element = .exclamation
+    case "\"": element = .quote
+    case "#": element = .hash
+    case "$": element = .dollar
+    case "%": element = .percent
+    case "&": element = .ampersand
+    case "'": element = .singleQuote
+    case "(": element = .leftParen
+    case ")": element = .rightParen
+    case "*": element = .asterisk
+    case "+": element = .plus
+    case ",": element = .comma
+    case "-": element = .dash
+    case ".": element = .dot
+    case "/": element = .forwardSlash
+    case ":": element = .colon
+    case ";": element = .semicolon
+    case "<": element = .lt
+    case "=": element = .equals
+    case ">": element = .gt
+    case "?": element = .question
+    case "@": element = .atSign
+    case "[": element = .leftBracket
+    case "\\": element = .backslash
+    case "]": element = .rightBracket
+    case "^": element = .caret
+    case "_": element = .underscore
+    case "`": element = .backtick
+    case "{": element = .leftBrace
+    case "|": element = .pipe
+    case "}": element = .rightBrace
+    case "~": element = .tilde
+    default:
+      // Fallback: should not happen as char is known punctuation; do not emit legacy .punctuation
+      element = .characters
     }
 
-    // Default: single punctuation character
     let range = start..<source.index(after: start)
-    let token = MarkdownToken(element: .punctuation, text: String(char), range: range)
+    let token = MarkdownToken(element: element, text: String(char), range: range)
     context.tokens.append(token)
     context.consuming = range.upperBound
-
-    if let state = context.state as? MarkdownTokenState {
-      switch char {
-      case "<":
-        if state.modes.top != .code {
-          // We need to look ahead to determine if this should be autolink or html mode
-          // For now, we'll use a heuristic: if we're not in code mode, try autolink first
-          state.modes.push(.autolink)
-        }
-      case ">":
-        if state.modes.top == .html || state.modes.top == .autolink {
-          state.modes.pop()
-        }
-      default:
-        break
-      }
-    }
 
     return true
   }

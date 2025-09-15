@@ -7,36 +7,21 @@ public class MarkdownWhitespaceTokenBuilder: CodeTokenBuilder {
 
   public init() {}
 
-  // Collects a run of whitespace characters excluding newline.
+  // Emits a single whitespace character token (excluding newline).
   public func build(from context: inout CodeTokenContext<Token>) -> Bool {
     let source = context.source
-    var current = context.consuming
-    let start = current
+    let current = context.consuming
 
     guard current < source.endIndex else { return false }
     guard MarkdownWhitespaceCharacter.characters.contains(source[current]),
           source[current] != "\n" else { return false }
 
-    // Gather consecutive non-newline whitespace characters
-    while current < source.endIndex,
-          MarkdownWhitespaceCharacter.characters.contains(source[current]),
-          source[current] != "\n" {
-      current = source.index(after: current)
-    }
-
-    let range = start..<current
-    let token = MarkdownToken(element: .whitespaces, text: String(source[range]), range: range)
+    // Emit single whitespace character token
+    let next = source.index(after: current)
+    let range = current..<next
+    let token = MarkdownToken(element: .whitespace, text: String(source[range]), range: range)
     context.tokens.append(token)
-    context.consuming = current
-
-    if let state = context.state as? MarkdownTokenState {
-      let length = source.distance(from: start, to: current)
-      let atLineStart = context.tokens.dropLast().last?.element == .newline || context.tokens.count == 1
-      if atLineStart && length >= 4 && state.modes.top != .code {
-        state.modes.push(.code)
-        state.inFencedCodeBlock = false
-      }
-    }
+    context.consuming = next
 
     return true
   }

@@ -3,12 +3,51 @@ import Foundation
 
 // MARK: - Token Element Definition
 public enum MarkdownTokenElement: String, CaseIterable, CodeTokenElement {
-  case characters = "characters" // A sequence of characters that are not whitespace, punctuation, or EOF. All the escaped punctuations should also be treated as characters.
-  case newline = "newline" // A \n, \r, \r\n represent a soft new line.
-  case whitespaces = "whitespaces" // A sequence of whitespace characters except for new lines.
-  case punctuation = "punctuation" // A character that belongs to punctuations
-  case charef = "charef" // A sequence of characters that represents an HTML entity reference
-  case eof = "eof" // The end of file
+  // Core kinds
+  case characters = "characters" // A run of non-whitespace, non-punctuation characters (no escape handling)
+  case newline = "newline" // A \n
+  case whitespace = "whitespace" // A whitespace character except for newline
+  case eof = "eof" // End of file
+
+  // Legacy/compat: generic punctuation (not used by tokenizer anymore)
+  case punctuation = "punctuation"
+
+  // Character reference (not produced by tokenizer anymore)
+  case charef = "charef"
+
+  // Specific punctuation tokens
+  case exclamation
+  case quote        // '"'
+  case hash         // '#'
+  case dollar       // '$'
+  case percent      // '%'
+  case ampersand    // '&'
+  case singleQuote  // '\''
+  case leftParen    // '('
+  case rightParen   // ')'
+  case asterisk     // '*'
+  case plus         // '+'
+  case comma        // ','
+  case dash         // '-'
+  case dot          // '.'
+  case forwardSlash // '/'
+  case colon        // ':'
+  case semicolon    // ';'
+  case lt           // '<'
+  case equals       // '='
+  case gt           // '>'
+  case question     // '?'
+  case atSign       // '@'
+  case leftBracket  // '['
+  case backslash    // '\\'
+  case rightBracket // ']'
+  case caret        // '^'
+  case underscore   // '_'
+  case backtick     // '`'
+  case leftBrace    // '{'
+  case pipe         // '|'
+  case rightBrace   // '}'
+  case tilde        // '~'
 }
 
 // MARK: - Token Implementation

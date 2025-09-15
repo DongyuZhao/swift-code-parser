@@ -8,25 +8,30 @@ import Foundation
 public class MarkdownIndentedCodeBlockCreationResolver: MarkdownBlockResolver {
   public init() {}
   public func resolve(from context: inout MarkdownBlockContext) -> Bool {
-    let tokens = context.tokens
-    var i = 0
+    let remainingTokens = Array(context.tokens[context.consumed...])
     // Do not start an indented code block inside a paragraph or another code block
     guard context.current.element != .paragraph,
-          context.current.element != .codeBlock else { return false }
-    guard i < tokens.count, tokens[i].element == .whitespaces else { return false }
-    let ws = tokens[i].text
-    let spaceCount = ws.reduce(0) { $0 + ($1 == " " ? 1 : 0) }
-    if let item = ancestorListItem(from: context.current) {
-      guard spaceCount >= item.contentIndent + 4 else { return false }
-    } else {
-      guard spaceCount >= 4 else { return false }
+          context.current.element != .codeBlock else { 
+      return false 
+    }
+
+    // Count leading spaces with single-character tokens
+    var spaceCount = 0
+    var i = 0
+    while i < remainingTokens.count && remainingTokens[i].element == .whitespace && remainingTokens[i].text == " " {
+      spaceCount += 1
+      i += 1
+    }
+
+    // Always need exactly 4+ spaces for an indented code block
+    guard spaceCount >= 4 else { 
+      return false 
     }
 
     if let parent = context.current as? MarkdownNodeBase {
       let code = CodeBlockNode(source: "")
-      if let item = ancestorListItem(from: parent) {
-        code.indent = item.contentIndent
-      }
+      // Code blocks always have base indent of 0 - list indentation is handled by list resolvers
+      code.indent = 0
       parent.append(code)
       context.current = code
       return true
@@ -39,8 +44,8 @@ public class MarkdownIndentedCodeBlockContinuationResolver: MarkdownBlockResolve
   public init() {}
   public func resolve(from context: inout MarkdownBlockContext) -> Bool {
     guard context.current.element == .codeBlock else { return false }
-    let tokens = context.tokens
-    if tokens.count == 1, tokens.first?.element == .eof {
+    let remainingTokens = Array(context.tokens[context.consumed...])
+    if remainingTokens.count == 1, remainingTokens.first?.element == .eof {
       if let code = context.current as? CodeBlockNode {
         while code.source.hasSuffix("\n") { code.source.removeLast() }
         if !code.source.isEmpty && !code.source.hasSuffix("```") && !code.source.hasSuffix("~~~") {
@@ -50,67 +55,55 @@ public class MarkdownIndentedCodeBlockContinuationResolver: MarkdownBlockResolve
       if let parent = context.current.parent { context.current = parent }
       return false
     }
-    // Continue only if current line has required indentation or is blank
+
+    guard context.current.element == .codeBlock else { return false }
+    
+    // Count leading spaces with single-character tokens
+    var spaceCount = 0
     var i = 0
-    if i < tokens.count, tokens[i].element == .whitespaces {
-      let ws = tokens[i].text
-      let spaceCount = ws.reduce(0) { $0 + ($1 == " " ? 1 : 0) }
-      if let item = ancestorListItem(from: context.current) {
-        if spaceCount >= item.contentIndent + 4 { return true }
-      } else if spaceCount >= 4 {
-        return true
-      }
+    while i < remainingTokens.count && remainingTokens[i].element == .whitespace && remainingTokens[i].text == " " {
+      spaceCount += 1
+      i += 1
     }
+
+    // Code block continues if line has 4+ spaces
+    if spaceCount >= 4 {
+      return true
+    }
+
     // Blank line continues the code block
     var isBlank = true
-    for t in tokens { if t.element != .whitespaces && t.element != .newline && t.element != .eof { isBlank = false; break } }
+    for t in remainingTokens { if t.element != .whitespace && t.element != .newline && t.element != .eof { isBlank = false; break } }
     if isBlank { return true }
 
     // Otherwise, end the code block and move current to parent
-    // Preserve trailing newline per specification
     if let parent = context.current.parent { context.current = parent }
     return true
   }
 }
 
-private func ancestorListItem(from node: CodeNode<MarkdownNodeElement>) -> ListItemNode? {
-  var cur = node as? MarkdownNodeBase
-  while let c = cur {
-    if let item = c as? ListItemNode { return item }
-    cur = c.parent as? MarkdownNodeBase
-  }
-  return nil
-}
 
 public class MarkdownIndentedCodeBlockConstructionResolver: MarkdownBlockResolver {
   public init() {}
   public func resolve(from context: inout MarkdownBlockContext) -> Bool {
     guard let code = context.current as? CodeBlockNode else { return false }
-    let tokens = context.tokens
-    // Determine leading spaces to strip: list item indent + 4, or up to 4 normally
+    let remainingTokens = Array(context.tokens[context.consumed...])
+
+    // Always strip exactly 4 spaces for indented code blocks
+    let stripCount = 4
+
+    // Strip leading spaces with single-character tokens
     var i = 0
-    var stripCount = 0
-    var base = 4
-    if let item = ancestorListItem(from: context.current) {
-      base = item.contentIndent + 4
-    }
-    if i < tokens.count, tokens[i].element == .whitespaces {
-      let ws = tokens[i].text
-      let spaceCount = ws.reduce(0) { $0 + ($1 == " " ? 1 : 0) }
-      stripCount = min(base, spaceCount)
-      // Rebuild whitespace after stripping leading spaces, if any remain
-    }
-    var line = ""
-    var remainingToStrip = stripCount
-    if i < tokens.count, tokens[i].element == .whitespaces {
-      for ch in tokens[i].text {
-        if ch == " " && remainingToStrip > 0 { remainingToStrip -= 1; continue }
-        line.append(ch)
-      }
+    var stripped = 0
+    while i < remainingTokens.count && remainingTokens[i].element == .whitespace && remainingTokens[i].text == " " && stripped < stripCount {
       i += 1
+      stripped += 1
     }
-    while i < tokens.count {
-      let t = tokens[i]
+
+    // Build the line from remaining tokens
+    var line = ""
+    while i < remainingTokens.count {
+      let t = remainingTokens[i]
       if t.element == .newline {
         line.append("\n")
       } else if t.element == .eof {
@@ -121,6 +114,9 @@ public class MarkdownIndentedCodeBlockConstructionResolver: MarkdownBlockResolve
       i += 1
     }
     code.source.append(line)
+
+    // Consume all tokens from this line
+    context.consumed = context.tokens.count
     return true
   }
 }
