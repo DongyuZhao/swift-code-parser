@@ -419,7 +419,7 @@ struct MarkdownHTMLBlocksTests {
 
     // Verify AST structure using sig
     let expectedSig =
-      #"document[html_block(name:"",content:"  <!-- foo -->"),code_block("&lt;!-- foo --&gt;")]"#
+      #"document[html_block(name:"",content:"  <!-- foo -->"),code_block("<!-- foo -->\#n")]"#
     #expect(sig(result.root) == expectedSig)
   }
 

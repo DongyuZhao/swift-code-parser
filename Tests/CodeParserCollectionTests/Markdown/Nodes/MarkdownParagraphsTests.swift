@@ -103,7 +103,7 @@ struct MarkdownParagraphsTests {
 
     // Should create a code block and a paragraph
 
-  let expectedSig = #"document[code_block("aaa"),paragraph[text("bbb")]]"#
+  let expectedSig = #"document[code_block("aaa\#n"),paragraph[text("bbb")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 

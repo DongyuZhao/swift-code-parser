@@ -166,7 +166,7 @@ struct MarkdownListsTests {
 
     // Code block after comment
 
-    let expectedSig = #"document[unordered_list(level:1)[list_item[paragraph[text("foo")],paragraph[text("notcode")]],list_item[paragraph[text("foo")]]],html_block(name:"",content:"<!-- -->"),code_block("code")]"#
+    let expectedSig = #"document[unordered_list(level:1)[list_item[paragraph[text("foo")],paragraph[text("notcode")]],list_item[paragraph[text("foo")]]],html_block(name:"",content:"<!-- -->"),code_block("code\#n")]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -230,7 +230,7 @@ struct MarkdownListsTests {
     """#
     let result = parser.parse(input, language: language)
 
-    let expectedSig = #"document[ordered_list(level:1)[list_item[paragraph[text("a")]],list_item[paragraph[text("b")]]],code_block("3. c")]"#
+    let expectedSig = #"document[ordered_list(level:1)[list_item[paragraph[text("a")]],list_item[paragraph[text("b")]]],code_block("3. c\#n")]"#
     #expect(sig(result.root) == expectedSig)
   }
 

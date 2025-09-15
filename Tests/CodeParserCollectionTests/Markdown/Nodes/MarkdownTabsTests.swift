@@ -26,7 +26,7 @@ struct MarkdownTabsTests {
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = #"document[code_block("foo\tbaz\t\tbim")]"#
+    let expectedSig = #"document[code_block("foo\tbaz\t\tbim\#n")]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -38,7 +38,7 @@ struct MarkdownTabsTests {
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = #"document[code_block("foo\tbaz\t\tbim")]"#
+    let expectedSig = #"document[code_block("foo\tbaz\t\tbim\#n")]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -51,7 +51,7 @@ struct MarkdownTabsTests {
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = #"document[code_block("a\ta\#n\u{1F50}\ta")]"#
+    let expectedSig = #"document[code_block("a\ta\#n\u{1F50}\ta\#n")]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -79,7 +79,7 @@ struct MarkdownTabsTests {
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = #"document[unordered_list(level:1)[list_item[paragraph[text("foo")],code_block("  bar")]]]"#
+    let expectedSig = #"document[unordered_list(level:1)[list_item[paragraph[text("foo")],code_block("  bar\#n")]]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -91,7 +91,7 @@ struct MarkdownTabsTests {
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = #"document[blockquote[code_block("  foo")]]"#
+    let expectedSig = #"document[blockquote[code_block("  foo\#n")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -103,7 +103,7 @@ struct MarkdownTabsTests {
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = #"document[unordered_list(level:1)[list_item[code_block("  foo")]]]"#
+    let expectedSig = #"document[unordered_list(level:1)[list_item[code_block("  foo\#n")]]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -116,7 +116,7 @@ struct MarkdownTabsTests {
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = #"document[code_block("foo\#nbar")]"#
+    let expectedSig = #"document[code_block("foo\#nbar\#n")]"#
     #expect(sig(result.root) == expectedSig)
   }
 

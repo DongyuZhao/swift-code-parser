@@ -24,11 +24,11 @@ struct MarkdownBlockQuotesTests {
 
     let expectedSig =
       #"document[blockquote[heading(level:1)[text("Foo")],paragraph[text("bar"),line_break(soft),text("baz")]]]"#
-    
+
     print("ACTUAL OUTPUT: \(sig(result.root))")
     print("EXPECTED OUTPUT: \(expectedSig)")
     print("MATCH: \(sig(result.root) == expectedSig)")
-    
+
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -71,7 +71,7 @@ struct MarkdownBlockQuotesTests {
 
     // Should create code block, not block quote
 
-    let expectedSig = #"document[code_block("> # Foo\n> bar\n> baz")]"#
+    let expectedSig = #"document[code_block("> # Foo\n> bar\n> baz\#n")]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -135,7 +135,7 @@ struct MarkdownBlockQuotesTests {
       """
     let result = parser.parse(input, language: language)
 
-    let expectedSig = #"document[blockquote[code_block("foo")],code_block("bar")]"#
+    let expectedSig = #"document[blockquote[code_block("foo\#n")],code_block("bar\#n")]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -344,7 +344,7 @@ struct MarkdownBlockQuotesTests {
     // Second blockquote should contain paragraph (not code)
 
     let expectedSig =
-      #"document[blockquote[code_block("code")],blockquote[paragraph[text("not code")]]]"#
+      #"document[blockquote[code_block("code\#n")],blockquote[paragraph[text("not code")]]]"#
     #expect(sig(result.root) == expectedSig)
   }
 }

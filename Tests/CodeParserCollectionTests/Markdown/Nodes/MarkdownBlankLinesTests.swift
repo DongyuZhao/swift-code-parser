@@ -125,7 +125,7 @@ struct MarkdownBlankLinesTests {
     let result = parser.parse(input, language: language)
 
     let expectedSig =
-      #"document[code_block("code block"),unordered_list(level:1)[list_item[paragraph[text("list")]],list_item[paragraph[text("items")]]],ordered_list(level:1)[list_item[paragraph[text("ordered")]],list_item[paragraph[text("list")]]]]"#
+      #"document[code_block("code block\#n"),unordered_list(level:1)[list_item[paragraph[text("list")]],list_item[paragraph[text("items")]]],ordered_list(level:1)[list_item[paragraph[text("ordered")]],list_item[paragraph[text("list")]]]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -140,7 +140,7 @@ struct MarkdownBlankLinesTests {
       """
     let result = parser.parse(input, language: language)
 
-    let expectedSig = #"document[code_block("line 1\#n\#nline 3")]"#
+    let expectedSig = #"document[code_block("line 1\#n\#nline 3\#n")]"#
     #expect(sig(result.root) == expectedSig)
   }
 

@@ -87,7 +87,7 @@ struct MarkdownBackslashEscapesTests {
   func backslashEscapesDoNotWorkInIndentedCodeBlocks() {
     let input = #"    \[\]"#
     let result = parser.parse(input, language: language)
-    let expectedSig = #"document[code_block("\[\]")]"#
+    let expectedSig = #"document[code_block("\[\]\#n")]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -100,7 +100,7 @@ struct MarkdownBackslashEscapesTests {
       """#
     let result = parser.parse(input, language: language)
 
-    let expectedSig = #"document[code_block("\[\]")]"#
+    let expectedSig = #"document[code_block("\[\]\#n")]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -156,7 +156,7 @@ struct MarkdownBackslashEscapesTests {
       """#
     let result = parser.parse(input, language: language)
 
-    let expectedSig = #"document[code_block(lang:"foo+bar","foo")]"#
+    let expectedSig = #"document[code_block(lang:"foo+bar","foo\#n")]"#
     #expect(sig(result.root) == expectedSig)
   }
 

@@ -104,7 +104,7 @@ struct MarkdownSetextHeadingsTests {
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = #"document[code_block("Foo\#n---\#n\#nFoo"),thematic_break]"#
+    let expectedSig = #"document[code_block("Foo\#n---\#n\#nFoo\#n"),thematic_break]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -314,7 +314,7 @@ struct MarkdownSetextHeadingsTests {
     let result = parser.parse(input, language: language)
 
     // Verify AST structure using sig
-    let expectedSig = #"document[code_block("foo"),thematic_break]"#
+    let expectedSig = #"document[code_block("foo\#n"),thematic_break]"#
     #expect(sig(result.root) == expectedSig)
   }
 

@@ -205,7 +205,7 @@ struct MarkdownCodeSpansTests {
     let input = "```foo``"
     let result = parser.parse(input, language: language)
 
-  let expectedSig = #"document[code_block(lang:"foo``","")]"#
+  let expectedSig = #"document[paragraph[text("```foo``")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 

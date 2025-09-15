@@ -116,7 +116,7 @@ struct MarkdownEntityAndNumericCharacterReferencesTests {
       """#
     let result = parser.parse(input, language: language)
 
-    let expectedSig = #"document[code_block(lang:"föö","foo")]"#
+    let expectedSig = #"document[code_block(lang:"föö","foo\#n")]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -134,7 +134,7 @@ struct MarkdownEntityAndNumericCharacterReferencesTests {
     let input = #"    f&ouml;f&ouml;"#
     let result = parser.parse(input, language: language)
 
-    let expectedSig = #"document[code_block("f&ouml;f&ouml;")]"#
+    let expectedSig = #"document[code_block("f&ouml;f&ouml;\#n")]"#
     #expect(sig(result.root) == expectedSig)
   }
 

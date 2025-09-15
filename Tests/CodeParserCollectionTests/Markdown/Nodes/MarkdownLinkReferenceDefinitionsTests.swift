@@ -283,7 +283,7 @@ struct MarkdownLinkReferenceDefinitionsTests {
 
     // Should create a code block and paragraph
 
-    let expectedSig = #"document[code_block("[foo]: /url \"title\""),paragraph[text("[foo]")]]"#
+    let expectedSig = #"document[code_block("[foo]: /url "title"\#n"),paragraph[text("[foo]")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
@@ -302,7 +302,7 @@ struct MarkdownLinkReferenceDefinitionsTests {
 
     // Should create a code block and paragraph
 
-    let expectedSig = #"document[code_block("[foo]: /url"),paragraph[text("[foo]")]]"#
+    let expectedSig = #"document[code_block("[foo]: /url\#n"),paragraph[text("[foo]")]]"#
     #expect(sig(result.root) == expectedSig)
   }
 
